@@ -231,3 +231,16 @@ body {
     overflow-wrap: anywhere;
   }
 }
+.identity-panel {
+  width: min(100% - 32px, 480px);
+  margin: 40px auto;
+}
+.identity-alert {
+  margin-bottom: 20px;
+}
+.identity-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 20px 0;
+}

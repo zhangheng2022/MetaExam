@@ -8,6 +8,7 @@ import {
   importLicense,
   licenseStatus,
   loadConfig,
+  issueBootstrapFile,
 } from '@metaexam/db';
 import { LicenseError } from '@metaexam/domain';
 async function main() {
@@ -25,6 +26,10 @@ async function main() {
   const db = createDatabase();
   try {
     switch (command) {
+      case 'setup-token':
+        await issueBootstrapFile(db);
+        console.log('SETUP_TOKEN_READY');
+        break;
       case 'migrate':
         await migrate(db);
         await ensureInstance(db);

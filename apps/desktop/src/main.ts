@@ -1,6 +1,8 @@
-import { app, BrowserWindow, ipcMain, net } from 'electron';
+import { app, BrowserWindow, ipcMain, net, shell, type IpcMainInvokeEvent } from 'electron';
 import path from 'node:path';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, unlinkSync } from 'node:fs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
 function endpoint() {
   const configPath =
@@ -32,17 +34,115 @@ async function main() {
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event) => event.preventDefault());
-  ipcMain.handle('system:status', async (event) => {
+  const validateSender = (event: IpcMainInvokeEvent) => {
     if (
       event.senderFrame !== window.webContents.mainFrame ||
       event.senderFrame.url !== pathToFileURL(file).href
     )
       throw new Error('INVALID_IPC_ORIGIN');
-    const r = await net.fetch(endpoint() + '/api/v1/system/status', {
+  };
+  const request = async (route: string, options: RequestInit = {}) => {
+    const r = await net.fetch(endpoint() + route, {
+      ...options,
+      redirect: 'error',
       signal: AbortSignal.timeout(20000),
     });
-    if (!r.ok) throw new Error('SERVICE_UNAVAILABLE');
+    if (!r.ok) {
+      const body = (await r.json()) as { code?: string };
+      throw new Error(body.code ?? 'SERVICE_UNAVAILABLE');
+    }
     return r.json();
+  };
+  ipcMain.handle('system:status', async (event) => {
+    validateSender(event);
+    return request('/api/v1/system/status');
+  });
+  ipcMain.handle('setup:status', async (event) => {
+    validateSender(event);
+    return request('/api/v1/setup/status');
+  });
+  ipcMain.handle('setup:create', async (event, input: unknown) => {
+    validateSender(event);
+    if (!input || typeof input !== 'object') return { ok: false, code: 'INVALID_REQUEST' };
+    const data = input as Record<string, unknown>;
+    if (
+      Object.keys(data).sort().join(',') !== 'displayName,password,username' ||
+      !['username', 'displayName', 'password'].every(
+        (k) => typeof data[k] === 'string' && (data[k] as string).length <= 128,
+      )
+    )
+      return { ok: false, code: 'INVALID_REQUEST' };
+    try {
+      const run = promisify(execFile);
+      const elevated = await run(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          '[Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)',
+        ],
+        { windowsHide: true, timeout: 10000 },
+      );
+      if (elevated.stdout.trim() !== 'True') return { ok: false, code: 'ADMINISTRATOR_REQUIRED' };
+      const root = app.isPackaged
+        ? path.resolve(path.dirname(app.getPath('exe')), '..')
+        : path.resolve(__dirname, '../../..');
+      const configFile =
+        process.env.METAEXAM_CONFIG ??
+        path.join(process.env.ProgramData ?? 'C:\\ProgramData', 'MetaExam', 'config.json');
+      const config = JSON.parse(readFileSync(configFile, 'utf8')) as { home: string };
+      const tokenFile = path.join(config.home, 'bootstrap/token.json');
+      let credential: { token: string; expiresAt: string } | undefined;
+      if (existsSync(tokenFile)) credential = JSON.parse(readFileSync(tokenFile, 'utf8'));
+      if (!credential || Date.parse(credential.expiresAt) <= Date.now()) {
+        await run(
+          path.join(root, app.isPackaged ? 'runtime/node.exe' : '.tools/node/node.exe'),
+          [
+            path.join(root, app.isPackaged ? 'server/cli.cjs' : 'apps/worker/dist/cli.js'),
+            'setup-token',
+          ],
+          {
+            env: { ...process.env, METAEXAM_CONFIG: configFile },
+            windowsHide: true,
+            timeout: 20000,
+          },
+        );
+        credential = JSON.parse(readFileSync(tokenFile, 'utf8'));
+      }
+      if (!credential || !/^[a-f0-9]{64}$/.test(credential.token))
+        throw new Error('SETUP_TOKEN_INVALID');
+      await request('/api/v1/setup/administrator', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          authorization: 'Bearer ' + credential.token,
+        },
+        body: JSON.stringify(data),
+      });
+      // Server consumption is authoritative even if local file cleanup fails.
+      try {
+        unlinkSync(tokenFile);
+      } catch {
+        console.warn('BOOTSTRAP_FILE_CLEANUP_PENDING');
+      }
+      return { ok: true };
+    } catch (error) {
+      const safe = [
+        'ALREADY_INITIALIZED',
+        'SETUP_TOKEN_INVALID',
+        'INVALID_REQUEST',
+        'DATABASE_UNAVAILABLE',
+        'RATE_LIMITED',
+      ];
+      const code =
+        error instanceof Error && safe.includes(error.message) ? error.message : 'SETUP_FAILED';
+      return { ok: false, code };
+    }
+  });
+  ipcMain.handle('business:open', async (event) => {
+    validateSender(event);
+    await shell.openExternal(endpoint() + '/login');
   });
   await window.loadFile(file);
   window.show();

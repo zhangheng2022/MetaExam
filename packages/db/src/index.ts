@@ -283,3 +283,4 @@ export async function processOne(db: Database): Promise<boolean> {
 }
 
 export * from './identity';
+export { issueBootstrapFile, requireAdministrator } from './bootstrap';

@@ -273,6 +273,11 @@ if (!ready)
   throw new Error(
     'DATABASE_INITIALIZATION_FAILED: inspect database service logs; existing data was retained',
   );
+execFileSync(node, [path.join(app, 'server/cli.cjs'), 'setup-token'], {
+  env: { ...process.env, METAEXAM_CONFIG: configPath },
+  windowsHide: true,
+  stdio: 'pipe',
+});
 sc('start', 'MetaExam.Api');
 sc('start', 'MetaExam.Worker');
 writeFileSync(

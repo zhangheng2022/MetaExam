@@ -7,6 +7,7 @@ export interface RuntimeConfig {
   api: {
     host: string;
     port: number;
+    webPort?: number;
     webDir: string;
     tlsCert?: string;
     tlsKey?: string;
@@ -15,6 +16,7 @@ export interface RuntimeConfig {
   trustFile: string;
   production: boolean;
   leaseSeconds: number;
+  auth?: { hashConcurrency?: number; hashQueue?: number; accountLimit?: number; ipLimit?: number };
 }
 export function loadConfig(): RuntimeConfig {
   const home = path.resolve(process.env.METAEXAM_HOME ?? '.local');

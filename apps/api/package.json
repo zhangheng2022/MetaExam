@@ -9,13 +9,15 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@fastify/static": "10.1.12",
     "@metaexam/contracts": "workspace:*",
-    "@metaexam/domain": "workspace:*",
     "@metaexam/db": "workspace:*",
+    "@metaexam/domain": "workspace:*",
+    "@nestjs/authentication": "0.1.6",
+    "@nestjs/authorization": "0.1.4",
     "@nestjs/common": "12.6.0",
     "@nestjs/core": "12.6.0",
     "@nestjs/platform-fastify": "12.6.0",
-    "@fastify/static": "10.1.12",
     "fastify": "5.12.8",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2"
