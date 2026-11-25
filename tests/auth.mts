@@ -75,6 +75,7 @@ try {
   assert.deepEqual(Object.keys(user).sort(), [
     'displayName',
     'id',
+    'mustChangePassword',
     'permissions',
     'roles',
     'username',

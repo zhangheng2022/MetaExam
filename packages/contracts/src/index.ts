@@ -92,6 +92,7 @@ export interface CurrentUser {
   displayName: string;
   roles: string[];
   permissions: string[];
+  mustChangePassword: boolean;
 }
 export interface SetupStatus {
   database: 'ready' | 'unavailable';
@@ -102,3 +103,4 @@ export interface ApiError {
   message: string;
   requestId: string;
 }
+export * from './management';

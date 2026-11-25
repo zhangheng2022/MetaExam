@@ -12,6 +12,7 @@ import { AuthenticationModule } from '@nestjs/authentication';
 import { AuthorizationModule } from '@nestjs/authorization';
 import { AuthModule } from './auth/auth.module';
 import { ErrorsFilter } from './errors.filter';
+import { ManagementModule } from './management/management.module';
 @Module({})
 class AppModule {}
 export async function createApp(
@@ -55,6 +56,7 @@ export async function createApp(
         SystemModule,
         SetupModule,
         AuthModule,
+        ManagementModule,
       ],
     },
     new FastifyAdapter({

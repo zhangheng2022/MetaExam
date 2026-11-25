@@ -10,6 +10,14 @@ const messages: Record<string, string> = {
   SETUP_TOKEN_INVALID: '初始化令牌无效或已过期',
   LOCAL_ONLY: '只能在本机初始化',
   CREDENTIALS_CHANGED: '凭据已变更，请重新登录',
+  EDIT_CONFLICT: '数据已被修改，请刷新后重新编辑',
+  DUPLICATE_RECORD: '用户名或编码已存在，请使用其他值',
+  SELF_DISABLE: '不能停用自己的账号',
+  LAST_ADMIN: '必须保留至少一名启用的管理员',
+  ROLE_IN_USE: '请先解除班级或授课关系，再移除对应角色',
+  INVALID_ASSIGNMENT: '请选择启用的班级、课程及具备对应角色的账号',
+  USE_CHANGE_PASSWORD: '请通过修改密码页面修改自己的密码',
+  NOT_FOUND: '记录不存在',
 };
 @Catch()
 export class ErrorsFilter implements ExceptionFilter {

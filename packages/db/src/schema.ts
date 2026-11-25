@@ -83,10 +83,12 @@ export const users = pgTable(
     id: uuid('id').primaryKey(),
     username: text('username').notNull().unique(),
     displayName: text('display_name').notNull(),
+    revision: integer('revision').notNull().default(1),
     enabled: boolean('enabled').notNull().default(true),
     ...dates(),
   },
   (t) => [
+    index('users_listing_idx').on(t.createdAt, t.id),
     check(
       'users_username_check',
       sql`${t.username}=lower(btrim(${t.username})) AND ${t.username} ~ '^[a-z0-9._-]{3,64}$'`,
@@ -98,6 +100,7 @@ export const userCredentials = pgTable('user_credentials', {
     .primaryKey()
     .references(() => users.id),
   passwordHash: text('password_hash').notNull(),
+  mustChangePassword: boolean('must_change_password').notNull().default(false),
   version: integer('version').notNull().default(1),
   updatedAt: time('updated_at').notNull().defaultNow(),
 });
@@ -179,11 +182,18 @@ export const auditEvents = pgTable(
     outcome: text('outcome').notNull(),
     requestId: text('request_id').notNull(),
     sourceIp: text('source_ip'),
+    targetType: text('target_type'),
+    targetId: text('target_id'),
+    details: jsonb('details').notNull().default({}),
     createdAt: time('created_at').notNull().defaultNow(),
   },
-  (t) => [index('audit_events_created_idx').on(t.createdAt)],
+  (t) => [
+    index('audit_events_created_idx').on(t.createdAt),
+    index('audit_events_target_idx').on(t.targetType, t.targetId, t.createdAt),
+  ],
 );
 export const classes = pgTable('classes', {
+  revision: integer('revision').notNull().default(1),
   id: uuid('id').primaryKey(),
   code: text('code').notNull().unique(),
   name: text('name').notNull(),
@@ -191,6 +201,7 @@ export const classes = pgTable('classes', {
   ...dates(),
 });
 export const courses = pgTable('courses', {
+  revision: integer('revision').notNull().default(1),
   id: uuid('id').primaryKey(),
   code: text('code').notNull().unique(),
   name: text('name').notNull(),
@@ -208,7 +219,10 @@ export const classMembers = pgTable(
       .references(() => users.id),
     createdAt: time('created_at').notNull().defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.classId, t.studentId] })],
+  (t) => [
+    primaryKey({ columns: [t.classId, t.studentId] }),
+    index('class_members_student_idx').on(t.studentId),
+  ],
 );
 export const teachingAssignments = pgTable(
   'teaching_assignments',
@@ -224,5 +238,9 @@ export const teachingAssignments = pgTable(
       .references(() => classes.id),
     createdAt: time('created_at').notNull().defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.teacherId, t.courseId, t.classId] })],
+  (t) => [
+    primaryKey({ columns: [t.teacherId, t.courseId, t.classId] }),
+    index('teaching_assignments_class_idx').on(t.classId),
+    index('teaching_assignments_course_idx').on(t.courseId),
+  ],
 );

@@ -20,18 +20,34 @@ export async function audit(
   outcome: string,
   context: AuditContext,
   actorId: string | null = null,
+  target?: { type: string; id: string; details?: Record<string, unknown> },
 ) {
   await c.query(
-    'INSERT INTO audit_events(id,actor_id,event,outcome,request_id,source_ip) VALUES($1,$2,$3,$4,$5,$6)',
-    [randomUUID(), actorId, event, outcome, context.requestId, context.ip ?? null],
+    'INSERT INTO audit_events(id,actor_id,event,outcome,request_id,source_ip,target_type,target_id,details) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+    [
+      randomUUID(),
+      actorId,
+      event,
+      outcome,
+      context.requestId,
+      context.ip ?? null,
+      target?.type ?? null,
+      target?.id ?? null,
+      JSON.stringify(target?.details ?? {}),
+    ],
   );
 }
 export class AccountsRepository {
   constructor(readonly db: Database) {}
   async current(id: string): Promise<CurrentUser | null> {
     const row = (
-      await this.db.pool.query<{ id: string; username: string; display_name: string }>(
-        'SELECT id,username,display_name FROM users WHERE id=$1 AND enabled=true',
+      await this.db.pool.query<{
+        id: string;
+        username: string;
+        display_name: string;
+        must_change_password: boolean;
+      }>(
+        'SELECT u.id,username,display_name,must_change_password FROM users u JOIN user_credentials c ON c.user_id=u.id WHERE u.id=$1 AND enabled=true',
         [id],
       )
     ).rows[0];
@@ -54,6 +70,7 @@ export class AccountsRepository {
       displayName: row.display_name,
       roles,
       permissions,
+      mustChangePassword: row.must_change_password,
     };
   }
   async credentials(username: string) {
@@ -73,7 +90,7 @@ export class AccountsRepository {
     await transaction(this.db, async (c) => {
       // Serializes password changes against session creation with an old credential version.
       const result = await c.query(
-        'UPDATE user_credentials SET password_hash=$1,version=version+1,updated_at=now() WHERE user_id=$2 AND version=$3 RETURNING user_id',
+        'UPDATE user_credentials SET password_hash=$1,must_change_password=false,version=version+1,updated_at=now() WHERE user_id=$2 AND version=$3 RETURNING user_id',
         [hash, id, expectedVersion],
       );
       if (!result.rowCount) throw new IdentityError('CREDENTIALS_CHANGED', 401);

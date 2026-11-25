@@ -37,7 +37,22 @@ CREATE TABLE courses(id uuid PRIMARY KEY, code text NOT NULL UNIQUE, name text N
 CREATE TABLE class_members(class_id uuid NOT NULL REFERENCES classes(id), student_id uuid NOT NULL REFERENCES users(id), created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(class_id,student_id));
 CREATE TABLE teaching_assignments(teacher_id uuid NOT NULL REFERENCES users(id), course_id uuid NOT NULL REFERENCES courses(id), class_id uuid NOT NULL REFERENCES classes(id), created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(teacher_id,course_id,class_id));
 `;
-export const MIGRATIONS = [MIGRATION, identity, teaching].map((sql, index) => ({
+const management = `
+ALTER TABLE users ADD COLUMN revision integer NOT NULL DEFAULT 1;
+ALTER TABLE classes ADD COLUMN revision integer NOT NULL DEFAULT 1;
+ALTER TABLE courses ADD COLUMN revision integer NOT NULL DEFAULT 1;
+ALTER TABLE user_credentials ADD COLUMN must_change_password boolean NOT NULL DEFAULT false;
+ALTER TABLE audit_events ADD COLUMN target_type text, ADD COLUMN target_id text, ADD COLUMN details jsonb NOT NULL DEFAULT '{}';
+CREATE INDEX users_listing_idx ON users(created_at,id);
+CREATE INDEX class_members_student_idx ON class_members(student_id);
+CREATE INDEX teaching_assignments_class_idx ON teaching_assignments(class_id);
+CREATE INDEX teaching_assignments_course_idx ON teaching_assignments(course_id);
+CREATE INDEX audit_events_target_idx ON audit_events(target_type,target_id,created_at);
+INSERT INTO permissions VALUES ('users.manage','管理账号'),('organizations.manage','管理教学组织'),('audit.read','查看操作日志'),('teaching.self','查看本人教学信息');
+INSERT INTO role_permissions SELECT 'admin',code FROM permissions WHERE code IN ('users.manage','organizations.manage','audit.read','teaching.self');
+INSERT INTO role_permissions VALUES ('teacher','teaching.self'),('student','teaching.self');
+`;
+export const MIGRATIONS = [MIGRATION, identity, teaching, management].map((sql, index) => ({
   version: index + 1,
   sql,
   checksum: createHash('sha256').update(sql).digest('hex'),

@@ -30,7 +30,11 @@ export class SessionAuth extends SessionCookieProvider<CurrentUser> {
 @Policy()
 export class AdminPolicy {
   overview(user: CurrentUser | null) {
-    return !!user?.roles.includes('admin') && user.permissions.includes('admin.overview');
+    return (
+      !!user?.roles.includes('admin') &&
+      !user.mustChangePassword &&
+      user.permissions.includes('admin.overview')
+    );
   }
 }
 @Controller('/api/v1/admin')

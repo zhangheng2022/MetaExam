@@ -11,6 +11,16 @@ try {
   });
   const old = original.split('export const MIGRATION = `')[1]!.split('`;')[0]!;
   assert.equal(MIGRATION, old, 'V1 SQL bytes preserved');
+  const prior = execFileSync('git', ['show', '5cb204c:packages/db/src/migrations.ts'], {
+    encoding: 'utf8',
+  });
+  for (const [index, name] of [
+    [1, 'identity'],
+    [2, 'teaching'],
+  ] as const) {
+    const sql = prior.split('const ' + name + ' = `')[1]!.split('`;')[0]!;
+    assert.equal(MIGRATIONS[index]!.sql, sql, `V${index + 1} SQL bytes preserved`);
+  }
   await db.pool.query(
     'CREATE TABLE schema_migrations(version integer PRIMARY KEY,checksum text NOT NULL,applied_at timestamptz NOT NULL DEFAULT now())',
   );
@@ -33,10 +43,13 @@ try {
   await db.pool.query('UPDATE schema_migrations SET checksum=$1 WHERE version=2', [
     MIGRATIONS[1]!.checksum,
   ]);
-  await db.pool.query("INSERT INTO schema_migrations(version,checksum) VALUES(4,'future')");
+  const future = MIGRATIONS.length + 1;
+  await db.pool.query("INSERT INTO schema_migrations(version,checksum) VALUES($1,'future')", [
+    future,
+  ]);
   assert.equal(await readiness(db), false);
   await assert.rejects(migrate(db), /VERSION/);
-  await db.pool.query('DELETE FROM schema_migrations WHERE version IN(2,4)');
+  await db.pool.query('DELETE FROM schema_migrations WHERE version=2 OR version=$1', [future]);
   assert.equal(await readiness(db), false);
   await assert.rejects(migrate(db), /SEQUENCE/);
   console.log(
