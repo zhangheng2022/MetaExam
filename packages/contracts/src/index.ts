@@ -49,6 +49,7 @@ export interface SystemStatus {
   product: 'MetaExam';
   version: string;
   initialized: boolean;
+  adminInitialized: boolean;
   database: 'ready' | 'unavailable';
   schemaVersion: number;
   worker: 'online' | 'offline';
@@ -62,3 +63,42 @@ export const jobRequestSchema = z
     message: z.string().min(1).max(500),
   })
   .strict();
+
+export const usernameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9._-]{3,64}$/);
+export const passwordSchema = z.string().min(12).max(128);
+export const administratorSchema = z
+  .object({
+    username: usernameSchema,
+    displayName: z.string().trim().min(1).max(100),
+    password: passwordSchema,
+  })
+  .strict();
+export const loginSchema = z
+  .object({ username: usernameSchema, password: z.string().min(1).max(128) })
+  .strict();
+export const changePasswordSchema = z
+  .object({ oldPassword: z.string().min(1).max(128), newPassword: passwordSchema })
+  .strict();
+export type AdministratorInput = z.infer<typeof administratorSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export interface CurrentUser {
+  id: string;
+  username: string;
+  displayName: string;
+  roles: string[];
+  permissions: string[];
+}
+export interface SetupStatus {
+  database: 'ready' | 'unavailable';
+  adminInitialized: boolean;
+}
+export interface ApiError {
+  code: string;
+  message: string;
+  requestId: string;
+}

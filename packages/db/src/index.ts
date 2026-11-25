@@ -281,3 +281,5 @@ export async function processOne(db: Database): Promise<boolean> {
   );
   return true;
 }
+
+export * from './identity';
