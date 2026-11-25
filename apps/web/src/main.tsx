@@ -29,9 +29,11 @@ const BanksPage = lazy(() => import('./questions/pages').then((m) => ({ default:
 const PapersPage = lazy(() => import('./papers/pages').then((m) => ({ default: m.PapersPage })));
 const ExamsPage = lazy(() => import('./exams/pages').then((m) => ({ default: m.ExamsPage })));
 const MyExamsPage = lazy(() => import('./exams/pages').then((m) => ({ default: m.MyExamsPage })));
+const AttemptPage = lazy(() => import('./attempts/page').then((m) => ({ default: m.AttemptPage })));
 const pages = {
   exams: ['考试管理', '安排考试时间、确认考生名单并发布冻结试卷。'],
   'my-exams': ['我的考试', '查看本人考试安排与取消通知。'],
+  attempts: ['考试作答', '答案保存在本地考试服务器，请留意保存状态与截止时间。'],
   papers: ['试卷管理', '选择课程题目，调整分值，冻结可复用的试卷版本。'],
   'question-banks': ['题库管理', '维护课程题目，保留每次修订的版本。'],
   profile: ['个人信息', '查看账号资料与角色，管理你的登录安全。'],
@@ -172,13 +174,14 @@ function Protected({ page = 'profile' }: { page?: Page }) {
       papers: 'papers.use',
       exams: 'exams.manage',
       'my-exams': 'exams.self',
+      attempts: 'exams.self',
     } as Partial<Record<Page, string>>
   )[page];
   const allowed =
     !required ||
     (user.permissions.includes(required) &&
       (page === 'workspace' ||
-        (page === 'my-exams' && user.roles.includes('student')) ||
+        ((page === 'my-exams' || page === 'attempts') && user.roles.includes('student')) ||
         ((page === 'question-banks' || page === 'papers' || page === 'exams') &&
           user.roles.includes('teacher')) ||
         user.roles.includes('admin')));
@@ -187,7 +190,7 @@ function Protected({ page = 'profile' }: { page?: Page }) {
       title={pages[page][0]}
       description={pages[page][1]}
       displayName={user.displayName}
-      selected={page}
+      selected={page === 'attempts' ? 'my-exams' : page}
       permissions={
         user.roles.includes('admin')
           ? user.permissions
@@ -220,6 +223,10 @@ function Protected({ page = 'profile' }: { page?: Page }) {
       )}
       {!allowed ? (
         <Alert type="warning" title="没有访问权限" description="请从导航进入有权访问的页面。" />
+      ) : page === 'attempts' ? (
+        <Suspense fallback={<Skeleton paragraph={{ rows: 5 }} />}>
+          <AttemptPage />
+        </Suspense>
       ) : page === 'exams' || page === 'my-exams' ? (
         <Suspense fallback={<Skeleton paragraph={{ rows: 5 }} />}>
           {page === 'exams' ? <ExamsPage /> : <MyExamsPage />}
@@ -375,6 +382,7 @@ function Business() {
         <Route path="/question-banks/:bankId" element={<Protected page="question-banks" />} />
         <Route path="/papers/:paperId" element={<Protected page="papers" />} />
         <Route path="/exams/:examId" element={<Protected page="exams" />} />
+        <Route path="/attempts/:attemptId" element={<Protected page="attempts" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>

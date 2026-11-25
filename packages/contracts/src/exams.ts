@@ -33,6 +33,8 @@ export type ExamQuery = z.infer<typeof examQuerySchema>;
 export type ExamChoiceQuery = z.infer<typeof examChoiceSchema>;
 export type ExamPhase = 'draft' | 'scheduled' | 'in_progress' | 'ended' | 'cancelled';
 export interface StudentExam {
+  attemptId?: string | null;
+  attemptStatus?: 'active' | 'submitted' | null;
   id: string;
   name: string;
   courseName: string;

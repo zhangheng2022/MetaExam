@@ -229,6 +229,45 @@ CREATE TRIGGER exam_roster_guard BEFORE INSERT OR UPDATE OR DELETE ON exam_roste
 INSERT INTO permissions VALUES('exams.manage','考试安排与发布'),('exams.self','查看本人考试安排');
 INSERT INTO role_permissions VALUES('admin','exams.manage'),('teacher','exams.manage'),('student','exams.self');
 `;
+const attempts = `
+CREATE TABLE exam_attempts(
+ id uuid PRIMARY KEY,exam_id uuid NOT NULL REFERENCES exams(id),user_id uuid NOT NULL REFERENCES users(id),paper_version_id uuid NOT NULL REFERENCES paper_versions(id),
+ status text NOT NULL DEFAULT 'active' CHECK(status IN ('active','submitted')),started_at timestamptz NOT NULL,deadline_at timestamptz NOT NULL,
+ submitted_at timestamptz,submit_reason text CHECK(submit_reason IN ('manual','timeout')),revision integer NOT NULL DEFAULT 0 CHECK(revision>=0),
+ license_id text NOT NULL,license_sequence bigint NOT NULL CHECK(license_sequence>0),license_not_before timestamptz NOT NULL,license_expires_at timestamptz,
+ UNIQUE(exam_id,user_id),CHECK(deadline_at>started_at),CHECK(started_at>=license_not_before AND (license_expires_at IS NULL OR started_at<license_expires_at)),
+ CHECK((status='active' AND submitted_at IS NULL AND submit_reason IS NULL) OR (status='submitted' AND submitted_at IS NOT NULL AND submit_reason IS NOT NULL))
+);
+CREATE UNIQUE INDEX exam_attempts_one_active_user ON exam_attempts(user_id) WHERE status='active';
+CREATE INDEX exam_attempts_deadline_idx ON exam_attempts(deadline_at) WHERE status='active';
+CREATE TABLE attempt_answers(
+ attempt_id uuid NOT NULL REFERENCES exam_attempts(id),position integer NOT NULL CHECK(position BETWEEN 1 AND 200),answer jsonb,
+ revision integer NOT NULL CHECK(revision>0),mutation_id uuid NOT NULL,saved_at timestamptz NOT NULL,
+ PRIMARY KEY(attempt_id,position)
+);
+CREATE FUNCTION guard_attempt_change() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'ATTEMPT_IMMUTABLE'; END IF;
+ IF TG_OP='INSERT' THEN
+  IF NEW.status<>'active' OR NOT EXISTS(SELECT 1 FROM exams e JOIN exam_roster r ON r.exam_id=e.id WHERE e.id=NEW.exam_id AND r.user_id=NEW.user_id AND e.status='published' AND e.paper_version_id=NEW.paper_version_id AND NEW.started_at>=e.starts_at AND NEW.started_at<e.ends_at AND NEW.deadline_at<=e.ends_at AND NEW.deadline_at<=NEW.started_at+e.duration_minutes*interval '1 minute') THEN RAISE EXCEPTION 'INVALID_ATTEMPT'; END IF;
+ ELSE
+  IF OLD.status='submitted' OR (to_jsonb(NEW)-ARRAY['status','submitted_at','submit_reason','revision']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['status','submitted_at','submit_reason','revision']) THEN RAISE EXCEPTION 'ATTEMPT_IMMUTABLE'; END IF;
+ END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER exam_attempts_guard BEFORE INSERT OR UPDATE OR DELETE ON exam_attempts FOR EACH ROW EXECUTE FUNCTION guard_attempt_change();
+CREATE FUNCTION guard_attempt_answer() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE a exam_attempts;
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'ANSWER_IMMUTABLE'; END IF;
+ IF TG_OP='UPDATE' AND (NEW.attempt_id<>OLD.attempt_id OR NEW.position<>OLD.position) THEN RAISE EXCEPTION 'ANSWER_IMMUTABLE'; END IF;
+ SELECT * INTO a FROM exam_attempts WHERE id=NEW.attempt_id FOR UPDATE;
+ IF a.status<>'active' OR clock_timestamp()>=a.deadline_at THEN RAISE EXCEPTION 'ATTEMPT_CLOSED'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM paper_version_items WHERE paper_version_id=a.paper_version_id AND position=NEW.position) THEN RAISE EXCEPTION 'INVALID_ATTEMPT_QUESTION'; END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER attempt_answers_guard BEFORE INSERT OR UPDATE OR DELETE ON attempt_answers FOR EACH ROW EXECUTE FUNCTION guard_attempt_answer();
+`;
 export const MIGRATIONS = [
   MIGRATION,
   identity,
@@ -238,6 +277,7 @@ export const MIGRATIONS = [
   imports,
   papers,
   exams,
+  attempts,
 ].map((sql, index) => ({
   version: index + 1,
   sql,
@@ -291,6 +331,8 @@ export const RUNTIME_TABLES = [
   'exams',
   'exam_classes',
   'exam_roster',
+  'exam_attempts',
+  'attempt_answers',
 ];
 // Fixed identifiers only. Never grant DDL or future tables implicitly.
 export async function grantRuntimeAccess(

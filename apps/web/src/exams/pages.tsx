@@ -47,19 +47,76 @@ const timeColumns = [
 ];
 export function MyExamsPage() {
   const list = usePaged<StudentExam>('/my-exams');
+  const navigate = useNavigate(),
+    [error, setError] = useState(''),
+    [busy, setBusy] = useState<string>(),
+    [modal, holder] = Modal.useModal();
+  async function enter(exam: StudentExam) {
+    if (exam.attemptId) {
+      navigate('/attempts/' + exam.attemptId);
+      return;
+    }
+    if (
+      !(await modal.confirm({
+        title: '确认进入考试？',
+        content: '入场后开始计时，关闭页面仍计时。请确认网络稳定，交卷后不能重新作答。',
+        okText: '进入考试',
+        cancelText: '稍后进入',
+      }))
+    )
+      return;
+    setBusy(exam.id);
+    setError('');
+    try {
+      const result = await api<{ id: string }>('/my-exams/' + exam.id + '/start', 'POST');
+      navigate('/attempts/' + result.id);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(undefined);
+    }
+  }
   return (
     <Card title="我的考试安排" extra={<Button onClick={list.reload}>刷新</Button>}>
+      {holder}
+      {error && <Alert type="error" title={error} className="identity-alert" />}
       <Alert
         type="info"
         showIcon
         title="请确认考试时间"
-        description="这里只展示本人已发布的考试安排。答题入口尚未开放，请按学校通知参加考试。"
+        description="到开考时间后可入场，关闭页面仍继续计时；已有作答可继续或查看回执。仅已保存的答案会在截止时收卷。"
         className="identity-alert"
       />
       <DataTable
         list={list}
         columns={[
           { title: '考试', dataIndex: 'name' },
+          {
+            title: '操作',
+            render: (_, r) =>
+              r.attemptId || r.phase === 'in_progress' ? (
+                <Button
+                  type="primary"
+                  loading={busy === r.id}
+                  disabled={!!busy}
+                  onClick={() => void enter(r)}
+                >
+                  {r.attemptStatus === 'submitted'
+                    ? '交卷回执'
+                    : r.attemptId
+                      ? '继续作答'
+                      : '进入考试'}
+                </Button>
+              ) : (
+                <Typography.Text type="secondary">
+                  {r.phase === 'scheduled'
+                    ? '等待开考'
+                    : r.phase === 'cancelled'
+                      ? '已取消'
+                      : '未参加'}
+                </Typography.Text>
+              ),
+          },
           { title: '课程', dataIndex: 'courseName' },
           ...timeColumns,
           { title: '题数 / 总分', render: (_, r) => `${r.itemCount} 题 / ${r.totalScore} 分` },
@@ -462,7 +519,7 @@ function Detail({ id }: { id: string }) {
                   description={
                     exam.status === 'cancelled'
                       ? exam.cancellationReason
-                      : `发布时授权同时答题上限 ${exam.publicationCapacity} 人；${exam.licenseExpiresAt ? '授权到期：' + dateText(exam.licenseExpiresAt) : '授权无固定到期时间'}。实际入场按届时有效授权校验，当前尚未开放答题。`
+                      : `发布时授权同时答题上限 ${exam.publicationCapacity} 人；${exam.licenseExpiresAt ? '授权到期：' + dateText(exam.licenseExpiresAt) : '授权无固定到期时间'}。学生实际入场时重新校验有效授权并占用答题名额。`
                   }
                   action={
                     exam.phase === 'scheduled' ? (

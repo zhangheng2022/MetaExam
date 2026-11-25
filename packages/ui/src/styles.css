@@ -589,3 +589,25 @@ body {
 .paper-actions {
   margin-bottom: 24px;
 }
+
+.attempt-navigation {
+  margin-top: 16px;
+}
+.attempt-answer {
+  border: 0;
+  padding: 0;
+  margin: 16px 0;
+  min-width: 0;
+}
+.attempt-answer legend {
+  font-size: inherit;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.attempt-blank {
+  margin-bottom: 16px;
+}
+.attempt-blank label {
+  display: block;
+  margin-bottom: 8px;
+}

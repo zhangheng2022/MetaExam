@@ -1,5 +1,6 @@
 import { createHash, createPublicKey, verify } from 'node:crypto';
 export * from './exam-policy';
+export * from './candidate';
 import { TextDecoder } from 'node:util';
 import {
   licenseHeaderSchema,

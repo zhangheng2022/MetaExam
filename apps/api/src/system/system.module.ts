@@ -46,6 +46,7 @@ export class Routes {
     '/exams',
     '/exams/:examId',
     '/my-exams',
+    '/attempts/:attemptId',
   ])
   page(@Res() res: FastifyReply) {
     return res
@@ -143,7 +144,7 @@ export class Routes {
     }
     return result.rows[0] as Record<string, unknown>;
   }
-  @Post('/api/v1/maintenance/stop') stop(
+  @Post('/api/v1/maintenance/stop') async stop(
     @Req() req: FastifyRequest,
     @Res({ passthrough: true }) res: FastifyReply,
   ) {
@@ -151,7 +152,33 @@ export class Routes {
       res.status(403);
       return { code: 'MANAGEMENT_REQUIRED', message: '需要本机管理凭据', requestId: req.id };
     }
-    // Phase 1 has no examination sessions. The exam phase must add the maintenance lock.
+    if (this.runtime.admissions > 0) {
+      res.status(409);
+      return {
+        code: 'ATTEMPTS_ACTIVE',
+        message: '正在处理考生入场，请稍后再试',
+        requestId: req.id,
+      };
+    }
+    this.runtime.draining = true;
+    let active;
+    try {
+      active = await this.runtime.db.pool.query(
+        "SELECT 1 FROM exam_attempts WHERE status='active' AND deadline_at>clock_timestamp() LIMIT 1",
+      );
+    } catch (error) {
+      this.runtime.draining = false;
+      throw error;
+    }
+    if (active.rowCount) {
+      this.runtime.draining = false;
+      res.status(409);
+      return {
+        code: 'ATTEMPTS_ACTIVE',
+        message: '仍有进行中的考试作答，不能通过维护接口停止服务',
+        requestId: req.id,
+      };
+    }
     setTimeout(() => process.emit('SIGTERM'), 200);
     return { status: 'stopping' };
   }

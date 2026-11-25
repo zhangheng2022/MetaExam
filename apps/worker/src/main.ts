@@ -1,4 +1,4 @@
-import { createDatabase, processOne, readiness } from '@metaexam/db';
+import { createDatabase, processOne, readiness, finishExpiredAttempts } from '@metaexam/db';
 import { setTimeout } from 'node:timers/promises';
 let stopping = false;
 for (const signal of ['SIGINT', 'SIGTERM'] as const)
@@ -10,8 +10,13 @@ async function main() {
   try {
     if (!(await readiness(db))) throw new Error('DATABASE_NOT_READY');
     console.log(JSON.stringify({ event: 'worker_started' }));
+    let lastExpiration = 0;
     while (!stopping) {
       try {
+        if (Date.now() - lastExpiration >= 1000) {
+          await finishExpiredAttempts(db);
+          lastExpiration = Date.now();
+        }
         if (!(await processOne(db))) await setTimeout(500);
       } catch {
         console.error(JSON.stringify({ event: 'worker_retry' }));

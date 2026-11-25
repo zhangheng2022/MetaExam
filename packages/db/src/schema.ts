@@ -11,6 +11,7 @@ import {
   index,
   check,
   unique,
+  uniqueIndex,
   foreignKey,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
@@ -20,6 +21,71 @@ const dates = () => ({
   createdAt: time('created_at').notNull().defaultNow(),
   updatedAt: time('updated_at').notNull().defaultNow(),
 });
+export const examAttempts = pgTable(
+  'exam_attempts',
+  {
+    id: uuid('id').primaryKey(),
+    examId: uuid('exam_id')
+      .notNull()
+      .references(() => exams.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    paperVersionId: uuid('paper_version_id')
+      .notNull()
+      .references(() => paperVersions.id),
+    status: text('status').notNull().default('active'),
+    startedAt: time('started_at').notNull(),
+    deadlineAt: time('deadline_at').notNull(),
+    submittedAt: time('submitted_at'),
+    submitReason: text('submit_reason'),
+    revision: integer('revision').notNull().default(0),
+    licenseId: text('license_id').notNull(),
+    licenseSequence: bigint('license_sequence', { mode: 'number' }).notNull(),
+    licenseNotBefore: time('license_not_before').notNull(),
+    licenseExpiresAt: time('license_expires_at'),
+  },
+  (t) => [
+    unique().on(t.examId, t.userId),
+    uniqueIndex('exam_attempts_one_active_user')
+      .on(t.userId)
+      .where(sql`${t.status}='active'`),
+    index('exam_attempts_deadline_idx')
+      .on(t.deadlineAt)
+      .where(sql`${t.status}='active'`),
+    check('exam_attempts_status_check', sql`${t.status} IN ('active','submitted')`),
+    check('exam_attempts_revision_check', sql`${t.revision}>=0`),
+    check('exam_attempts_license_sequence_check', sql`${t.licenseSequence}>0`),
+    check('exam_attempts_submit_reason_check', sql`${t.submitReason} IN ('manual','timeout')`),
+    check('exam_attempts_check', sql`${t.deadlineAt}>${t.startedAt}`),
+    check(
+      'exam_attempts_check1',
+      sql`${t.startedAt}>=${t.licenseNotBefore} AND (${t.licenseExpiresAt} IS NULL OR ${t.startedAt}<${t.licenseExpiresAt})`,
+    ),
+    check(
+      'exam_attempts_check2',
+      sql`(${t.status}='active' AND ${t.submittedAt} IS NULL AND ${t.submitReason} IS NULL) OR (${t.status}='submitted' AND ${t.submittedAt} IS NOT NULL AND ${t.submitReason} IS NOT NULL)`,
+    ),
+  ],
+);
+export const attemptAnswers = pgTable(
+  'attempt_answers',
+  {
+    attemptId: uuid('attempt_id')
+      .notNull()
+      .references(() => examAttempts.id),
+    position: integer('position').notNull(),
+    answer: jsonb('answer'),
+    revision: integer('revision').notNull(),
+    mutationId: uuid('mutation_id').notNull(),
+    savedAt: time('saved_at').notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.attemptId, t.position] }),
+    check('attempt_answers_position_check', sql`${t.position} BETWEEN 1 AND 200`),
+    check('attempt_answers_revision_check', sql`${t.revision}>0`),
+  ],
+);
 export const exams = pgTable(
   'exams',
   {

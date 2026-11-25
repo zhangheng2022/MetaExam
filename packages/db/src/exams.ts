@@ -312,7 +312,7 @@ export class ExamRepository {
       const where = `e.status<>'draft' AND EXISTS(SELECT 1 FROM exam_roster r WHERE r.exam_id=e.id AND r.user_id=$1) AND ($2='' OR strpos(lower(e.name),lower($2))>0)`;
       const rows = (
         await c.query<ExamSummary>(
-          `SELECT e.id,e.name,co.name AS "courseName",e.starts_at AS "startsAt",e.ends_at AS "endsAt",e.duration_minutes AS "durationMinutes",e.status,e.cancellation_reason AS "cancellationReason",pv.total_units::float8/2 AS "totalScore",(SELECT count(*)::int FROM paper_version_items WHERE paper_version_id=pv.id) AS "itemCount" FROM ${source} WHERE ${where} ORDER BY e.starts_at DESC,e.id LIMIT $3 OFFSET $4`,
+          `SELECT e.id,e.name,co.name AS "courseName",e.starts_at AS "startsAt",e.ends_at AS "endsAt",e.duration_minutes AS "durationMinutes",e.status,e.cancellation_reason AS "cancellationReason",pv.total_units::float8/2 AS "totalScore",(SELECT count(*)::int FROM paper_version_items WHERE paper_version_id=pv.id) AS "itemCount",(SELECT id FROM exam_attempts WHERE exam_id=e.id AND user_id=$1) AS "attemptId",(SELECT status FROM exam_attempts WHERE exam_id=e.id AND user_id=$1) AS "attemptStatus" FROM ${source} WHERE ${where} ORDER BY e.starts_at DESC,e.id LIMIT $3 OFFSET $4`,
           [actor, q.q, q.pageSize, (q.page - 1) * q.pageSize],
         )
       ).rows;
@@ -327,6 +327,8 @@ export class ExamRepository {
         cancellationReason: r.cancellationReason,
         itemCount: r.itemCount,
         totalScore: r.totalScore,
+        attemptId: r.attemptId ?? null,
+        attemptStatus: r.attemptStatus ?? null,
       }));
       return {
         items,

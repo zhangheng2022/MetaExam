@@ -28,6 +28,8 @@ export {
   message,
   Upload,
   InputNumber,
+  Radio,
+  Checkbox,
 } from 'antd';
 export type { TableColumnsType } from 'antd';
 

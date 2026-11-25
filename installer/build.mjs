@@ -294,7 +294,7 @@ for (const value of Object.values(keys))
 writeFileSync(path.join(payload, 'public-keys.json'), JSON.stringify(keys, null, 2));
 writeFileSync(
   path.join(payload, 'INTERNAL-TEST.txt'),
-  'Internal unsigned M2 exam-publication package. No production signing key. Updated package Windows service installation and restart regression pending. Public test key only; no signing tool included.\n',
+  'Internal unsigned M2 candidate-attempt package. No production signing key. Updated package Windows service installation and restart regression pending. Public test key only; no signing tool included.\n',
 );
 if (existsSync(path.join(root, 'docs/phase1-acceptance.md')))
   copyFileSync(path.join(root, 'docs/phase1-acceptance.md'), path.join(payload, 'ACCEPTANCE.md'));

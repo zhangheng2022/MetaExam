@@ -1,6 +1,6 @@
 # MetaExam
 
-M2 第四批已实现考试草稿、时间安排、按班级生成名单、本地授权验签后发布、开考前取消和学生查看本人考试安排。当前数据库版本 V8，见 [考试发布与名单验收说明](docs/m2-exams.md)。沿用 [组卷与冻结](docs/m2-papers.md)、[Excel 导入与图片](docs/m2-imports.md) 和 [题库基础](docs/m2-questions.md)；实际入场、答题、并发名额占用与阅卷尚未交付。
+M2 第五批已实现考生入场、本地授权并发名额、五类题型答题、自动保存、刷新恢复、手动交卷与到时收卷。当前数据库版本 V9，见 [答题会话验收说明](docs/m2-attempts.md)。沿用 [考试发布与名单](docs/m2-exams.md)、[组卷与冻结](docs/m2-papers.md)、[Excel 导入与图片](docs/m2-imports.md) 和 [题库基础](docs/m2-questions.md)；阅卷、成绩与补考尚未交付。
 
 M1 第二批已实现账号、班级、课程、授课安排、角色工作台及操作日志，沿用 Ant Design 默认蓝色。开发与验收步骤见 [M1 第二批交付说明](docs/m1-management.md)。首次登录或管理员重置密码后，用户须先修改密码。
 
@@ -53,7 +53,7 @@ AI 开发先读取 [AGENTS.md](AGENTS.md) 和 [官方工具与资料](docs/ai-de
 | tests              | 单元、集成、开发监听、页面、数据库重启及客户包验证      |
 | provider           | 供应方测试签发工具，不进入客户安装包                    |
 
-统一命令均通过 `./tools/run.ps1 <command>` 使用：dev、build、typecheck、lint、format:check、test、test:integration、test:ui、test:dev、test:db-restart、test:package、test:m1、setup:token、db:migrate、package:win。
+统一命令均通过 `./tools/run.ps1 <command>` 使用：dev、build、typecheck、lint、format:check、test、test:integration、test:ui、test:dev、test:db-restart、test:package、test:m1、test:management、test:questions、test:imports、test:papers、test:exams、test:attempts、setup:token、db:migrate、package:win。
 
 `tools` 只保留四个入口：bootstrap.ps1 准备锁定工具链与依赖，run.ps1 使用项目 Node/pnpm 执行命令，dev.mjs 将配置交给标准监听工具，postgres.mjs 管理项目数据库普通进程。业务逻辑放在应用与共享包，不在这些脚本中实现。
 
@@ -116,4 +116,4 @@ $env:LICENSE_SEQUENCE = '1'
 
 安装版维护命令：管理员终端设置 `METAEXAM_CONFIG=C:\ProgramData\MetaExam\config.json`，然后使用 `C:\Program Files\MetaExam\runtime\node.exe --use-system-ca C:\Program Files\MetaExam\server\cli.cjs license-request <输出路径>` 等同名命令。含空格路径需 PowerShell 的 `&` 与引号。
 
-已有数据库禁止重新 initdb；安装器拒绝覆盖安装；当前有序迁移升级至 V8，维护命令和备份前置步骤见 [M2 考试发布说明](docs/m2-exams.md)。卸载删除应用服务和应用文件、保留 ProgramData 数据。保留数据的恢复/重装须先备份并人工维护，不提供一键恢复承诺。当前仍为内部测试包，完整考试业务及正式发布尚未交付；后续变更按影响范围回归。
+已有数据库禁止重新 initdb；安装器拒绝覆盖安装；当前有序迁移升级至 V9，维护命令和备份前置步骤见 [M2 答题会话说明](docs/m2-attempts.md)。卸载删除应用服务和应用文件、保留 ProgramData 数据。保留数据的恢复/重装须先备份并人工维护，不提供一键恢复承诺。当前仍为内部测试包，完整考试业务及正式发布尚未交付；后续变更按影响范围回归。

@@ -1,6 +1,6 @@
 import type { LicensePayload, LicenseSummary } from '@metaexam/contracts';
 
-// Contract for the future exam transaction. Inputs must come from trusted server
+// Contract for the exam transaction. Inputs must come from trusted server
 // state; accepting a client-provided grant would bypass authorization entirely.
 export interface AttemptGrant {
   attemptId: string;
@@ -53,6 +53,6 @@ export function canContinueAttempt(grant: AttemptGrant | null, attemptId: string
   if (!Number.isFinite(started) || !Number.isFinite(begin) || !(started >= begin && started < end))
     return { allowed: false, reason: 'NO_ACTIVE_GRANT' };
   // A persisted grant valid at admission survives license expiry during the exam.
-  // Actual seat allocation, ownership checks and transaction isolation are deferred.
+  // The repository enforces seat allocation, ownership, identity and deadline checks.
   return { allowed: true };
 }

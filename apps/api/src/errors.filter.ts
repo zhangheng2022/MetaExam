@@ -2,6 +2,16 @@ import { Catch, HttpException, type ArgumentsHost, type ExceptionFilter } from '
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { IdentityError } from '@metaexam/db';
 const messages: Record<string, string> = {
+  SERVICE_STOPPING: '服务正在停止，请等待后台重新启动后再入场',
+  ATTEMPT_TIME_WINDOW: '尚未到开考时间或考试已结束，不能新入场',
+  ATTEMPT_OTHER_ACTIVE: '你已有其他进行中的考试，请先完成该考试',
+  ATTEMPT_CAPACITY: '同时答题名额已满，请稍后重试',
+  ATTEMPT_CLOSED: '作答已提交或到达截止时间，请查看交卷回执',
+  ATTEMPT_GRANT_INVALID: '入场记录校验失败，请联系管理员',
+  INVALID_ANSWER: '答案类型或选项不属于当前试题，请重新读取',
+  ANSWER_CONFLICT: '答案已在其他页面更新，请重新读取后检查，不能覆盖旧版本',
+  ANSWER_MUTATION_REUSED: '保存请求标识冲突，请重新读取题目',
+  ATTEMPTS_ACTIVE: '仍有进行中的考试作答，不能通过维护接口停止服务',
   EXAM_CLASSES_INVALID: '班级或授课关系已失效，请重新选择有效班级',
   EXAM_ROSTER_LIMIT: '每场考试最多 5000 名考生',
   EXAM_PAPER_INVALID: '请选择有权使用的同课程冻结试卷',

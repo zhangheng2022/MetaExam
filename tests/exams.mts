@@ -195,6 +195,8 @@ try {
       'cancellationReason',
       'itemCount',
       'totalScore',
+      'attemptId',
+      'attemptStatus',
     ].sort(),
   );
   assert.ok(

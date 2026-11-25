@@ -1,5 +1,6 @@
 import { z } from 'zod';
 export * from './exams';
+export * from './attempts';
 
 export const licenseHeaderSchema = z
   .object({

@@ -393,6 +393,76 @@ try {
     (await fetch(url + '/users')).headers.get('content-type').includes('text/html'),
     true,
   );
+  const activeExam = await create('/exams', {
+    name: '包内作答考试',
+    paperVersionId: frozenVersion,
+    startsAt: new Date(Date.now() + 3600000).toISOString(),
+    endsAt: new Date(Date.now() + 10800000).toISOString(),
+    durationMinutes: 60,
+    classIds: [classId],
+  });
+  assert.equal(
+    (await post('/api/v1/exams/' + activeExam + '/publish', { revision: 1 }, cookie)).status,
+    200,
+  );
+  const clockClient = await db.pool.connect();
+  try {
+    await clockClient.query('BEGIN');
+    await clockClient.query('ALTER TABLE exams DISABLE TRIGGER exams_guard');
+    await clockClient.query(
+      "UPDATE exams SET starts_at=clock_timestamp()-interval '1 minute',ends_at=clock_timestamp()+interval '2 hours' WHERE id=$1",
+      [activeExam],
+    );
+    await clockClient.query('ALTER TABLE exams ENABLE TRIGGER exams_guard');
+    await clockClient.query('COMMIT');
+  } catch (e) {
+    await clockClient.query('ROLLBACK');
+    throw e;
+  } finally {
+    clockClient.release();
+  }
+  const admission = await post('/api/v1/my-exams/' + activeExam + '/start', {}, freshStudentCookie);
+  assert.equal(admission.status, 200, await admission.clone().text());
+  const attemptId = (await admission.json()).id;
+  const attemptPath = '/api/v1/attempts/' + attemptId;
+  const attemptQuestion = await (
+    await fetch(url + attemptPath + '/questions/1', { headers: { cookie: freshStudentCookie } })
+  ).json();
+  assert.equal(attemptQuestion.content.answer, undefined);
+  assert.equal(attemptQuestion.explanation, undefined);
+  assert.equal(attemptQuestion.answer, null);
+  const answerSave = await fetch(url + attemptPath + '/questions/1', {
+    method: 'PUT',
+    headers: { cookie: freshStudentCookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      revision: 0,
+      mutationId: randomUUID(),
+      answer: { type: 'boolean', value: true },
+    }),
+  });
+  assert.equal(answerSave.status, 200, await answerSave.clone().text());
+  const candidateImage = await fetch(url + attemptPath + '/images/' + imageId, {
+    headers: { cookie: freshStudentCookie },
+  });
+  assert.equal(candidateImage.status, 200);
+  assert.equal(
+    (await post(attemptPath + '/submit', { revision: 1 }, freshStudentCookie)).status,
+    200,
+  );
+  const receipt = await (
+    await fetch(url + attemptPath, { headers: { cookie: freshStudentCookie } })
+  ).json();
+  assert.equal(receipt.status, 'submitted');
+  assert.equal(receipt.answeredCount, 1);
+  assert.equal(
+    (await fetch(url + attemptPath + '/questions/1', { headers: { cookie: freshStudentCookie } }))
+      .status,
+    409,
+  );
+  assert.equal(
+    (await fetch(url + '/attempts/' + attemptId)).headers.get('content-type').includes('text/html'),
+    true,
+  );
   assert.equal(
     (
       await post(
@@ -463,6 +533,7 @@ try {
           'isolated Sharp native PNG normalization and authenticated image read',
           'bundled paper draw, fixed question/image snapshot, fractional score, immutable freeze, copy and deep route',
           'bundled local-license publication, roster, student schedule redaction, forced-password boundary and cancellation',
+          'bundled admission, sanitized questions and images, persistent answer, submission receipt and closed-write boundary',
           'bundled Worker completes API task',
           'bundled CLI validates persisted license',
           'packaged Electron IPC returns database ready',
