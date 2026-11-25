@@ -1,3 +1,4 @@
+import { Public } from '@nestjs/authentication';
 import { Module, Injectable, Controller, Get, Post, Body, Req } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
 import { administratorSchema, type SetupStatus } from '@metaexam/contracts';
@@ -33,6 +34,7 @@ export class SetupService {
     return { adminInitialized: true };
   }
 }
+@Public()
 @Controller('/api/v1/setup')
 export class SetupController {
   constructor(private readonly service: SetupService) {}

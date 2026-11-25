@@ -32,5 +32,5 @@ export class PasswordService {
     return this.run(() => this.hasher.verify(password, hash));
   }
 }
-@Module({ providers: [PasswordHasher, PasswordService], exports: [PasswordService] })
+@Module({ providers: [PasswordService], exports: [PasswordService] })
 export class PasswordModule {}

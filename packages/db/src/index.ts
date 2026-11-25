@@ -66,8 +66,11 @@ export async function migrate(db: Database): Promise<void> {
       }
     }
   } finally {
-    if (locked) await c.query('SELECT pg_advisory_unlock(184426)');
-    c.release();
+    try {
+      if (locked) await c.query('SELECT pg_advisory_unlock(184426)');
+    } finally {
+      c.release();
+    }
   }
 }
 export async function readiness(db: Database): Promise<boolean> {

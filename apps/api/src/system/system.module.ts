@@ -1,3 +1,4 @@
+import { Public } from '@nestjs/authentication';
 import 'reflect-metadata';
 import { Controller, Get, Post, Body, Param, Req, Res, Module } from '@nestjs/common';
 import type { FastifyRequest, FastifyReply } from 'fastify';
@@ -21,6 +22,7 @@ function management(req: FastifyRequest, token: string): boolean {
     b = Buffer.from(token);
   return local(req) && a.length === b.length && timingSafeEqual(a, b);
 }
+@Public()
 @Controller()
 export class Routes {
   constructor(private readonly runtime: Runtime) {}
