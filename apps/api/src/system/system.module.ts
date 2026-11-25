@@ -43,6 +43,9 @@ export class Routes {
     '/question-banks/:bankId',
     '/papers',
     '/papers/:paperId',
+    '/exams',
+    '/exams/:examId',
+    '/my-exams',
   ])
   page(@Res() res: FastifyReply) {
     return res

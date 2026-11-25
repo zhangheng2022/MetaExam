@@ -27,7 +27,11 @@ import { OrganizationsPage } from './management/organizations';
 import { AssignmentsPage, AuditPage, WorkspacePage } from './management/teaching';
 const BanksPage = lazy(() => import('./questions/pages').then((m) => ({ default: m.BanksPage })));
 const PapersPage = lazy(() => import('./papers/pages').then((m) => ({ default: m.PapersPage })));
+const ExamsPage = lazy(() => import('./exams/pages').then((m) => ({ default: m.ExamsPage })));
+const MyExamsPage = lazy(() => import('./exams/pages').then((m) => ({ default: m.MyExamsPage })));
 const pages = {
+  exams: ['考试管理', '安排考试时间、确认考生名单并发布冻结试卷。'],
+  'my-exams': ['我的考试', '查看本人考试安排与取消通知。'],
   papers: ['试卷管理', '选择课程题目，调整分值，冻结可复用的试卷版本。'],
   'question-banks': ['题库管理', '维护课程题目，保留每次修订的版本。'],
   profile: ['个人信息', '查看账号资料与角色，管理你的登录安全。'],
@@ -166,13 +170,17 @@ function Protected({ page = 'profile' }: { page?: Page }) {
       workspace: 'teaching.self',
       'question-banks': 'questions.use',
       papers: 'papers.use',
+      exams: 'exams.manage',
+      'my-exams': 'exams.self',
     } as Partial<Record<Page, string>>
   )[page];
   const allowed =
     !required ||
     (user.permissions.includes(required) &&
       (page === 'workspace' ||
-        ((page === 'question-banks' || page === 'papers') && user.roles.includes('teacher')) ||
+        (page === 'my-exams' && user.roles.includes('student')) ||
+        ((page === 'question-banks' || page === 'papers' || page === 'exams') &&
+          user.roles.includes('teacher')) ||
         user.roles.includes('admin')));
   return (
     <BusinessShell
@@ -184,7 +192,10 @@ function Protected({ page = 'profile' }: { page?: Page }) {
         user.roles.includes('admin')
           ? user.permissions
           : user.permissions.filter(
-              (p) => ['questions.use', 'papers.use'].includes(p) && user.roles.includes('teacher'),
+              (p) =>
+                (['questions.use', 'papers.use', 'exams.manage'].includes(p) &&
+                  user.roles.includes('teacher')) ||
+                (p === 'exams.self' && user.roles.includes('student')),
             )
       }
       mustChangePassword={user.mustChangePassword}
@@ -209,6 +220,10 @@ function Protected({ page = 'profile' }: { page?: Page }) {
       )}
       {!allowed ? (
         <Alert type="warning" title="没有访问权限" description="请从导航进入有权访问的页面。" />
+      ) : page === 'exams' || page === 'my-exams' ? (
+        <Suspense fallback={<Skeleton paragraph={{ rows: 5 }} />}>
+          {page === 'exams' ? <ExamsPage /> : <MyExamsPage />}
+        </Suspense>
       ) : page === 'papers' ? (
         <Suspense fallback={<Skeleton paragraph={{ rows: 5 }} />}>
           <PapersPage />
@@ -350,6 +365,8 @@ function Business() {
             'audit',
             'question-banks',
             'papers',
+            'exams',
+            'my-exams',
           ] as const
         ).map((page) => (
           <Route key={page} path={'/' + page} element={<Protected page={page} />} />
@@ -357,6 +374,7 @@ function Business() {
         <Route path="/classes/:id" element={<Protected page="classes" />} />
         <Route path="/question-banks/:bankId" element={<Protected page="question-banks" />} />
         <Route path="/papers/:paperId" element={<Protected page="papers" />} />
+        <Route path="/exams/:examId" element={<Protected page="exams" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>

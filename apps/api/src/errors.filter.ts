@@ -2,6 +2,18 @@ import { Catch, HttpException, type ArgumentsHost, type ExceptionFilter } from '
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { IdentityError } from '@metaexam/db';
 const messages: Record<string, string> = {
+  EXAM_CLASSES_INVALID: '班级或授课关系已失效，请重新选择有效班级',
+  EXAM_ROSTER_LIMIT: '每场考试最多 5000 名考生',
+  EXAM_PAPER_INVALID: '请选择有权使用的同课程冻结试卷',
+  EXAM_TIME_INVALID: '考试窗口须覆盖答题时长且不超过 7 天，答题时长为 1～480 分钟',
+  EXAM_IMMUTABLE: '考试已发布或取消，不能修改试卷、时间或名单',
+  EXAM_START_PASSED: '开考时间已到，请调整时间后再发布',
+  EXAM_ROSTER_EMPTY: '考生名单为空，请维护班级学生后重新保存草稿',
+  EXAM_ROSTER_STALE: '班级学生或姓名已变化，请重新保存草稿并确认最新名单',
+  EXAM_LICENSE_INVALID: '本地授权无效、未激活或已到期，暂不能发布考试',
+  EXAM_FEATURE_MISSING: '当前授权不包含考试功能，暂不能发布',
+  EXAM_LICENSE_WINDOW: '授权在开考前已到期，请续期或调整开考时间',
+  EXAM_CANCEL_DENIED: '只能取消尚未开考的已发布考试',
   PAPER_FROZEN: '试卷已冻结，请复制为新草稿后修改',
   PAPER_NOT_FROZEN: '请先冻结试卷再复制',
   INVALID_PAPER_QUESTIONS: '题目已归档、超出课程或权限范围，或重复引用同一道题；请移除后重新选题',

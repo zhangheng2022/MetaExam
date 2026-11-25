@@ -99,6 +99,12 @@ export function BusinessShell({
                 ...(permissions.includes('papers.use')
                   ? [{ key: 'papers', icon: <BookOutlined />, label: '试卷管理' }]
                   : []),
+                ...(permissions.includes('exams.manage')
+                  ? [{ key: 'exams', icon: <AuditOutlined />, label: '考试管理' }]
+                  : []),
+                ...(permissions.includes('exams.self')
+                  ? [{ key: 'my-exams', icon: <ReadOutlined />, label: '我的考试' }]
+                  : []),
                 ...(permissions.includes('users.manage')
                   ? [{ key: 'users', icon: <TeamOutlined />, label: '账号管理' }]
                   : []),

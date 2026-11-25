@@ -171,6 +171,64 @@ CREATE TRIGGER paper_version_items_immutable BEFORE UPDATE OR DELETE ON paper_ve
 INSERT INTO permissions VALUES('papers.use','组卷与冻结试卷');
 INSERT INTO role_permissions VALUES('admin','papers.use'),('teacher','papers.use');
 `;
+const exams = `
+CREATE TABLE exams(
+ id uuid PRIMARY KEY,owner_id uuid NOT NULL REFERENCES users(id),course_id uuid NOT NULL REFERENCES courses(id),
+ paper_version_id uuid NOT NULL REFERENCES paper_versions(id),name text NOT NULL,
+ starts_at timestamptz NOT NULL,ends_at timestamptz NOT NULL,duration_minutes integer NOT NULL CHECK(duration_minutes BETWEEN 1 AND 480),
+ status text NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','published','cancelled')),revision integer NOT NULL DEFAULT 1 CHECK(revision>0),
+ published_at timestamptz,cancelled_at timestamptz,cancellation_reason text,
+ license_id text,license_sequence bigint,publication_capacity integer,license_expires_at timestamptz,
+ created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now(),
+ CHECK(ends_at-starts_at>=duration_minutes*interval '1 minute' AND ends_at-starts_at<=interval '7 days'),
+ CHECK(status='draft' OR (published_at IS NOT NULL AND license_id IS NOT NULL AND license_sequence IS NOT NULL AND license_sequence>0 AND publication_capacity IS NOT NULL AND publication_capacity>0)),
+ CHECK(status<>'cancelled' OR (cancelled_at IS NOT NULL AND length(cancellation_reason)>0))
+);
+CREATE INDEX exams_owner_time_idx ON exams(owner_id,starts_at);
+CREATE TABLE exam_classes(
+ exam_id uuid NOT NULL REFERENCES exams(id),class_id uuid NOT NULL REFERENCES classes(id),name text NOT NULL,
+ PRIMARY KEY(exam_id,class_id)
+);
+CREATE TABLE exam_roster(
+ exam_id uuid NOT NULL REFERENCES exams(id),user_id uuid NOT NULL REFERENCES users(id),username text NOT NULL,display_name text NOT NULL,
+ PRIMARY KEY(exam_id,user_id)
+);
+CREATE INDEX exam_roster_user_idx ON exam_roster(user_id,exam_id);
+CREATE FUNCTION guard_exam_change() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF TG_OP='INSERT' THEN
+  IF NEW.status<>'draft' THEN RAISE EXCEPTION 'EXAM_IMMUTABLE'; END IF;
+  RETURN NEW;
+ END IF;
+ IF OLD.status='cancelled' OR TG_OP='DELETE' THEN RAISE EXCEPTION 'EXAM_IMMUTABLE'; END IF;
+ IF OLD.status='published' THEN
+  IF NEW.status<>'cancelled' OR clock_timestamp()>=OLD.starts_at OR
+   (to_jsonb(NEW)-ARRAY['status','cancelled_at','cancellation_reason','revision','updated_at']) IS DISTINCT FROM
+   (to_jsonb(OLD)-ARRAY['status','cancelled_at','cancellation_reason','revision','updated_at'])
+  THEN RAISE EXCEPTION 'EXAM_IMMUTABLE'; END IF;
+ ELSIF NEW.status='cancelled' THEN RAISE EXCEPTION 'INVALID_EXAM_TRANSITION';
+ ELSIF NEW.status='published' THEN
+  IF clock_timestamp()>=NEW.starts_at OR NOT EXISTS(SELECT 1 FROM exam_roster WHERE exam_id=NEW.id)
+   OR NOT EXISTS(SELECT 1 FROM exam_classes WHERE exam_id=NEW.id)
+   OR NOT EXISTS(SELECT 1 FROM paper_versions v JOIN papers p ON p.id=v.paper_id WHERE v.id=NEW.paper_version_id AND v.course_id=NEW.course_id AND p.status='frozen')
+  THEN RAISE EXCEPTION 'INVALID_EXAM_PUBLICATION'; END IF;
+ END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER exams_guard BEFORE INSERT OR UPDATE OR DELETE ON exams FOR EACH ROW EXECUTE FUNCTION guard_exam_change();
+CREATE FUNCTION guard_exam_member() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE state text;
+BEGIN
+ IF TG_OP='UPDATE' AND NEW.exam_id<>OLD.exam_id THEN RAISE EXCEPTION 'EXAM_ID_IMMUTABLE'; END IF;
+ SELECT status INTO state FROM exams WHERE id=COALESCE(NEW.exam_id,OLD.exam_id) FOR UPDATE;
+ IF state<>'draft' THEN RAISE EXCEPTION 'EXAM_IMMUTABLE'; END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD; END IF; RETURN NEW;
+END; $$;
+CREATE TRIGGER exam_classes_guard BEFORE INSERT OR UPDATE OR DELETE ON exam_classes FOR EACH ROW EXECUTE FUNCTION guard_exam_member();
+CREATE TRIGGER exam_roster_guard BEFORE INSERT OR UPDATE OR DELETE ON exam_roster FOR EACH ROW EXECUTE FUNCTION guard_exam_member();
+INSERT INTO permissions VALUES('exams.manage','考试安排与发布'),('exams.self','查看本人考试安排');
+INSERT INTO role_permissions VALUES('admin','exams.manage'),('teacher','exams.manage'),('student','exams.self');
+`;
 export const MIGRATIONS = [
   MIGRATION,
   identity,
@@ -179,6 +237,7 @@ export const MIGRATIONS = [
   questions,
   imports,
   papers,
+  exams,
 ].map((sql, index) => ({
   version: index + 1,
   sql,
@@ -229,6 +288,9 @@ export const RUNTIME_TABLES = [
   'question_attachments',
   'papers',
   'paper_draft_items',
+  'exams',
+  'exam_classes',
+  'exam_roster',
 ];
 // Fixed identifiers only. Never grant DDL or future tables implicitly.
 export async function grantRuntimeAccess(

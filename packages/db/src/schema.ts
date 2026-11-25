@@ -20,6 +20,83 @@ const dates = () => ({
   createdAt: time('created_at').notNull().defaultNow(),
   updatedAt: time('updated_at').notNull().defaultNow(),
 });
+export const exams = pgTable(
+  'exams',
+  {
+    id: uuid('id').primaryKey(),
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => users.id),
+    courseId: uuid('course_id')
+      .notNull()
+      .references(() => courses.id),
+    paperVersionId: uuid('paper_version_id')
+      .notNull()
+      .references(() => paperVersions.id),
+    name: text('name').notNull(),
+    startsAt: time('starts_at').notNull(),
+    endsAt: time('ends_at').notNull(),
+    durationMinutes: integer('duration_minutes').notNull(),
+    status: text('status').notNull().default('draft'),
+    revision: integer('revision').notNull().default(1),
+    publishedAt: time('published_at'),
+    cancelledAt: time('cancelled_at'),
+    cancellationReason: text('cancellation_reason'),
+    licenseId: text('license_id'),
+    licenseSequence: bigint('license_sequence', { mode: 'number' }),
+    publicationCapacity: integer('publication_capacity'),
+    licenseExpiresAt: time('license_expires_at'),
+    ...dates(),
+  },
+  (t) => [
+    index('exams_owner_time_idx').on(t.ownerId, t.startsAt),
+    check('exams_duration_minutes_check', sql`${t.durationMinutes} BETWEEN 1 AND 480`),
+    check('exams_status_check', sql`${t.status} IN ('draft','published','cancelled')`),
+    check('exams_revision_check', sql`${t.revision}>0`),
+    check(
+      'exams_check',
+      sql`${t.endsAt}-${t.startsAt}>=${t.durationMinutes}*interval '1 minute' AND ${t.endsAt}-${t.startsAt}<=interval '7 days'`,
+    ),
+    check(
+      'exams_check1',
+      sql`${t.status}='draft' OR (${t.publishedAt} IS NOT NULL AND ${t.licenseId} IS NOT NULL AND ${t.licenseSequence} IS NOT NULL AND ${t.licenseSequence}>0 AND ${t.publicationCapacity} IS NOT NULL AND ${t.publicationCapacity}>0)`,
+    ),
+    check(
+      'exams_check2',
+      sql`${t.status}<>'cancelled' OR (${t.cancelledAt} IS NOT NULL AND length(${t.cancellationReason})>0)`,
+    ),
+  ],
+);
+export const examClasses = pgTable(
+  'exam_classes',
+  {
+    examId: uuid('exam_id')
+      .notNull()
+      .references(() => exams.id),
+    classId: uuid('class_id')
+      .notNull()
+      .references(() => classes.id),
+    name: text('name').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.examId, t.classId] })],
+);
+export const examRoster = pgTable(
+  'exam_roster',
+  {
+    examId: uuid('exam_id')
+      .notNull()
+      .references(() => exams.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    username: text('username').notNull(),
+    displayName: text('display_name').notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.examId, t.userId] }),
+    index('exam_roster_user_idx').on(t.userId, t.examId),
+  ],
+);
 export const papers = pgTable(
   'papers',
   {

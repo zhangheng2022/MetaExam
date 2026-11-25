@@ -35,7 +35,8 @@
     "test:management": "tsx tests/management.mts && tsx tests/management-ui.mts",
     "test:questions": "tsx tests/questions.mts && tsx tests/questions-ui.mts",
     "test:imports": "tsx tests/imports.mts && tsx tests/imports-ui.mts",
-    "test:papers": "tsx tests/papers.mts && tsx tests/papers-ui.mts"
+    "test:papers": "tsx tests/papers.mts && tsx tests/papers-ui.mts",
+    "test:exams": "tsx tests/exams.mts && tsx tests/exams-ui.mts"
   },
   "devDependencies": {
     "@ant-design/cli": "6.7.2",

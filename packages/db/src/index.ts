@@ -19,6 +19,7 @@ export * from './imports';
 export * from './files';
 export * from './attachments';
 export * from './papers';
+export * from './exams';
 import { processImportJob } from './imports';
 export function createDatabase(config = loadConfig()) {
   const pool = new Pool({
@@ -178,9 +179,16 @@ function saveWatermark(config: RuntimeConfig, sequence: number) {
   writeFileSync(tmp, JSON.stringify(v), { mode: 0o600 });
   renameSync(tmp, file);
 }
-async function context(db: Database, state: State) {
-  const inst = await ensureInstance(db),
-    fp = fingerprint(inst.installationId),
+async function context(db: Database, state: State, client?: PoolClient) {
+  const inst = client
+    ? (
+        await client.query<{ installationId: string }>(
+          'SELECT installation_id AS "installationId" FROM instance_info WHERE id=1',
+        )
+      ).rows[0]
+    : await ensureInstance(db);
+  if (!inst) throw new LicenseError('WRONG_INSTANCE');
+  const fp = fingerprint(inst.installationId),
     wm = watermark(db.config);
   return {
     installationId: inst.installationId,
@@ -224,6 +232,18 @@ export async function importLicense(db: Database, raw: string) {
   });
   await persistWatermark(db);
   return imported;
+}
+// Publication keeps this lock until the surrounding exam transaction commits.
+// Do not replace with licenseStatus: status catches failures and uses another connection.
+export async function verifyPublicationLicense(db: Database, c: PoolClient) {
+  const s = (await c.query<State>('SELECT * FROM license_state WHERE id=1 FOR UPDATE')).rows[0];
+  if (!s?.raw) throw new LicenseError('BAD_FORMAT');
+  const verified = verifyLicense(s.raw, publicKeys(db.config), await context(db, s, c));
+  await c.query(
+    'UPDATE license_state SET last_trusted_at=GREATEST(last_trusted_at,now()) WHERE id=1',
+  );
+  saveWatermark(db.config, verified.payload.sequence);
+  return verified.payload;
 }
 export async function licenseStatus(db: Database): Promise<LicenseSummary> {
   const empty: LicenseSummary = {

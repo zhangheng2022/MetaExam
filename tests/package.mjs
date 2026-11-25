@@ -337,6 +337,59 @@ try {
     403,
   );
   assert.equal(
+    (await fetch(url + '/api/v1/my-exams', { headers: { cookie: studentCookie } })).status,
+    403,
+  );
+  const examId = await create('/exams', {
+    name: '包内考试发布',
+    paperVersionId: frozenVersion,
+    startsAt: new Date(Date.now() + 3600000).toISOString(),
+    endsAt: new Date(Date.now() + 10800000).toISOString(),
+    durationMinutes: 60,
+    classIds: [classId],
+  });
+  const publish = await post('/api/v1/exams/' + examId + '/publish', { revision: 1 }, cookie);
+  assert.equal(publish.status, 200, await publish.clone().text());
+  const exam = await (await fetch(url + '/api/v1/exams/' + examId, { headers: { cookie } })).json();
+  assert.equal(exam.status, 'published');
+  assert.equal(exam.rosterCount, 1);
+  assert.equal(exam.paperVersionId, frozenVersion);
+  assert.equal(
+    (await fetch(url + '/exams/' + examId)).headers.get('content-type').includes('text/html'),
+    true,
+  );
+  assert.equal(
+    (
+      await post(
+        '/api/v1/auth/change-password',
+        { oldPassword: 'payload temporary phrase', newPassword: 'payload changed phrase' },
+        studentCookie,
+      )
+    ).status,
+    204,
+  );
+  const studentLogin = await post('/api/v1/auth/login', {
+    username: 'payload_student',
+    password: 'payload changed phrase',
+  });
+  const freshStudentCookie = studentLogin.headers.get('set-cookie').split(';')[0];
+  const own = await (
+    await fetch(url + '/api/v1/my-exams', { headers: { cookie: freshStudentCookie } })
+  ).json();
+  assert.equal(own.total, 1);
+  assert.equal(own.items[0].id, examId);
+  assert.equal(own.items[0].paperVersionId, undefined);
+  assert.equal(
+    (
+      await post(
+        '/api/v1/exams/' + examId + '/cancel',
+        { revision: exam.revision, reason: '包内取消回归' },
+        cookie,
+      )
+    ).status,
+    200,
+  );
+  assert.equal(
     (await fetch(url + '/users')).headers.get('content-type').includes('text/html'),
     true,
   );
@@ -409,6 +462,7 @@ try {
           'isolated ExcelJS template, multipart import, worker-thread preflight and atomic confirmation',
           'isolated Sharp native PNG normalization and authenticated image read',
           'bundled paper draw, fixed question/image snapshot, fractional score, immutable freeze, copy and deep route',
+          'bundled local-license publication, roster, student schedule redaction, forced-password boundary and cancellation',
           'bundled Worker completes API task',
           'bundled CLI validates persisted license',
           'packaged Electron IPC returns database ready',
