@@ -26,7 +26,9 @@ import { UsersPage } from './management/users';
 import { OrganizationsPage } from './management/organizations';
 import { AssignmentsPage, AuditPage, WorkspacePage } from './management/teaching';
 const BanksPage = lazy(() => import('./questions/pages').then((m) => ({ default: m.BanksPage })));
+const PapersPage = lazy(() => import('./papers/pages').then((m) => ({ default: m.PapersPage })));
 const pages = {
+  papers: ['试卷管理', '选择课程题目，调整分值，冻结可复用的试卷版本。'],
   'question-banks': ['题库管理', '维护课程题目，保留每次修订的版本。'],
   profile: ['个人信息', '查看账号资料与角色，管理你的登录安全。'],
   security: ['修改密码', '更新登录密码，保护你的账号安全。'],
@@ -163,13 +165,14 @@ function Protected({ page = 'profile' }: { page?: Page }) {
       audit: 'audit.read',
       workspace: 'teaching.self',
       'question-banks': 'questions.use',
+      papers: 'papers.use',
     } as Partial<Record<Page, string>>
   )[page];
   const allowed =
     !required ||
     (user.permissions.includes(required) &&
       (page === 'workspace' ||
-        (page === 'question-banks' && user.roles.includes('teacher')) ||
+        ((page === 'question-banks' || page === 'papers') && user.roles.includes('teacher')) ||
         user.roles.includes('admin')));
   return (
     <BusinessShell
@@ -180,7 +183,9 @@ function Protected({ page = 'profile' }: { page?: Page }) {
       permissions={
         user.roles.includes('admin')
           ? user.permissions
-          : user.permissions.filter((p) => p === 'questions.use' && user.roles.includes('teacher'))
+          : user.permissions.filter(
+              (p) => ['questions.use', 'papers.use'].includes(p) && user.roles.includes('teacher'),
+            )
       }
       mustChangePassword={user.mustChangePassword}
       onNavigate={(key) => navigate(pagePath(key))}
@@ -204,6 +209,10 @@ function Protected({ page = 'profile' }: { page?: Page }) {
       )}
       {!allowed ? (
         <Alert type="warning" title="没有访问权限" description="请从导航进入有权访问的页面。" />
+      ) : page === 'papers' ? (
+        <Suspense fallback={<Skeleton paragraph={{ rows: 5 }} />}>
+          <PapersPage />
+        </Suspense>
       ) : page === 'question-banks' ? (
         <Suspense fallback={<Skeleton paragraph={{ rows: 5 }} />}>
           <BanksPage user={user} />
@@ -340,12 +349,14 @@ function Business() {
             'assignments',
             'audit',
             'question-banks',
+            'papers',
           ] as const
         ).map((page) => (
           <Route key={page} path={'/' + page} element={<Protected page={page} />} />
         ))}
         <Route path="/classes/:id" element={<Protected page="classes" />} />
         <Route path="/question-banks/:bankId" element={<Protected page="question-banks" />} />
+        <Route path="/papers/:paperId" element={<Protected page="papers" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>

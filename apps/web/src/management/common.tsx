@@ -189,6 +189,7 @@ export function Editor({
   close,
   size = 480,
   externalBusy = false,
+  submitText = '保存',
 }: {
   title: string;
   initialValues?: object;
@@ -198,6 +199,7 @@ export function Editor({
   close: () => void;
   size?: number;
   externalBusy?: boolean;
+  submitText?: string;
 }) {
   const [form] = Form.useForm(),
     [modal, holder] = Modal.useModal();
@@ -231,7 +233,7 @@ export function Editor({
         footer={
           <Space>
             <Button type="primary" loading={busy || externalBusy} onClick={() => form.submit()}>
-              保存
+              {submitText}
             </Button>
             <Button disabled={busy || externalBusy} onClick={cancel}>
               取消
@@ -328,7 +330,7 @@ export function RemotePicker({
           setItems(
             result.items.map((r) => ({
               value: r.id,
-              label: `${r.displayName ?? r.name}（${r.username ?? r.code}）`,
+              label: `${r.displayName ?? r.name}${(r.username ?? r.code) ? `（${r.username ?? r.code}）` : ''}`,
             })),
           );
           setTotal(result.total);

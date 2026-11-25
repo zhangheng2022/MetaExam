@@ -27,6 +27,7 @@ export {
   Tabs,
   message,
   Upload,
+  InputNumber,
 } from 'antd';
 export type { TableColumnsType } from 'antd';
 
@@ -94,6 +95,9 @@ export function BusinessShell({
                 { key: 'workspace', icon: <HomeOutlined />, label: '工作台' },
                 ...(permissions.includes('questions.use')
                   ? [{ key: 'question-banks', icon: <ReadOutlined />, label: '题库管理' }]
+                  : []),
+                ...(permissions.includes('papers.use')
+                  ? [{ key: 'papers', icon: <BookOutlined />, label: '试卷管理' }]
                   : []),
                 ...(permissions.includes('users.manage')
                   ? [{ key: 'users', icon: <TeamOutlined />, label: '账号管理' }]

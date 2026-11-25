@@ -2,6 +2,12 @@ import { Catch, HttpException, type ArgumentsHost, type ExceptionFilter } from '
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { IdentityError } from '@metaexam/db';
 const messages: Record<string, string> = {
+  PAPER_FROZEN: '试卷已冻结，请复制为新草稿后修改',
+  PAPER_NOT_FROZEN: '请先冻结试卷再复制',
+  INVALID_PAPER_QUESTIONS: '题目已归档、超出课程或权限范围，或重复引用同一道题；请移除后重新选题',
+  INSUFFICIENT_QUESTIONS: '符合条件且未选入试卷的题目不足，请减少数量或调整条件',
+  EMPTY_PAPER: '空试卷不能冻结，请先添加题目',
+  PAPER_LIMIT: '每份试卷最多 200 道题',
   INVALID_UPLOAD: '请上传一个不超过 2 MiB 的文件',
   INVALID_WORKBOOK: 'Excel 文件不符合要求：请使用模板，最多 500 行，不含公式、链接或嵌入对象',
   INVALID_TEMPLATE: '请使用下载的模板并保留“题目”工作表及标题',

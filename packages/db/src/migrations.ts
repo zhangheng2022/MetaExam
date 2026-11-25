@@ -108,13 +108,82 @@ CREATE TABLE question_version_attachments(
 CREATE INDEX question_version_attachments_file_idx ON question_version_attachments(attachment_id);
 CREATE TRIGGER question_version_attachments_immutable BEFORE UPDATE OR DELETE ON question_version_attachments FOR EACH ROW EXECUTE FUNCTION reject_question_version_change();
 `;
-export const MIGRATIONS = [MIGRATION, identity, teaching, management, questions, imports].map(
-  (sql, index) => ({
-    version: index + 1,
-    sql,
-    checksum: createHash('sha256').update(sql).digest('hex'),
-  }),
+const papers = `
+CREATE TABLE papers(
+ id uuid PRIMARY KEY,course_id uuid NOT NULL REFERENCES courses(id),owner_id uuid NOT NULL REFERENCES users(id),
+ name text NOT NULL,instructions text NOT NULL DEFAULT '',status text NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','frozen')),
+ revision integer NOT NULL DEFAULT 1 CHECK(revision>0),source_version_id uuid,
+ created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE INDEX papers_owner_course_idx ON papers(owner_id,course_id,created_at);
+CREATE TABLE paper_draft_items(
+ paper_id uuid NOT NULL REFERENCES papers(id),position integer NOT NULL CHECK(position BETWEEN 1 AND 200),
+ question_version_id uuid NOT NULL REFERENCES question_versions(id),score_units integer NOT NULL CHECK(score_units BETWEEN 1 AND 2000),
+ PRIMARY KEY(paper_id,position),UNIQUE(paper_id,question_version_id)
+);
+CREATE TABLE paper_versions(
+ id uuid PRIMARY KEY,paper_id uuid NOT NULL UNIQUE REFERENCES papers(id),course_id uuid NOT NULL REFERENCES courses(id),
+ name text NOT NULL,instructions text NOT NULL,total_units integer NOT NULL CHECK(total_units>0),digest text NOT NULL,
+ author_id uuid NOT NULL REFERENCES users(id),created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE papers ADD CONSTRAINT papers_source_version_fk FOREIGN KEY(source_version_id) REFERENCES paper_versions(id);
+CREATE TABLE paper_version_items(
+ paper_version_id uuid NOT NULL REFERENCES paper_versions(id),position integer NOT NULL CHECK(position BETWEEN 1 AND 200),
+ question_version_id uuid NOT NULL REFERENCES question_versions(id),score_units integer NOT NULL CHECK(score_units BETWEEN 1 AND 2000),
+ PRIMARY KEY(paper_version_id,position),UNIQUE(paper_version_id,question_version_id)
+);
+CREATE FUNCTION guard_paper_change() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF OLD.status='frozen' THEN RAISE EXCEPTION 'PAPER_IMMUTABLE'; END IF;
+ IF TG_OP='UPDATE' AND NEW.status='frozen' THEN
+  IF NOT EXISTS(SELECT 1 FROM paper_versions v WHERE v.paper_id=NEW.id AND v.name=NEW.name AND v.instructions=NEW.instructions AND v.course_id=NEW.course_id
+   AND v.total_units=(SELECT sum(score_units) FROM paper_version_items WHERE paper_version_id=v.id)
+   AND (SELECT count(*) FROM paper_version_items WHERE paper_version_id=v.id)>0
+   AND NOT EXISTS((SELECT position,question_version_id,score_units FROM paper_draft_items WHERE paper_id=NEW.id EXCEPT SELECT position,question_version_id,score_units FROM paper_version_items WHERE paper_version_id=v.id)
+    UNION ALL (SELECT position,question_version_id,score_units FROM paper_version_items WHERE paper_version_id=v.id EXCEPT SELECT position,question_version_id,score_units FROM paper_draft_items WHERE paper_id=NEW.id)))
+  THEN RAISE EXCEPTION 'INVALID_PAPER_SNAPSHOT'; END IF;
+ END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD; END IF; RETURN NEW;
+END; $$;
+CREATE TRIGGER papers_guard BEFORE UPDATE OR DELETE ON papers FOR EACH ROW EXECUTE FUNCTION guard_paper_change();
+CREATE FUNCTION guard_paper_draft_item() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE state text;
+BEGIN
+ IF TG_OP='UPDATE' AND NEW.paper_id<>OLD.paper_id THEN RAISE EXCEPTION 'PAPER_ID_IMMUTABLE'; END IF;
+ SELECT status INTO state FROM papers WHERE id=COALESCE(NEW.paper_id,OLD.paper_id) FOR UPDATE;
+ IF state<>'draft' THEN RAISE EXCEPTION 'PAPER_IMMUTABLE'; END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD; END IF; RETURN NEW;
+END; $$;
+CREATE TRIGGER paper_draft_items_guard BEFORE INSERT OR UPDATE OR DELETE ON paper_draft_items FOR EACH ROW EXECUTE FUNCTION guard_paper_draft_item();
+CREATE FUNCTION guard_paper_snapshot_insert() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE target uuid; state text;
+BEGIN
+ IF TG_TABLE_NAME='paper_versions' THEN target:=NEW.paper_id;
+ ELSE SELECT paper_id INTO target FROM paper_versions WHERE id=NEW.paper_version_id; END IF;
+ SELECT status INTO state FROM papers WHERE id=target FOR UPDATE;
+ IF state<>'draft' THEN RAISE EXCEPTION 'PAPER_IMMUTABLE'; END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER paper_versions_insert_guard BEFORE INSERT ON paper_versions FOR EACH ROW EXECUTE FUNCTION guard_paper_snapshot_insert();
+CREATE TRIGGER paper_version_items_insert_guard BEFORE INSERT ON paper_version_items FOR EACH ROW EXECUTE FUNCTION guard_paper_snapshot_insert();
+CREATE TRIGGER paper_versions_immutable BEFORE UPDATE OR DELETE ON paper_versions FOR EACH ROW EXECUTE FUNCTION reject_question_version_change();
+CREATE TRIGGER paper_version_items_immutable BEFORE UPDATE OR DELETE ON paper_version_items FOR EACH ROW EXECUTE FUNCTION reject_question_version_change();
+INSERT INTO permissions VALUES('papers.use','组卷与冻结试卷');
+INSERT INTO role_permissions VALUES('admin','papers.use'),('teacher','papers.use');
+`;
+export const MIGRATIONS = [
+  MIGRATION,
+  identity,
+  teaching,
+  management,
+  questions,
+  imports,
+  papers,
+].map((sql, index) => ({
+  version: index + 1,
+  sql,
+  checksum: createHash('sha256').update(sql).digest('hex'),
+}));
 export const SCHEMA_VERSION = MIGRATIONS.length;
 export type AppliedMigration = { version: number; checksum: string };
 export function validateMigrations(rows: AppliedMigration[], complete: boolean) {
@@ -158,6 +227,8 @@ export const RUNTIME_TABLES = [
   'question_imports',
   'question_import_rows',
   'question_attachments',
+  'papers',
+  'paper_draft_items',
 ];
 // Fixed identifiers only. Never grant DDL or future tables implicitly.
 export async function grantRuntimeAccess(
@@ -183,4 +254,6 @@ export async function grantRuntimeAccess(
   await c.query('GRANT SELECT,INSERT ON question_versions TO ' + role);
   await c.query('REVOKE ALL ON question_version_attachments FROM ' + role);
   await c.query('GRANT SELECT,INSERT ON question_version_attachments TO ' + role);
+  await c.query('REVOKE ALL ON paper_versions,paper_version_items FROM ' + role);
+  await c.query('GRANT SELECT,INSERT ON paper_versions,paper_version_items TO ' + role);
 }

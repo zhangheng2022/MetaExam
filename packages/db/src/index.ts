@@ -18,6 +18,7 @@ export * from './questions';
 export * from './imports';
 export * from './files';
 export * from './attachments';
+export * from './papers';
 import { processImportJob } from './imports';
 export function createDatabase(config = loadConfig()) {
   const pool = new Pool({

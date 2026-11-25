@@ -106,3 +106,4 @@ export interface ApiError {
 export * from './management';
 export * from './questions';
 export * from './imports';
+export * from './papers';

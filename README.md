@@ -1,6 +1,6 @@
 # MetaExam
 
-M2 第二批已实现 Excel 题目预检／确认导入和图片附件，沿用公共／个人题库、五类题型及不可变版本。当前数据库版本 V6，见 [导入与图片验收说明](docs/m2-imports.md) 和 [题库基础说明](docs/m2-questions.md)。组卷和考试发布尚未交付。
+M2 第三批已实现手动选题、条件随机抽题、分值与顺序调整、教师预览、试卷冻结及复制新草稿。当前数据库版本 V7，见 [组卷与冻结验收说明](docs/m2-papers.md)。沿用 [Excel 导入与图片](docs/m2-imports.md) 和 [题库基础](docs/m2-questions.md)；考试发布、考生作答与阅卷尚未交付。
 
 M1 第二批已实现账号、班级、课程、授课安排、角色工作台及操作日志，沿用 Ant Design 默认蓝色。开发与验收步骤见 [M1 第二批交付说明](docs/m1-management.md)。首次登录或管理员重置密码后，用户须先修改密码。
 
@@ -116,4 +116,4 @@ $env:LICENSE_SEQUENCE = '1'
 
 安装版维护命令：管理员终端设置 `METAEXAM_CONFIG=C:\ProgramData\MetaExam\config.json`，然后使用 `C:\Program Files\MetaExam\runtime\node.exe --use-system-ca C:\Program Files\MetaExam\server\cli.cjs license-request <输出路径>` 等同名命令。含空格路径需 PowerShell 的 `&` 与引号。
 
-已有数据库禁止重新 initdb；安装器拒绝覆盖安装；当前有序迁移升级至 V6，维护命令和备份前置步骤见 [M2 导入交付说明](docs/m2-imports.md)。卸载删除应用服务和应用文件、保留 ProgramData 数据。保留数据的恢复/重装须先备份并人工维护，不提供一键恢复承诺。当前仍为内部测试包，完整考试业务及正式发布尚未交付；后续变更按影响范围回归。
+已有数据库禁止重新 initdb；安装器拒绝覆盖安装；当前有序迁移升级至 V7，维护命令和备份前置步骤见 [M2 组卷交付说明](docs/m2-papers.md)。卸载删除应用服务和应用文件、保留 ProgramData 数据。保留数据的恢复/重装须先备份并人工维护，不提供一键恢复承诺。当前仍为内部测试包，完整考试业务及正式发布尚未交付；后续变更按影响范围回归。

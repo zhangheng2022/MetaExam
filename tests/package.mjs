@@ -262,8 +262,48 @@ try {
     tags: [],
     knowledgePoints: [],
     explanation: '仅供教师查看',
+    images: [{ id: imageId, alt: '包内示意图' }],
   });
   const questionPath = '/api/v1/question-banks/' + bankId + '/questions/' + questionId;
+  const paperId = await create('/papers', {
+    name: '包内冻结试卷',
+    courseId,
+    instructions: '普通进程回归',
+  });
+  const paperPath = '/api/v1/papers/' + paperId;
+  assert.equal(
+    (
+      await post(
+        paperPath + '/draw',
+        { revision: 1, bankId, type: 'boolean', count: 2, score: 2.5 },
+        cookie,
+      )
+    ).status,
+    200,
+  );
+  const freeze = await post(paperPath + '/freeze', { revision: 2 }, cookie);
+  assert.equal(freeze.status, 200, await freeze.clone().text());
+  const frozenVersion = (await freeze.json()).id;
+  const paper = await (await fetch(url + paperPath, { headers: { cookie } })).json();
+  assert.equal(paper.status, 'frozen');
+  assert.equal(paper.totalScore, 5);
+  assert.equal(paper.frozenVersionId, frozenVersion);
+  assert.ok(paper.items.some((i) => i.question.images?.[0]?.id === imageId));
+  assert.equal(
+    (
+      await fetch(url + paperPath, {
+        method: 'PATCH',
+        headers: { cookie, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ revision: 3, name: '改写', instructions: '', items: [] }),
+      })
+    ).status,
+    409,
+  );
+  await create('/papers/' + paperId + '/copy', { name: '包内新草稿' });
+  assert.equal(
+    (await fetch(url + '/papers/' + paperId)).headers.get('content-type').includes('text/html'),
+    true,
+  );
   assert.equal(
     (await fetch(url + questionPath + '/versions', { headers: { cookie } })).status,
     200,
@@ -368,6 +408,7 @@ try {
           'bundled question bank, immutable version read, deep route and student answer denial',
           'isolated ExcelJS template, multipart import, worker-thread preflight and atomic confirmation',
           'isolated Sharp native PNG normalization and authenticated image read',
+          'bundled paper draw, fixed question/image snapshot, fractional score, immutable freeze, copy and deep route',
           'bundled Worker completes API task',
           'bundled CLI validates persisted license',
           'packaged Electron IPC returns database ready',

@@ -34,7 +34,8 @@
     "setup:token": "node apps/worker/dist/cli.js setup-token",
     "test:management": "tsx tests/management.mts && tsx tests/management-ui.mts",
     "test:questions": "tsx tests/questions.mts && tsx tests/questions-ui.mts",
-    "test:imports": "tsx tests/imports.mts && tsx tests/imports-ui.mts"
+    "test:imports": "tsx tests/imports.mts && tsx tests/imports-ui.mts",
+    "test:papers": "tsx tests/papers.mts && tsx tests/papers-ui.mts"
   },
   "devDependencies": {
     "@ant-design/cli": "6.7.2",

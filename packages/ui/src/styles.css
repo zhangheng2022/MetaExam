@@ -583,3 +583,9 @@ body {
   max-height: 240px;
   align-self: flex-start;
 }
+.paper-preview {
+  width: 100%;
+}
+.paper-actions {
+  margin-bottom: 24px;
+}

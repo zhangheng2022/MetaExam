@@ -12,6 +12,7 @@ import {
   check,
   unique,
   foreignKey,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 const time = (name: string) => timestamp(name, { withTimezone: true });
@@ -19,6 +20,89 @@ const dates = () => ({
   createdAt: time('created_at').notNull().defaultNow(),
   updatedAt: time('updated_at').notNull().defaultNow(),
 });
+export const papers = pgTable(
+  'papers',
+  {
+    id: uuid('id').primaryKey(),
+    courseId: uuid('course_id')
+      .notNull()
+      .references(() => courses.id),
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => users.id),
+    name: text('name').notNull(),
+    instructions: text('instructions').notNull().default(''),
+    status: text('status').notNull().default('draft'),
+    revision: integer('revision').notNull().default(1),
+    sourceVersionId: uuid('source_version_id').references((): AnyPgColumn => paperVersions.id),
+    ...dates(),
+  },
+  (t) => [
+    index('papers_owner_course_idx').on(t.ownerId, t.courseId, t.createdAt),
+    check('papers_status_check', sql`${t.status} IN ('draft','frozen')`),
+    check('papers_revision_check', sql`${t.revision}>0`),
+  ],
+);
+export const paperDraftItems = pgTable(
+  'paper_draft_items',
+  {
+    paperId: uuid('paper_id')
+      .notNull()
+      .references(() => papers.id),
+    position: integer('position').notNull(),
+    questionVersionId: uuid('question_version_id')
+      .notNull()
+      .references(() => questionVersions.id),
+    scoreUnits: integer('score_units').notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.paperId, t.position] }),
+    unique().on(t.paperId, t.questionVersionId),
+    check('paper_draft_items_position_check', sql`${t.position} BETWEEN 1 AND 200`),
+    check('paper_draft_items_score_units_check', sql`${t.scoreUnits} BETWEEN 1 AND 2000`),
+  ],
+);
+export const paperVersions = pgTable(
+  'paper_versions',
+  {
+    id: uuid('id').primaryKey(),
+    paperId: uuid('paper_id')
+      .notNull()
+      .unique()
+      .references(() => papers.id),
+    courseId: uuid('course_id')
+      .notNull()
+      .references(() => courses.id),
+    name: text('name').notNull(),
+    instructions: text('instructions').notNull(),
+    totalUnits: integer('total_units').notNull(),
+    digest: text('digest').notNull(),
+    authorId: uuid('author_id')
+      .notNull()
+      .references(() => users.id),
+    createdAt: time('created_at').notNull().defaultNow(),
+  },
+  (t) => [check('paper_versions_total_units_check', sql`${t.totalUnits}>0`)],
+);
+export const paperVersionItems = pgTable(
+  'paper_version_items',
+  {
+    paperVersionId: uuid('paper_version_id')
+      .notNull()
+      .references(() => paperVersions.id),
+    position: integer('position').notNull(),
+    questionVersionId: uuid('question_version_id')
+      .notNull()
+      .references(() => questionVersions.id),
+    scoreUnits: integer('score_units').notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.paperVersionId, t.position] }),
+    unique().on(t.paperVersionId, t.questionVersionId),
+    check('paper_version_items_position_check', sql`${t.position} BETWEEN 1 AND 200`),
+    check('paper_version_items_score_units_check', sql`${t.scoreUnits} BETWEEN 1 AND 2000`),
+  ],
+);
 export const questionBanks = pgTable(
   'question_banks',
   {

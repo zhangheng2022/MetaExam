@@ -41,6 +41,8 @@ export class Routes {
     '/audit',
     '/question-banks',
     '/question-banks/:bankId',
+    '/papers',
+    '/papers/:paperId',
   ])
   page(@Res() res: FastifyReply) {
     return res
