@@ -1,5 +1,52 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type PropsWithChildren } from 'react';
+import {
+  Alert,
+  Button,
+  Card,
+  ConfigProvider,
+  Descriptions,
+  Menu,
+  Tag,
+  Typography,
+  type ThemeConfig,
+} from 'antd';
+import { DashboardOutlined, ReloadOutlined } from '@ant-design/icons';
+import zhCN from 'antd/locale/zh_CN';
+import 'antd/dist/reset.css';
 import type { SystemStatus } from '@metaexam/contracts';
+
+const theme: ThemeConfig = {
+  token: {
+    // Use Ant Design's default blue primary color and generated interaction colors.
+    colorSuccess: '#176b5b',
+    colorText: '#202f39',
+    colorTextSecondary: '#566570',
+    colorTextDescription: '#566570',
+    colorSuccessBg: '#e4f2ed',
+    colorSuccessBorder: '#b7d9ce',
+    colorWarning: '#77500a',
+    colorWarningBg: '#faf0dc',
+    colorWarningBorder: '#e8d7b0',
+    colorBgLayout: '#f3f5f6',
+    colorBorderSecondary: '#dce3e6',
+    borderRadius: 6,
+    fontFamily: '"Segoe UI", "Microsoft YaHei", sans-serif',
+    controlHeight: 44,
+    motion: false,
+  },
+  components: {
+    Typography: { titleMarginTop: 0, titleMarginBottom: 8 },
+    Card: { headerFontSize: 18 },
+    Descriptions: { labelColor: '#566570' },
+  },
+};
+export function MetaExamProvider({ children }: PropsWithChildren) {
+  return (
+    <ConfigProvider locale={zhCN} theme={theme}>
+      {children}
+    </ConfigProvider>
+  );
+}
 export interface DashboardProps {
   loadStatus: () => Promise<SystemStatus>;
   desktop?: boolean;
@@ -12,7 +59,15 @@ const labels = {
   invalid: '校验未通过',
   clock_anomaly: '系统时间异常',
 };
-export function Dashboard({ loadStatus, desktop = false }: DashboardProps) {
+const { Title, Paragraph, Text } = Typography;
+export function Dashboard(props: DashboardProps) {
+  return (
+    <MetaExamProvider>
+      <StatusOverview {...props} />
+    </MetaExamProvider>
+  );
+}
+function StatusOverview({ loadStatus, desktop = false }: DashboardProps) {
   const [status, setStatus] = useState<SystemStatus | null>(null),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(true);
@@ -34,10 +89,45 @@ export function Dashboard({ loadStatus, desktop = false }: DashboardProps) {
   }, [refresh]);
   const ready = !!status && status.database === 'ready' && status.worker === 'online';
   const unavailable = !!error && !status && !busy;
+  const serviceRows = [
+    {
+      name: '考试服务',
+      description: '为局域网浏览器提供访问',
+      value: error ? '连接失败' : status ? '已连接' : '检查中',
+      ok: !!status && !error,
+    },
+    {
+      name: '本地数据库',
+      description: '保存系统配置和业务数据',
+      value:
+        status?.database === 'ready'
+          ? '已连接'
+          : status
+            ? '连接失败'
+            : unavailable
+              ? '无法获取'
+              : '检查中',
+      ok: status?.database === 'ready',
+    },
+    {
+      name: '后台任务',
+      description: '独立处理任务，不依赖管理窗口',
+      value:
+        status?.worker === 'online'
+          ? '运行中'
+          : status
+            ? '未运行'
+            : unavailable
+              ? '无法获取'
+              : '检查中',
+      ok: status?.worker === 'online',
+    },
+  ];
+  const licenseText = status ? labels[status.license.state] : unavailable ? '无法获取' : '正在读取';
   return (
-    <div className="shell">
-      <aside className="sidebar">
-        <a className="brand" href="./" aria-label="MetaExam 运行概览">
+    <div className="metaexam-shell">
+      <aside className="metaexam-sidebar">
+        <a className="metaexam-brand" href="./" aria-label="MetaExam 运行概览">
           <svg viewBox="0 0 32 32" aria-hidden="true">
             <path d="M5 25V7l11 10L27 7v18M11 25V18l5 5 5-5v7" />
           </svg>
@@ -46,117 +136,162 @@ export function Dashboard({ loadStatus, desktop = false }: DashboardProps) {
           </span>
         </a>
         <nav aria-label="主导航">
-          <span className="nav-current" aria-current="page">
-            运行概览
-          </span>
+          <Menu
+            theme="dark"
+            mode="inline"
+            selectedKeys={['overview']}
+            items={[
+              {
+                key: 'overview',
+                icon: <DashboardOutlined />,
+                label: (
+                  <a href="#service-heading" aria-current="page">
+                    运行概览
+                  </a>
+                ),
+              },
+            ]}
+          />
         </nav>
-        <p className="sidebar-note">
+        <p className="metaexam-sidebar-note">
           数据留在本地
           <br />
           授权离线验证
         </p>
       </aside>
-      <main>
-        <header>
+      <main className="metaexam-content">
+        <header className="metaexam-header">
           <div>
-            <h1>运行概览</h1>
-            <p>检查服务状态，做好考试前的准备。</p>
+            <Title level={1}>运行概览</Title>
+            <Paragraph type="secondary">检查服务状态，做好考试前的准备。</Paragraph>
           </div>
-          <button onClick={() => void refresh()} disabled={busy}>
+          <Button
+            type="primary"
+            icon={<ReloadOutlined />}
+            loading={busy}
+            disabled={busy}
+            onClick={() => void refresh()}
+          >
             {busy ? '检查中…' : '重新检查'}
-          </button>
+          </Button>
         </header>
         {error && (
-          <div className="notice error" role="alert">
-            {error}
-            {status && <span>以下为上次检查结果，可能已过时。</span>}
-          </div>
+          <Alert
+            className="metaexam-error"
+            type="error"
+            showIcon
+            role="alert"
+            title={error}
+            description={status ? '以下为上次检查结果，可能已过时。' : undefined}
+          />
         )}
-        <section className="overview" aria-labelledby="service-heading">
-          <div className="section-heading">
-            <h2 id="service-heading">系统服务</h2>
-            <span className={'badge ' + (error ? 'warn' : ready ? 'good' : 'warn')}>
-              {error ? '连接中断' : !status ? '等待检查' : ready ? '运行正常' : '需要检查'}
-            </span>
-          </div>
-          <div className="service-row">
-            <div>
-              <h3>考试服务</h3>
-              <p>为局域网浏览器提供访问</p>
-            </div>
-            <strong>{error ? '连接失败' : status ? '已连接' : '检查中'}</strong>
-          </div>
-          <div className="service-row">
-            <div>
-              <h3>本地数据库</h3>
-              <p>保存系统配置和业务数据</p>
-            </div>
-            <strong>
-              {status?.database === 'ready'
-                ? '已连接'
-                : status
-                  ? '连接失败'
-                  : unavailable
-                    ? '无法获取'
-                    : '检查中'}
-            </strong>
-          </div>
-          <div className="service-row">
-            <div>
-              <h3>后台任务</h3>
-              <p>独立处理任务，不依赖管理窗口</p>
-            </div>
-            <strong>
-              {status?.worker === 'online'
-                ? '运行中'
-                : status
-                  ? '未运行'
-                  : unavailable
-                    ? '无法获取'
-                    : '检查中'}
-            </strong>
-          </div>
+        <section aria-labelledby="service-heading">
+          <Card
+            className="metaexam-services"
+            title={
+              <Title level={2} id="service-heading">
+                系统服务
+              </Title>
+            }
+            extra={
+              <Tag color={error ? 'error' : ready ? 'success' : 'warning'}>
+                {error ? '连接中断' : !status ? '等待检查' : ready ? '运行正常' : '需要检查'}
+              </Tag>
+            }
+          >
+            {serviceRows.map((row) => (
+              <div className="metaexam-service-row" key={row.name}>
+                <div>
+                  <Title level={3}>{row.name}</Title>
+                  <Text type="secondary">{row.description}</Text>
+                </div>
+                <Tag color={status && !error ? (row.ok ? 'success' : 'warning') : 'default'}>
+                  {row.value}
+                </Tag>
+              </div>
+            ))}
+          </Card>
         </section>
-        <section className="license-section" aria-labelledby="license-heading">
+        <section className="metaexam-license" aria-labelledby="license-heading">
           <div>
-            <h2 id="license-heading">软件授权</h2>
-            <p>在部署电脑上验证授权文件，无需连接互联网。</p>
+            <Title level={2} id="license-heading">
+              软件授权
+            </Title>
+            <Paragraph type="secondary">在部署电脑上验证授权文件，无需连接互联网。</Paragraph>
           </div>
-          <div className="license-status">
-            <strong>
-              {status ? labels[status.license.state] : unavailable ? '无法获取' : '正在读取'}
-            </strong>
-            <p>
-              {status?.license.state === 'valid'
-                ? status.license.expiresAt
-                  ? '有效期至 ' + new Date(status.license.expiresAt).toLocaleDateString('zh-CN')
-                  : '永久授权'
-                : unavailable
+          <div>
+            <Descriptions
+              size="small"
+              column={1}
+              items={[
+                {
+                  key: 'state',
+                  label: '授权状态',
+                  children: (
+                    <Tag
+                      color={status?.license.state === 'valid' && !error ? 'success' : 'default'}
+                    >
+                      {licenseText}
+                    </Tag>
+                  ),
+                },
+                ...(status?.license.state === 'valid'
+                  ? [
+                      {
+                        key: 'expiry',
+                        label: '有效期限',
+                        children: status.license.expiresAt
+                          ? new Date(status.license.expiresAt).toLocaleDateString('zh-CN')
+                          : '永久授权',
+                      },
+                      {
+                        key: 'capacity',
+                        label: '同时作答人数',
+                        children: status.license.maxConcurrentAttempts,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+            {status?.license.state !== 'valid' && (
+              <Paragraph type="secondary" className="metaexam-license-help">
+                {unavailable
                   ? '恢复服务连接后重新检查授权状态。'
                   : '请由本机维护人员导入有效授权文件。'}
-            </p>
-            {status?.license.maxConcurrentAttempts && (
-              <p>授权同时作答人数：{status.license.maxConcurrentAttempts}</p>
+              </Paragraph>
             )}
           </div>
         </section>
-        <section className="next-step">
-          <h2>技术验证阶段</h2>
-          <p>当前版本用于验证服务运行、数据库连接和本地授权，尚未开放正式考试。</p>
-          {desktop && <p>关闭此窗口不会停止后台考试服务。</p>}
+        <section className="metaexam-stage" aria-labelledby="stage-heading">
+          <Alert
+            type="info"
+            showIcon
+            role="note"
+            title={
+              <Title level={2} id="stage-heading">
+                技术验证阶段
+              </Title>
+            }
+            description={
+              <>
+                <div>当前版本用于验证服务运行、数据库连接和本地授权，尚未开放正式考试。</div>
+                {desktop && <div>关闭此窗口不会停止后台考试服务。</div>}
+              </>
+            }
+          />
         </section>
-        <footer>
-          <span>
+        <footer className="metaexam-footer">
+          <Text type="secondary">
             {desktop ? '桌面管理程序' : '本机运行状态'} ·{' '}
             {status ? 'v' + status.version : 'MetaExam'}
-          </span>
-          <span aria-live="polite">
+          </Text>
+          <Text type="secondary" aria-live="polite">
             {status
               ? '最近检查 ' + new Date(status.checkedAt).toLocaleTimeString('zh-CN')
               : unavailable
                 ? '尚未获取检查结果'
                 : '等待服务响应'}
-          </span>
+          </Text>
         </footer>
       </main>
     </div>

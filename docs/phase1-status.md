@@ -40,6 +40,26 @@
 
 运行时核对：项目使用 .tools/node/node.exe 24.22.3；系统 NVM 的 v16.20.2 目录和可执行程序仍存在。结束时系统 nodejs 符号链接指向 NVM v24.18.0；本项目脚本没有执行 nvm use 或修改全局 PATH。
 
+## Ant Design 接入验证（2026-11-25）
+
+Web 与 Electron 已统一使用 Ant Design 6.7.2、@ant-design/icons 6.3.4 和中文 ConfigProvider。共享状态页的菜单、按钮、服务卡片、状态标签、授权描述及提示均已迁移；原有刷新、首次失败及旧结果提示保留。
+
+随后按用户要求切换为 Ant Design 默认蓝色主题：移除主色和菜单选中色覆盖，主按钮与选中菜单使用 #1677ff，焦点、品牌图形与文本选区同步使用蓝色。Web 和打包 Electron 的运行检查验证实际主按钮为 rgb(22, 119, 255)。
+
+新增 UI 检查后共 9 项通过，包括组件主题实际渲染、无 CSP 违规、无外部资源请求、授权标签对比度 5.50:1。独立复核提出的标签对比度修复已获 ship verdict；该结论仅覆盖该修复项。生产依赖审计仍为 0 条已知漏洞。
+
+本次已重新构建内部 EXE，并验证包内 Electron 主题、真实 IPC 和独立后端运行。Ant Design 样式及图标随安装包提供，无 CDN 依赖；CSP 仅对动态 CSS 允许内联样式，脚本来源和 Electron 隔离策略保持原限制。此更新不替代以下独立环境验收。
+
+## 工程整理与开发监听（2026-11-25）
+
+保留四应用 workspace。tools 收敛为 bootstrap.ps1、run.ps1、dev.mjs 和 postgres.mjs；页面、数据库重启及包验证脚本归入 tests，打包入口归入 installer，测试签发工具归入 provider。环境准备合并为 bootstrap.ps1，通过 -Packaging 准备打包工具，移除自动改写工具链锁文件的脚本。
+
+后台使用 TypeScript project references、tsc-watch 与 concurrently，编译成功后自动重启 API/Worker。Vite 开发模式直接使用共享 UI 源码，生产构建仍使用编译产物。新增 test:dev 的 7 项真实运行检查全部通过：统一启动、API 修改、Worker 修改、共享数据库代码、共享契约与任务闭环、共享 UI 无整页刷新、编译错误后自动恢复。结果保存在 artifacts/dev-watch-results.json。
+
+整理后离线 frozen-lockfile 安装、工具链哈希校验、build、typecheck、lint、format:check、20 项单元测试、10 项集成测试、9 项页面检查和数据库重启持久化验证通过。实际终端启动并按 Ctrl+C 后，API、Worker 与 Vite 退出，3000/5173 端口释放，项目 PostgreSQL 普通进程继续运行。
+
+打包入口改为复用已准备的本地 Electron 并核对锁定版本，避免重复联网下载。内部 EXE 已重新生成，客户 payload 的 6 项隔离运行检查通过；普通文件及 Electron ASAR 扫描结果为私钥 0、签发工具 0。未在开发机运行安装器。
+
 ## 待验收及当前限制
 
 - [ ] 独立 Windows 11 x64 净机断公网安装，包括包内 VC++ 运行库。

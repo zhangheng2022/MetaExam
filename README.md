@@ -1,6 +1,8 @@
 # MetaExam
 
-第一阶段工程：Node.js 24、NestJS + Fastify、React、Electron、PostgreSQL 18。Windows x64 开发与内部离线安装验证。M0 仍等待独立测试环境的安装、服务与重启验收。
+第一阶段工程：Node.js 24、NestJS + Fastify、React + Ant Design 6、Electron、PostgreSQL 18。Windows x64 开发与内部离线安装验证。M0 仍等待独立测试环境的安装、服务与重启验收。
+
+Web 与 Electron 共用 packages/ui 的 Ant Design 组件；MetaExamProvider 统一中文 locale，使用 Ant Design 默认蓝色主色 #1677ff 和默认深色菜单。成功/警告状态仍使用各自语义色。组件样式、图标均由 Vite 本地打包，无 CDN 依赖。CSP 仅为组件动态样式允许内联 CSS，脚本仍仅允许本地来源；Electron 保持 sandbox、contextIsolation 和受限 IPC。
 
 ## 开发启动
 
@@ -9,15 +11,15 @@
 ```powershell
 # 首次联网准备；已有工具时可跳过
 ./tools/bootstrap.ps1 -Proxy http://127.0.0.1:7897
-./tools/prepare-vendor.ps1 -Proxy http://127.0.0.1:7897
-./tools/run.ps1 install --frozen-lockfile
 ./tools/run.ps1 build
 ./tools/run.ps1 db:start
 ./tools/run.ps1 db:migrate
 ./tools/run.ps1 dev
 ```
 
-访问 http://127.0.0.1:5173 。API 默认 3000，PostgreSQL 默认 55432，仅回环监听。端口被占用时启动失败，不自动杀进程或换端口。配置在首次 db:start 生成的 `.local/config.json`；复制到其他位置可用进程环境变量 `METAEXAM_CONFIG` 指定。设置示例见 [.env.example](.env.example)。后端修改后重新 build、重启 dev；React 支持 Vite 热更新。Ctrl+C 关闭 dev 的 API、Worker 和 Vite；数据库单独停止：
+访问 http://127.0.0.1:5173 。API 默认 3000，PostgreSQL 默认 55432，仅回环监听。端口被占用时启动失败，不自动杀进程或换端口。配置在首次 db:start 生成的 `.local/config.json`；复制到其他位置可用进程环境变量 `METAEXAM_CONFIG` 指定。设置示例见 [.env.example](.env.example)。
+
+日常开发只需运行 `./tools/run.ps1 dev`。TypeScript project references 按依赖顺序监听后端及共享包，编译成功后由 tsc-watch 自动重启 API 和 Worker；编译出错时暂停后台进程，修复后自动恢复。React 和共享 UI 源码通过 Vite 热更新，修改页面不重启后端。concurrently 统一管理开发进程；Ctrl+C 关闭 API、Worker 和 Vite，数据库单独停止：
 
 ```powershell
 ./tools/run.ps1 db:stop
@@ -40,11 +42,16 @@ $env:METAEXAM_CONFIG = (Resolve-Path .local/config.json).Path
 | packages/domain    | 完全本地 Ed25519 验签与授权规则                         |
 | packages/db        | Drizzle + pg、显式迁移、设备绑定、授权持久化、任务租约  |
 | packages/ui        | Web 与 Electron 共用界面                                |
-| installer          | Inno Setup、WinSW、数据库与服务初始化脚本               |
-| tools              | 项目工具链、普通进程开发、打包、供应方测试签发工具      |
-| tests              | 授权单元与真实 PostgreSQL 集成测试                      |
+| installer          | Windows 打包入口、Inno Setup、WinSW、安装维护脚本       |
+| tools              | 环境准备、命令入口、开发启动、普通进程数据库管理        |
+| tests              | 单元、集成、开发监听、页面、数据库重启及客户包验证      |
+| provider           | 供应方测试签发工具，不进入客户安装包                    |
 
-统一命令均通过 `./tools/run.ps1 <command>` 使用：dev、build、typecheck、lint、format:check、test、test:integration、test:ui、db:migrate、package:win。
+统一命令均通过 `./tools/run.ps1 <command>` 使用：dev、build、typecheck、lint、format:check、test、test:integration、test:ui、test:dev、test:db-restart、test:package、db:migrate、package:win。
+
+`tools` 只保留四个入口：bootstrap.ps1 准备锁定工具链与依赖，run.ps1 使用项目 Node/pnpm 执行命令，dev.mjs 将配置交给标准监听工具，postgres.mjs 管理项目数据库普通进程。业务逻辑放在应用与共享包，不在这些脚本中实现。
+
+`test:dev` 使用端口 3310/5180 验证 API、Worker、共享契约、数据库包、UI 热更新与编译错误恢复。它会临时修改源码并在结束时恢复、重新构建；请独占运行，期间不要编辑源码或同时执行其他构建/测试。UI 检查使用本机 Microsoft Edge。测试结果保存在忽略提交的 artifacts 目录。
 
 `GET /health/live` 仅判断进程；`GET /health/ready` 校验数据库连接及迁移校验和，失败 503；`GET /api/v1/system/status` 仅回环来源可访问，返回脱敏状态。诊断任务写入/读取与停机接口还需要配置中的管理令牌；本阶段没有匿名授权导入接口。开发 Vite 也仅回环监听，生产静态页面由 API 同源托管。
 
@@ -73,10 +80,10 @@ Windows 指纹优先 SMBIOS UUID + 主板序列，缺失或占位字段时回退
 
 ```powershell
 # 只生成一次；临时测试私钥仅在开发机 .local/provider，切勿分发
-./.tools/node/node.exe tools/provider-test.mjs keygen .local/provider
+./.tools/node/node.exe provider/test-license.mjs keygen .local/provider
 # 测试客户的申请文件经离线介质送到供应方；每次更新递增序号
 $env:LICENSE_SEQUENCE = '1'
-./.tools/node/node.exe tools/provider-test.mjs sign .local/provider request.mreq issued.mlic
+./.tools/node/node.exe provider/test-license.mjs sign .local/provider request.mreq issued.mlic
 ```
 
 测试公钥在打包时固化进客户文件；更换测试密钥后必须重新打包。集成测试另用进程内临时密钥，且会更新开发数据库测试授权，不作为正式授权。
@@ -88,8 +95,12 @@ $env:LICENSE_SEQUENCE = '1'
 ## 离线打包与维护
 
 ```powershell
+# 首次打包时额外准备 Inno Setup、WinSW 和 VC++ 运行库
+./tools/bootstrap.ps1 -Packaging -Proxy http://127.0.0.1:7897
 ./tools/run.ps1 package:win
 ```
+
+环境准备统一校验 toolchain.lock.json 中的下载哈希，失败时中止，不自动改写锁文件。`-SkipDependencies` 可用于只检查和准备工具链。打包实现位于 installer/build.mjs，日常仍通过 package:win 调用；electron-builder 复用 bootstrap 准备的本地 Electron，并核对其版本，不在打包时重复下载运行时。
 
 产物为 `artifacts/MetaExam-Setup-0.1.0-win-x64-internal.exe` 及 SHA256。打包前核验工具链锁文件；Electron 由 electron-builder 输出目录，后端生产代码与生产依赖由 esbuild 封装，Inno Setup 统一生成 EXE。包内含独立 Node、React、Electron、PostgreSQL、WinSW、VC++ 运行库；安装后不运行 npm、不下载依赖。内部包未做正式 Authenticode 发布签名。
 

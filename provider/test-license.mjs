@@ -5,7 +5,7 @@ import path from 'node:path';
 const [cmd, dirArg, requestFile, output] = process.argv.slice(2);
 if (!dirArg)
   throw new Error(
-    'Usage: provider-test.mjs keygen <private-dir> OR sign <private-dir> <request.mreq> <output.mlic>',
+    'Usage: provider/test-license.mjs keygen <private-dir> OR sign <private-dir> <request.mreq> <output.mlic>',
   );
 const dir = path.resolve(dirArg);
 if (cmd === 'keygen') {

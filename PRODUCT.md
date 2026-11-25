@@ -8,7 +8,9 @@ web
 
 ## Stack
 
-用户确认 Node.js、NestJS、Fastify、React、Electron、PostgreSQL。
+用户确认 Node.js、NestJS、Fastify、React、Ant Design、Electron、PostgreSQL。Web 与 Electron 使用 packages/ui 中统一的 Ant Design 组件与中文主题配置。
+
+界面采用用户指定的 Ant Design 默认蓝色主题，主操作及导航选中态使用默认主色 #1677ff。
 
 ## Users
 

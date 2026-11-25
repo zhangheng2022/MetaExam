@@ -9,6 +9,7 @@ import {
   writeFileSync,
   rmSync,
   statSync,
+  realpathSync,
 } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -73,6 +74,37 @@ const entries = {
   db: 'packages/db/dist/index.js',
 };
 const dependencyDirs = new Set();
+const uiRequire = createRequire(path.join(root, 'packages/ui/package.json'));
+const visited = new Set();
+function collectUiNotices(dir) {
+  dir = realpathSync(dir);
+  if (visited.has(dir)) return;
+  visited.add(dir);
+  dependencyDirs.add(dir);
+  const packageFile = path.join(dir, 'package.json');
+  const pkg = JSON.parse(readFileSync(packageFile, 'utf8')),
+    localRequire = createRequire(packageFile);
+  for (const name of Object.keys(pkg.dependencies ?? {})) {
+    let packagePath;
+    try {
+      packagePath = localRequire.resolve(name + '/package.json');
+    } catch {
+      let candidate = path.dirname(localRequire.resolve(name));
+      while (
+        !existsSync(path.join(candidate, 'package.json')) ||
+        JSON.parse(readFileSync(path.join(candidate, 'package.json'), 'utf8')).name !== name
+      ) {
+        const parent = path.dirname(candidate);
+        if (parent === candidate) throw new Error('DEPENDENCY_NOTICE_NOT_FOUND: ' + name);
+        candidate = parent;
+      }
+      packagePath = path.join(candidate, 'package.json');
+    }
+    collectUiNotices(path.dirname(packagePath));
+  }
+}
+for (const name of ['antd', '@ant-design/icons'])
+  collectUiNotices(path.dirname(uiRequire.resolve(name + '/package.json')));
 const webRequire = createRequire(path.join(root, 'apps/web/package.json'));
 for (const name of ['react', 'react-dom'])
   dependencyDirs.add(path.dirname(webRequire.resolve(name + '/package.json')));
@@ -137,7 +169,26 @@ writeFileSync(
   path.join(payload, 'licenses/backend-dependencies.json'),
   JSON.stringify(notices, null, 2),
 );
-run(['exec', 'electron-builder', '--projectDir', 'apps/desktop', '--win', '--x64', '--dir']);
+// Reuse the runtime prepared by bootstrap; packaging must not redownload Electron.
+const electronDist = path.join(root, 'apps/desktop/node_modules/electron/dist');
+const electronVersion = JSON.parse(
+  readFileSync(path.join(root, 'apps/desktop/package.json'), 'utf8'),
+).devDependencies.electron;
+if (
+  !existsSync(path.join(electronDist, 'electron.exe')) ||
+  readFileSync(path.join(electronDist, 'version'), 'utf8').trim() !== electronVersion
+)
+  throw new Error('Run tools/bootstrap.ps1 -Packaging to prepare the locked Electron runtime.');
+run([
+  'exec',
+  'electron-builder',
+  '--projectDir',
+  'apps/desktop',
+  '--win',
+  '--x64',
+  '--dir',
+  '--config.electronDist=' + electronDist,
+]);
 cpSync(path.join(artifacts, 'desktop/win-unpacked'), path.join(payload, 'manager'), {
   recursive: true,
 });
@@ -169,7 +220,7 @@ copyFileSync(
 const trust = path.join(root, '.local/provider/public-keys.json');
 if (!existsSync(trust))
   throw new Error(
-    'Generate isolated internal test keys with tools/provider-test.mjs keygen .local/provider',
+    'Generate isolated internal test keys with provider/test-license.mjs keygen .local/provider',
   );
 const keys = JSON.parse(readFileSync(trust, 'utf8'));
 for (const value of Object.values(keys))
@@ -198,7 +249,8 @@ const archive = path.join(payload, 'manager/resources/app.asar');
 const archiveEntries = asar.listPackage(archive);
 for (const entry of archiveEntries) {
   const name = entry.replaceAll('\\', '/').replace(/^\//, '');
-  if (/provider-test|private\.pem|\.mlic$|\.env$/.test(name)) denied.push('app.asar:' + name);
+  if (/provider-test|test-license|private\.pem|\.mlic$|\.env$/.test(name))
+    denied.push('app.asar:' + name);
   if (
     /\.(json|js|pem|key)$/.test(name) &&
     /-----BEGIN (?:ENCRYPTED |RSA |EC |OPENSSH )?PRIVATE KEY-----[\r\n]+[A-Za-z0-9+/=]{30}/.test(
@@ -210,7 +262,7 @@ for (const entry of archiveEntries) {
 for (const file of all) {
   const name = path.relative(payload, file);
   if (
-    /provider-test|private\.pem|\.mlic$|\.env$|config\.json$/.test(name) &&
+    /provider-test|test-license|private\.pem|\.mlic$|\.env$|config\.json$/.test(name) &&
     !name.includes('locales')
   )
     denied.push(name);

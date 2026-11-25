@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-25T04:59:48.712991+00:00",
+  "generatedAt": "2026-11-25T06:16:48.281115+00:00",
   "title": "Design System: MetaExam",
   "extensions": {
     "colorMeta": {
@@ -78,42 +78,70 @@
         "role": "primary",
         "displayName": "accent",
         "tonalRamp": [
-          "oklch(15.00% 0.08106 176.54)",
-          "oklch(26.43% 0.08106 176.54)",
-          "oklch(37.86% 0.08106 176.54)",
-          "oklch(49.29% 0.08106 176.54)",
-          "oklch(60.71% 0.08106 176.54)",
-          "oklch(72.14% 0.08106 176.54)",
-          "oklch(83.57% 0.08106 176.54)",
-          "oklch(95.00% 0.08106 176.54)"
+          "oklch(15.00% 0.21935 259.04)",
+          "oklch(26.43% 0.21935 259.04)",
+          "oklch(37.86% 0.21935 259.04)",
+          "oklch(49.29% 0.21935 259.04)",
+          "oklch(60.71% 0.21935 259.04)",
+          "oklch(72.14% 0.21935 259.04)",
+          "oklch(83.57% 0.21935 259.04)",
+          "oklch(95.00% 0.21935 259.04)"
+        ]
+      },
+      "accent-hover": {
+        "role": "primary",
+        "displayName": "accent-hover",
+        "tonalRamp": [
+          "oklch(15.00% 0.17603 255.30)",
+          "oklch(26.43% 0.17603 255.30)",
+          "oklch(37.86% 0.17603 255.30)",
+          "oklch(49.29% 0.17603 255.30)",
+          "oklch(60.71% 0.17603 255.30)",
+          "oklch(72.14% 0.17603 255.30)",
+          "oklch(83.57% 0.17603 255.30)",
+          "oklch(95.00% 0.17603 255.30)"
+        ]
+      },
+      "accent-active": {
+        "role": "primary",
+        "displayName": "accent-active",
+        "tonalRamp": [
+          "oklch(15.00% 0.20954 260.97)",
+          "oklch(26.43% 0.20954 260.97)",
+          "oklch(37.86% 0.20954 260.97)",
+          "oklch(49.29% 0.20954 260.97)",
+          "oklch(60.71% 0.20954 260.97)",
+          "oklch(72.14% 0.20954 260.97)",
+          "oklch(83.57% 0.20954 260.97)",
+          "oklch(95.00% 0.20954 260.97)"
         ]
       },
       "navigation": {
         "role": "neutral",
         "displayName": "navigation",
         "tonalRamp": [
-          "oklch(15.00% 0.03802 237.95)",
-          "oklch(26.43% 0.03802 237.95)",
-          "oklch(37.86% 0.03802 237.95)",
-          "oklch(49.29% 0.03802 237.95)",
-          "oklch(60.71% 0.03802 237.95)",
-          "oklch(72.14% 0.03802 237.95)",
-          "oklch(83.57% 0.03802 237.95)",
-          "oklch(95.00% 0.03802 237.95)"
+          "oklch(15.00% 0.05043 247.27)",
+          "oklch(26.43% 0.05043 247.27)",
+          "oklch(37.86% 0.05043 247.27)",
+          "oklch(49.29% 0.05043 247.27)",
+          "oklch(60.71% 0.05043 247.27)",
+          "oklch(72.14% 0.05043 247.27)",
+          "oklch(83.57% 0.05043 247.27)",
+          "oklch(95.00% 0.05043 247.27)"
         ]
       },
       "navigation-current": {
         "role": "neutral",
         "displayName": "navigation-current",
         "tonalRamp": [
-          "oklch(15.00% 0.04130 228.31)",
-          "oklch(26.43% 0.04130 228.31)",
-          "oklch(37.86% 0.04130 228.31)",
-          "oklch(49.29% 0.04130 228.31)",
-          "oklch(60.71% 0.04130 228.31)",
-          "oklch(72.14% 0.04130 228.31)",
-          "oklch(83.57% 0.04130 228.31)",
-          "oklch(95.00% 0.04130 228.31)"
+          "oklch(15.00% 0.21935 259.04)",
+          "oklch(26.43% 0.21935 259.04)",
+          "oklch(37.86% 0.21935 259.04)",
+          "oklch(49.29% 0.21935 259.04)",
+          "oklch(60.71% 0.21935 259.04)",
+          "oklch(72.14% 0.21935 259.04)",
+          "oklch(83.57% 0.21935 259.04)",
+          "oklch(95.00% 0.21935 259.04)"
         ]
       },
       "navigation-text": {
@@ -130,6 +158,90 @@
           "oklch(95.00% 0.00794 216.62)"
         ]
       },
+      "brand-secondary": {
+        "role": "neutral",
+        "displayName": "brand-secondary",
+        "tonalRamp": [
+          "oklch(15.00% 0.02249 226.18)",
+          "oklch(26.43% 0.02249 226.18)",
+          "oklch(37.86% 0.02249 226.18)",
+          "oklch(49.29% 0.02249 226.18)",
+          "oklch(60.71% 0.02249 226.18)",
+          "oklch(72.14% 0.02249 226.18)",
+          "oklch(83.57% 0.02249 226.18)",
+          "oklch(95.00% 0.02249 226.18)"
+        ]
+      },
+      "navigation-note": {
+        "role": "neutral",
+        "displayName": "navigation-note",
+        "tonalRamp": [
+          "oklch(15.00% 0.02157 227.57)",
+          "oklch(26.43% 0.02157 227.57)",
+          "oklch(37.86% 0.02157 227.57)",
+          "oklch(49.29% 0.02157 227.57)",
+          "oklch(60.71% 0.02157 227.57)",
+          "oklch(72.14% 0.02157 227.57)",
+          "oklch(83.57% 0.02157 227.57)",
+          "oklch(95.00% 0.02157 227.57)"
+        ]
+      },
+      "logo": {
+        "role": "neutral",
+        "displayName": "logo",
+        "tonalRamp": [
+          "oklch(15.00% 0.13477 251.78)",
+          "oklch(26.43% 0.13477 251.78)",
+          "oklch(37.86% 0.13477 251.78)",
+          "oklch(49.29% 0.13477 251.78)",
+          "oklch(60.71% 0.13477 251.78)",
+          "oklch(72.14% 0.13477 251.78)",
+          "oklch(83.57% 0.13477 251.78)",
+          "oklch(95.00% 0.13477 251.78)"
+        ]
+      },
+      "focus": {
+        "role": "neutral",
+        "displayName": "focus",
+        "tonalRamp": [
+          "oklch(15.00% 0.21935 259.04)",
+          "oklch(26.43% 0.21935 259.04)",
+          "oklch(37.86% 0.21935 259.04)",
+          "oklch(49.29% 0.21935 259.04)",
+          "oklch(60.71% 0.21935 259.04)",
+          "oklch(72.14% 0.21935 259.04)",
+          "oklch(83.57% 0.21935 259.04)",
+          "oklch(95.00% 0.21935 259.04)"
+        ]
+      },
+      "selection-background": {
+        "role": "neutral",
+        "displayName": "selection-background",
+        "tonalRamp": [
+          "oklch(15.00% 0.05860 243.03)",
+          "oklch(26.43% 0.05860 243.03)",
+          "oklch(37.86% 0.05860 243.03)",
+          "oklch(49.29% 0.05860 243.03)",
+          "oklch(60.71% 0.05860 243.03)",
+          "oklch(72.14% 0.05860 243.03)",
+          "oklch(83.57% 0.05860 243.03)",
+          "oklch(95.00% 0.05860 243.03)"
+        ]
+      },
+      "selection-text": {
+        "role": "neutral",
+        "displayName": "selection-text",
+        "tonalRamp": [
+          "oklch(15.00% 0.19331 262.00)",
+          "oklch(26.43% 0.19331 262.00)",
+          "oklch(37.86% 0.19331 262.00)",
+          "oklch(49.29% 0.19331 262.00)",
+          "oklch(60.71% 0.19331 262.00)",
+          "oklch(72.14% 0.19331 262.00)",
+          "oklch(83.57% 0.19331 262.00)",
+          "oklch(95.00% 0.19331 262.00)"
+        ]
+      },
       "good-background": {
         "role": "semantic",
         "displayName": "good-background",
@@ -144,18 +256,18 @@
           "oklch(95.00% 0.01622 172.64)"
         ]
       },
-      "good-text": {
+      "good-border": {
         "role": "semantic",
-        "displayName": "good-text",
+        "displayName": "good-border",
         "tonalRamp": [
-          "oklch(15.00% 0.07789 170.19)",
-          "oklch(26.43% 0.07789 170.19)",
-          "oklch(37.86% 0.07789 170.19)",
-          "oklch(49.29% 0.07789 170.19)",
-          "oklch(60.71% 0.07789 170.19)",
-          "oklch(72.14% 0.07789 170.19)",
-          "oklch(83.57% 0.07789 170.19)",
-          "oklch(95.00% 0.07789 170.19)"
+          "oklch(15.00% 0.03902 173.79)",
+          "oklch(26.43% 0.03902 173.79)",
+          "oklch(37.86% 0.03902 173.79)",
+          "oklch(49.29% 0.03902 173.79)",
+          "oklch(60.71% 0.03902 173.79)",
+          "oklch(72.14% 0.03902 173.79)",
+          "oklch(83.57% 0.03902 173.79)",
+          "oklch(95.00% 0.03902 173.79)"
         ]
       },
       "warning-background": {
@@ -186,36 +298,126 @@
           "oklch(95.00% 0.09351 74.92)"
         ]
       },
+      "warning-border": {
+        "role": "semantic",
+        "displayName": "warning-border",
+        "tonalRamp": [
+          "oklch(15.00% 0.05470 87.24)",
+          "oklch(26.43% 0.05470 87.24)",
+          "oklch(37.86% 0.05470 87.24)",
+          "oklch(49.29% 0.05470 87.24)",
+          "oklch(60.71% 0.05470 87.24)",
+          "oklch(72.14% 0.05470 87.24)",
+          "oklch(83.57% 0.05470 87.24)",
+          "oklch(95.00% 0.05470 87.24)"
+        ]
+      },
+      "error": {
+        "role": "semantic",
+        "displayName": "error",
+        "tonalRamp": [
+          "oklch(15.00% 0.21434 24.47)",
+          "oklch(26.43% 0.21434 24.47)",
+          "oklch(37.86% 0.21434 24.47)",
+          "oklch(49.29% 0.21434 24.47)",
+          "oklch(60.71% 0.21434 24.47)",
+          "oklch(72.14% 0.21434 24.47)",
+          "oklch(83.57% 0.21434 24.47)",
+          "oklch(95.00% 0.21434 24.47)"
+        ]
+      },
       "error-background": {
         "role": "semantic",
         "displayName": "error-background",
         "tonalRamp": [
-          "oklch(15.00% 0.00852 44.89)",
-          "oklch(26.43% 0.00852 44.89)",
-          "oklch(37.86% 0.00852 44.89)",
-          "oklch(49.29% 0.00852 44.89)",
-          "oklch(60.71% 0.00852 44.89)",
-          "oklch(72.14% 0.00852 44.89)",
-          "oklch(83.57% 0.00852 44.89)",
-          "oklch(95.00% 0.00852 44.89)"
+          "oklch(15.00% 0.01432 28.01)",
+          "oklch(26.43% 0.01432 28.01)",
+          "oklch(37.86% 0.01432 28.01)",
+          "oklch(49.29% 0.01432 28.01)",
+          "oklch(60.71% 0.01432 28.01)",
+          "oklch(72.14% 0.01432 28.01)",
+          "oklch(83.57% 0.01432 28.01)",
+          "oklch(95.00% 0.01432 28.01)"
         ]
       },
-      "error-text": {
+      "error-border": {
         "role": "semantic",
-        "displayName": "error-text",
+        "displayName": "error-border",
         "tonalRamp": [
-          "oklch(15.00% 0.08885 37.49)",
-          "oklch(26.43% 0.08885 37.49)",
-          "oklch(37.86% 0.08885 37.49)",
-          "oklch(49.29% 0.08885 37.49)",
-          "oklch(60.71% 0.08885 37.49)",
-          "oklch(72.14% 0.08885 37.49)",
-          "oklch(83.57% 0.08885 37.49)",
-          "oklch(95.00% 0.08885 37.49)"
+          "oklch(15.00% 0.05857 24.81)",
+          "oklch(26.43% 0.05857 24.81)",
+          "oklch(37.86% 0.05857 24.81)",
+          "oklch(49.29% 0.05857 24.81)",
+          "oklch(60.71% 0.05857 24.81)",
+          "oklch(72.14% 0.05857 24.81)",
+          "oklch(83.57% 0.05857 24.81)",
+          "oklch(95.00% 0.05857 24.81)"
+        ]
+      },
+      "info": {
+        "role": "semantic",
+        "displayName": "info",
+        "tonalRamp": [
+          "oklch(15.00% 0.21935 259.04)",
+          "oklch(26.43% 0.21935 259.04)",
+          "oklch(37.86% 0.21935 259.04)",
+          "oklch(49.29% 0.21935 259.04)",
+          "oklch(60.71% 0.21935 259.04)",
+          "oklch(72.14% 0.21935 259.04)",
+          "oklch(83.57% 0.21935 259.04)",
+          "oklch(95.00% 0.21935 259.04)"
+        ]
+      },
+      "info-background": {
+        "role": "semantic",
+        "displayName": "info-background",
+        "tonalRamp": [
+          "oklch(15.00% 0.02099 241.35)",
+          "oklch(26.43% 0.02099 241.35)",
+          "oklch(37.86% 0.02099 241.35)",
+          "oklch(49.29% 0.02099 241.35)",
+          "oklch(60.71% 0.02099 241.35)",
+          "oklch(72.14% 0.02099 241.35)",
+          "oklch(83.57% 0.02099 241.35)",
+          "oklch(95.00% 0.02099 241.35)"
+        ]
+      },
+      "info-border": {
+        "role": "semantic",
+        "displayName": "info-border",
+        "tonalRamp": [
+          "oklch(15.00% 0.09561 247.26)",
+          "oklch(26.43% 0.09561 247.26)",
+          "oklch(37.86% 0.09561 247.26)",
+          "oklch(49.29% 0.09561 247.26)",
+          "oklch(60.71% 0.09561 247.26)",
+          "oklch(72.14% 0.09561 247.26)",
+          "oklch(83.57% 0.09561 247.26)",
+          "oklch(95.00% 0.09561 247.26)"
+        ]
+      },
+      "good-text": {
+        "role": "semantic",
+        "displayName": "good-text",
+        "tonalRamp": [
+          "oklch(15.00% 0.08106 176.54)",
+          "oklch(26.43% 0.08106 176.54)",
+          "oklch(37.86% 0.08106 176.54)",
+          "oklch(49.29% 0.08106 176.54)",
+          "oklch(60.71% 0.08106 176.54)",
+          "oklch(72.14% 0.08106 176.54)",
+          "oklch(83.57% 0.08106 176.54)",
+          "oklch(95.00% 0.08106 176.54)"
         ]
       }
     },
-    "shadows": [],
+    "shadows": [
+      {
+        "name": "button-primary",
+        "value": "0 2px 0 rgba(5,145,255,0.1)",
+        "purpose": "Ant Design 默认主按钮轻投影。"
+      }
+    ],
     "motion": [],
     "breakpoints": [
       {
@@ -227,15 +429,25 @@
         "value": "600px"
       }
     ],
+    "implementation": {
+      "library": "antd@6.7.2",
+      "provider": "MetaExamProvider / ConfigProvider",
+      "locale": "zhCN",
+      "motion": false,
+      "primaryShadow": "0 2px 0 rgba(5,145,255,0.1)",
+      "descriptionLabelColor": "#566570"
+    },
+    "focus": {
+      "color": "#1677ff",
+      "width": "3px",
+      "offset": "4px"
+    },
     "evidence": {
       "stylesheet": "packages/ui/src/styles.css",
       "component": "packages/ui/src/index.tsx",
-      "screenshots": [
-        ".impeccable/review/desktop.png",
-        ".impeccable/review/mobile.png",
-        ".impeccable/review/initial-error.png"
-      ]
+      "screenshots": [".impeccable/review/desktop.png", ".impeccable/review/mobile.png"]
     },
+    "previewNote": "组件为自包含 HTML/CSS 静态视觉近似，不加载 React 或 Ant Design 运行时；图标为内联 SVG，不作为产品组件源码。",
     "tonalRampNote": "仅为面板合成的色阶预览，不是已实现的产品色值；原始 token 以 DESIGN.md 为准。",
     "directionEvidence": {
       "formSeed": null,
@@ -245,61 +457,77 @@
   },
   "components": [
     {
-      "name": "检查按钮",
+      "name": "Ant Design 主按钮",
       "kind": "button",
-      "refersTo": "button",
-      "description": "请求期间禁用；悬停与键盘焦点沿用实现。",
-      "html": "<button class=\"ds-button\">重新检查</button>",
-      "css": ".ds-button{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;background:#fff;color:var(--ink,#202f39);border:1px solid #aebec5;border-radius:6px;padding:10px 18px;font-size:16px;font-weight:600;min-height:44px;cursor:pointer}.ds-button:hover{background:#edf4f2;border-color:var(--accent,#176b5b)}.ds-button:focus-visible{outline:3px solid #188b78;outline-offset:4px}.ds-button:disabled{cursor:wait;color:#596870;background:#edf0f2}"
+      "refersTo": "button-primary",
+      "description": "检查操作，呈现主题默认、悬停、按下和键盘焦点；静态 HTML/CSS 视觉预览，不运行 React。",
+      "html": "<button class=\"ds-primary\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M21 11a9 9 0 1 0-2.6 7M21 4v7h-7\"/></svg><span>重新检查</span></button>",
+      "css": ".ds-primary{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 15px;background:#1677ff;color:#fff;border:1px solid transparent;border-radius:6px;font-size:14px;box-shadow:0 2px 0 rgba(5,145,255,0.1);cursor:pointer}.ds-primary:hover{background:#4096ff}.ds-primary:active{background:#0958d9}.ds-primary:focus-visible{outline:3px solid #1677ff;outline-offset:4px}.ds-primary:disabled{background:rgba(0,0,0,.04);color:rgba(0,0,0,.25);box-shadow:none;cursor:not-allowed}"
     },
     {
-      "name": "当前导航",
+      "name": "Ant Design 当前导航",
       "kind": "nav",
       "refersTo": "navigation-current",
-      "description": "静态当前项；移动端由顶部品牌承担识别。",
-      "html": "<nav class=\"ds-navigation\" aria-label=\"主导航\"><span class=\"ds-current\" aria-current=\"page\">运行概览</span></nav>",
-      "css": ".ds-navigation{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;background:#182e3c;color:#ecf3f5;padding:26px}.ds-current{display:block;background:#294653;border-radius:6px;padding:12px 14px;font-size:14px}"
+      "description": "深色 inline Menu 的选中项，锚点可定位到服务区域；静态 HTML/CSS 视觉预览，不运行 React。",
+      "html": "<nav class=\"ds-nav\" aria-label=\"主导航\"><a class=\"ds-nav-item\" href=\"#service-heading\" aria-current=\"page\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" aria-hidden=\"true\"><path d=\"M4 19a10 10 0 1 1 16 0H4Zm8-7 5-5M5 12h2m10 0h2M12 3v3\"/></svg><span>运行概览</span></a></nav>",
+      "css": ".ds-nav{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;padding:20px;background:#001529}.ds-nav-item{display:flex;align-items:center;gap:10px;min-height:54px;padding:0 24px;border-radius:8px;background:#1677ff;color:#fff;text-decoration:none;font-size:14px}.ds-nav-item:hover{color:#fff}.ds-nav-item:focus-visible{outline:3px solid #1677ff;outline-offset:4px}"
     },
     {
-      "name": "运行正常",
+      "name": "Ant Design 运行正常标签",
       "kind": "chip",
       "refersTo": "status-good",
-      "description": "只作状态展示，文字与颜色同时表达。",
-      "html": "<span class=\"ds-status-good\">运行正常</span>",
-      "css": ".ds-status-good{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;display:inline-block;background:#e4f2ed;color:#125d49;font-size:12px;font-weight:600;padding:6px 10px;border-radius:4px}"
+      "description": "只读语义 Tag，以文字与颜色同时表达状态；静态 HTML/CSS 视觉预览，不运行 React。",
+      "html": "<span class=\"ds-tag-good\">运行正常</span>",
+      "css": ".ds-tag-good{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;display:inline-block;background:#e4f2ed;color:#176b5b;font-size:12px;line-height:20px;padding:0 7px;border:1px solid transparent;border-radius:4px;white-space:nowrap}"
     },
     {
-      "name": "需要检查",
+      "name": "Ant Design 需要检查标签",
       "kind": "chip",
       "refersTo": "status-warning",
-      "description": "只作状态展示，文字与颜色同时表达。",
-      "html": "<span class=\"ds-status-warning\">需要检查</span>",
-      "css": ".ds-status-warning{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;display:inline-block;background:#faf0dc;color:#77500a;font-size:12px;font-weight:600;padding:6px 10px;border-radius:4px}"
+      "description": "只读语义 Tag，以文字与颜色同时表达状态；静态 HTML/CSS 视觉预览，不运行 React。",
+      "html": "<span class=\"ds-tag-warning\">需要检查</span>",
+      "css": ".ds-tag-warning{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;display:inline-block;background:#faf0dc;color:#77500a;font-size:12px;line-height:20px;padding:0 7px;border:1px solid transparent;border-radius:4px;white-space:nowrap}"
     },
     {
-      "name": "服务面板",
+      "name": "Ant Design 服务卡片",
       "kind": "card",
       "refersTo": "service-panel",
-      "description": "名称、说明与右侧状态，细线分隔服务行。",
-      "html": "<section class=\"ds-panel\"><h2>系统服务</h2><div class=\"ds-row\"><div><h3>本地数据库</h3><p>保存系统配置和业务数据</p></div><strong>已连接</strong></div></section>",
-      "css": ".ds-panel{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;background:#fff;color:var(--ink,#202f39);border:1px solid var(--line,#dce3e6);border-radius:10px;padding:26px 30px}.ds-panel h2{font-size:18px;font-weight:650;margin:0 0 17px}.ds-row{display:flex;justify-content:space-between;align-items:center;gap:24px;border-top:1px solid var(--line,#dce3e6);padding:22px 0 0}.ds-row h3{font-size:15px;font-weight:600;margin:0 0 5px}.ds-row p{font-size:13px;line-height:1.7;color:var(--muted,#566570);margin:0}.ds-row strong{font-size:14px;font-weight:550;white-space:nowrap}"
+      "description": "Card 标题与正文分隔，服务行与状态并列；静态 HTML/CSS 视觉预览，不运行 React。",
+      "html": "<section class=\"ds-card\"><div class=\"ds-card-head\"><h2>系统服务</h2><span class=\"ds-card-tag\">运行正常</span></div><div class=\"ds-card-body\"><div class=\"ds-service\"><div><h3>本地数据库</h3><p>保存系统配置和业务数据</p></div><span class=\"ds-card-tag\">已连接</span></div></div></section>",
+      "css": ".ds-card{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;border:1px solid #dce3e6;border-radius:8px;background:#fff;color:#202f39}.ds-card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:56px;padding:0 24px;border-bottom:1px solid #dce3e6}.ds-card-head h2{font-size:18px;font-weight:600;margin:0}.ds-card-body{padding:24px}.ds-service{display:flex;justify-content:space-between;align-items:center;gap:24px}.ds-service h3{font-size:15px;font-weight:600;margin:0 0 5px}.ds-service p{font-size:13px;color:#566570;line-height:1.5714;margin:0}.ds-card-tag{font-size:12px;line-height:20px;padding:0 7px;border:1px solid transparent;border-radius:4px;background:#e4f2ed;color:#176b5b;white-space:nowrap}"
     },
     {
-      "name": "连接错误提示",
+      "name": "Ant Design 连接错误提示",
       "kind": "custom",
       "refersTo": "error-notice",
-      "description": "有历史结果时补充过时提示；首次失败不能推断授权结论。",
-      "html": "<div class=\"ds-notice\" role=\"alert\">暂时无法连接考试服务。请检查服务是否启动，然后重试。<span>以下为上次检查结果，可能已过时。</span></div>",
-      "css": ".ds-notice{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;padding:16px 20px;border:1px solid #d0a89d;border-radius:6px;color:#783c2a;background:#fff8f5;font-size:14px;line-height:1.7}.ds-notice span{display:block}"
+      "description": "带图标、标题与说明的 Alert；静态 HTML/CSS 视觉预览，不运行 React。",
+      "html": "<div class=\"ds-alert-error\" role=\"alert\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"12\" fill=\"#ff4d4f\"/><path d=\"m8 8 8 8m0-8-8 8\" stroke=\"#fff\" stroke-width=\"2\"/></svg><div><div class=\"ds-alert-title\">暂时无法连接考试服务。请检查服务是否启动，然后重试。</div><p>以下为上次检查结果，可能已过时。</p></div></div>",
+      "css": ".ds-alert-error{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;display:flex;align-items:flex-start;gap:12px;padding:20px 24px;border:1px solid #ffccc7;border-radius:8px;background:#fff2f0;color:#202f39;font-size:14px;line-height:1.5714}.ds-alert-error>svg{flex-shrink:0}.ds-alert-error .ds-alert-title{font-size:15px;font-weight:600;margin-bottom:8px}.ds-alert-error p{margin:0}"
+    },
+    {
+      "name": "Ant Design 技术阶段提示",
+      "kind": "custom",
+      "refersTo": "info-notice",
+      "description": "带图标、标题与说明的 Alert；静态 HTML/CSS 视觉预览，不运行 React。",
+      "html": "<div class=\"ds-alert-info\" role=\"note\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"12\" fill=\"#1677ff\"/><path d=\"M12 10v7\" stroke=\"#fff\" stroke-width=\"2\"/><circle cx=\"12\" cy=\"6.5\" r=\"1.2\" fill=\"#fff\"/></svg><div><div class=\"ds-alert-title\">技术验证阶段</div><p>当前版本用于验证服务运行、数据库连接和本地授权，尚未开放正式考试。</p></div></div>",
+      "css": ".ds-alert-info{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;display:flex;align-items:flex-start;gap:12px;padding:20px 24px;border:1px solid #91caff;border-radius:8px;background:#e6f4ff;color:#202f39;font-size:14px;line-height:1.5714}.ds-alert-info>svg{flex-shrink:0}.ds-alert-info .ds-alert-title{font-size:15px;font-weight:600;margin-bottom:8px}.ds-alert-info p{margin:0}"
+    },
+    {
+      "name": "Ant Design 授权描述",
+      "kind": "custom",
+      "refersTo": "license-description",
+      "description": "small 单列 Descriptions，标签采用共享 muted 色；静态 HTML/CSS 视觉预览，不运行 React。",
+      "html": "<dl class=\"ds-descriptions\"><div><dt>授权状态</dt><dd><span class=\"ds-license-tag\">无法获取</span></dd></div></dl>",
+      "css": ".ds-descriptions{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;font-size:14px;line-height:22px;margin:0;color:#202f39}.ds-descriptions>div{display:flex;gap:8px}.ds-descriptions dt{color:#566570}.ds-descriptions dt::after{content:\":\"}.ds-descriptions dd{margin:0}.ds-license-tag{display:inline-block;border:1px solid transparent;border-radius:4px;background:#f5f5f5;color:#202f39;font-size:12px;line-height:20px;padding:0 7px}"
     }
   ],
   "narrative": {
-    "overview": "延续现有运维界面基线：墨蓝导航、浅灰底、白色服务面板与克制的状态色，优先帮助本机维护人员读懂真实状态。网页与 Electron 复用同一组件和数据契约；字体与内联 SVG 标识无需联网加载。\n\n本文从 `packages/ui/src/styles.css`、`packages/ui/src/index.tsx` 及本轮桌面、移动端、首次连接失败截图提取。未保存用户选定的 Creative North Star、FORM seed 或 QUALITY BAR，亦无批准的视觉稿；不补造这些承诺。",
+    "overview": "采用 Ant Design 默认深色导航与蓝色交互，保留浅灰底与白色服务面板，帮助本机维护人员读懂真实状态。Web 与 Electron 通过 `packages/ui` 共享 Ant Design（6.7.2）；`MetaExamProvider` 使用 `ConfigProvider` 统一 `zhCN` 中文配置与主题。离线系统字体、内联 SVG 品牌与打包图标不依赖外部素材。\n\n本文依据当前组件源码、样式和桌面、移动端截图更新。按用户选择采用 Ant Design 默认蓝色主题；没有新增或补造 Creative North Star、FORM seed、QUALITY BAR 或批准的视觉稿。",
     "keyCharacteristics": [
+      "Ant Design 组件与统一中文主题。",
+      "默认深色导航与蓝色主操作，绿色独立表达成功状态。",
       "状态文字明确，色彩辅助判断。",
-      "服务列表集中呈现，授权说明保持独立。",
-      "平面分层、细分隔线与适度圆角。",
-      "采用离线系统字体，不依赖栅格素材。"
+      "平面分层、细线与适度圆角，适配窄屏。"
     ],
     "rules": [
       {
@@ -319,13 +547,13 @@
       }
     ],
     "dos": [
-      "**Do** 用明确的文字区分加载、成功、异常、未知和过期结果。",
+      "**Do** 通过 MetaExamProvider 复用中文配置与共享主题。",
       "**Do** 保留离线字体、键盘焦点与移动端可读的服务行结构。",
-      "**Do** 从真实返回值生成授权信息与检查时间。"
+      "**Do** 用明确文字区分加载、成功、异常、未知和过期结果。"
     ],
     "donts": [
-      "**Don't** 把首次连接失败表示为确定的授权或数据库结论。",
-      "**Don't** 将当前技术验证界面写成正式考试功能已经开放。",
+      "**Don't** 用虚构数据或确定结论填补无法获取的状态。",
+      "**Don't** 将当前技术验证界面描述为正式考试功能已开放。",
       "**Don't** 将缺失的视觉方向稿、FORM seed 或 QUALITY BAR 记录为已批准。"
     ]
   }

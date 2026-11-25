@@ -165,7 +165,7 @@ export async function createApp(
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header(
       'Content-Security-Policy',
-      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'",
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'",
     );
     reply.header('Cache-Control', 'no-store');
     return payload;

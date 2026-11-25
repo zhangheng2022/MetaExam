@@ -53,6 +53,10 @@ async function main() {
     };
     if (status.product !== 'MetaExam' || status.database !== 'ready')
       throw new Error('DESKTOP_STATUS_FAILED');
+    const primaryColor = await window.webContents.executeJavaScript(
+      "getComputedStyle(document.querySelector('.ant-btn-primary')).backgroundColor",
+    );
+    if (primaryColor !== 'rgb(22, 119, 255)') throw new Error('DESKTOP_THEME_FAILED');
     console.log('DESKTOP_STATUS_READY');
     app.quit();
   }

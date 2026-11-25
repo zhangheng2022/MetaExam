@@ -1,42 +1,36 @@
-import { spawn } from 'node:child_process';
+import concurrently from 'concurrently';
+import { execFileSync } from 'node:child_process';
+import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import { readFileSync } from 'node:fs';
-const root = path.resolve(import.meta.dirname, '..'),
-  config = path.join(root, '.local/config.json');
-const c = JSON.parse(readFileSync(config, 'utf8'));
-const env = { ...process.env, METAEXAM_CONFIG: config, METAEXAM_API_PORT: String(c.api.port) };
-const children = [];
-const run = (file, args = []) => {
-  const p = spawn(process.execPath, [file, ...args], {
-    cwd: root,
-    env,
-    stdio: 'inherit',
-    windowsHide: true,
-  });
-  children.push(p);
-  return p;
+
+const root = path.resolve(import.meta.dirname, '..');
+const configPath = path.resolve(
+  process.env.METAEXAM_CONFIG ?? path.join(root, '.local/config.json'),
+);
+if (!existsSync(configPath)) throw new Error('Run db:start and db:migrate first; see README.md.');
+const config = JSON.parse(readFileSync(configPath, 'utf8'));
+const pnpm = path.join(root, '.tools/pnpm/node_modules/pnpm/bin/pnpm.cjs');
+// Build frontend type declarations once. Vite serves shared UI source via the
+// development export condition, so later UI edits use its normal React HMR.
+execFileSync(process.execPath, [pnpm, '--filter', '@metaexam/ui...', 'build'], {
+  cwd: root,
+  stdio: 'inherit',
+  windowsHide: true,
+});
+const env = {
+  ...process.env,
+  METAEXAM_CONFIG: configPath,
+  METAEXAM_API_PORT: String(config.api.port),
 };
-run('apps/api/dist/main.js');
-run('apps/worker/dist/main.js');
-run('.tools/pnpm/node_modules/pnpm/bin/pnpm.cjs', ['--filter', '@metaexam/web', 'dev']);
-let stopping = false;
-const stop = () => {
-  if (stopping) return;
-  stopping = true;
-  for (const p of children) {
-    if (p.pid)
-      spawn('taskkill.exe', ['/PID', String(p.pid), '/T', '/F'], {
-        windowsHide: true,
-        stdio: 'ignore',
-      });
-  }
-};
-process.on('SIGINT', stop);
-process.on('SIGTERM', stop);
-for (const p of children)
-  p.on('exit', (code) => {
-    if (!stopping) {
-      stop();
-      process.exitCode = code ?? 1;
-    }
-  });
+const { result } = concurrently(
+  [
+    { name: 'server', command: 'pnpm run dev:backend', env },
+    { name: 'web', command: 'pnpm --filter @metaexam/web dev', env },
+  ],
+  { cwd: root, killOthersOn: ['failure', 'success'], prefix: 'name' },
+);
+try {
+  await result;
+} catch {
+  process.exitCode = 1;
+}
