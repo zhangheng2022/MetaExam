@@ -21,6 +21,7 @@ export * from './attachments';
 export * from './papers';
 export * from './exams';
 export * from './attempts';
+export * from './grading';
 import { processImportJob } from './imports';
 export function createDatabase(config = loadConfig()) {
   const pool = new Pool({

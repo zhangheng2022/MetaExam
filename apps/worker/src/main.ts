@@ -1,4 +1,10 @@
-import { createDatabase, processOne, readiness, finishExpiredAttempts } from '@metaexam/db';
+import {
+  createDatabase,
+  processOne,
+  readiness,
+  finishExpiredAttempts,
+  gradeNextAttempt,
+} from '@metaexam/db';
 import { setTimeout } from 'node:timers/promises';
 let stopping = false;
 for (const signal of ['SIGINT', 'SIGTERM'] as const)
@@ -17,7 +23,8 @@ async function main() {
           await finishExpiredAttempts(db);
           lastExpiration = Date.now();
         }
-        if (!(await processOne(db))) await setTimeout(500);
+        const graded = await gradeNextAttempt(db);
+        if (!(await processOne(db)) && !graded) await setTimeout(500);
       } catch {
         console.error(JSON.stringify({ event: 'worker_retry' }));
         await setTimeout(2000);

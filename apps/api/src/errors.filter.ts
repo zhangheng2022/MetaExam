@@ -2,6 +2,9 @@ import { Catch, HttpException, type ArgumentsHost, type ExceptionFilter } from '
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { IdentityError } from '@metaexam/db';
 const messages: Record<string, string> = {
+  GRADING_NOT_READY: '尚未满足阅卷或发布条件：请等待考试结束、后台判分，并完成全部已交卷答卷的评分',
+  GRADES_IMMUTABLE: '成绩已经发布，不能再修改或撤回',
+  GRADE_INVALID: '只能人工评分简答题，分数须在本题范围内且以 0.5 分为单位',
   SERVICE_STOPPING: '服务正在停止，请等待后台重新启动后再入场',
   ATTEMPT_TIME_WINDOW: '尚未到开考时间或考试已结束，不能新入场',
   ATTEMPT_OTHER_ACTIVE: '你已有其他进行中的考试，请先完成该考试',

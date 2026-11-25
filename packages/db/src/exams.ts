@@ -31,6 +31,14 @@ const dates = (r: ExamSummary): ExamSummary => ({
 });
 export class ExamRepository {
   constructor(readonly db: Database) {}
+  withAccess<T>(
+    actor: string,
+    id: string,
+    write: boolean,
+    action: (c: PoolClient, exam: ExamSummary) => Promise<T>,
+  ) {
+    return this.run(actor, write, async (c, a) => action(c, await this.get(c, a, id)));
+  }
   private run<T>(id: string, write: boolean, action: (c: PoolClient, a: Actor) => Promise<T>) {
     return transaction(this.db, async (c) => {
       if (write) await c.query('SELECT pg_advisory_xact_lock(6401204)');

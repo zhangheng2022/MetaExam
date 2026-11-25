@@ -47,6 +47,8 @@ export class Routes {
     '/exams/:examId',
     '/my-exams',
     '/attempts/:attemptId',
+    '/exams/:examId/grading',
+    '/my-exams/:examId/result',
   ])
   page(@Res() res: FastifyReply) {
     return res

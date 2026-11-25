@@ -268,6 +268,51 @@ BEGIN
 END; $$;
 CREATE TRIGGER attempt_answers_guard BEFORE INSERT OR UPDATE OR DELETE ON attempt_answers FOR EACH ROW EXECUTE FUNCTION guard_attempt_answer();
 `;
+const grading = `
+CREATE TABLE exam_grading(
+ exam_id uuid PRIMARY KEY REFERENCES exams(id),revision integer NOT NULL DEFAULT 0 CHECK(revision>=0),
+ policy_version integer NOT NULL DEFAULT 1 CHECK(policy_version=1),published_at timestamptz,published_by uuid REFERENCES users(id),
+ CHECK((published_at IS NULL)=(published_by IS NULL))
+);
+CREATE TABLE attempt_scores(
+ attempt_id uuid NOT NULL REFERENCES exam_attempts(id),position integer NOT NULL,
+ score_units integer CHECK(score_units>=0),mode text NOT NULL CHECK(mode IN ('auto','manual')),
+ revision integer NOT NULL DEFAULT 1 CHECK(revision>0),comment text NOT NULL DEFAULT '' CHECK(length(comment)<=2000),
+ graded_by uuid REFERENCES users(id),updated_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(attempt_id,position)
+);
+CREATE FUNCTION guard_grading_state() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE e exams;
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'GRADES_IMMUTABLE'; END IF;
+ SELECT * INTO e FROM exams WHERE id=NEW.exam_id;
+ IF e.status<>'published' THEN RAISE EXCEPTION 'GRADING_NOT_READY'; END IF;
+ IF TG_OP='UPDATE' AND (OLD.published_at IS NOT NULL OR NEW.exam_id<>OLD.exam_id OR NEW.policy_version<>OLD.policy_version OR NEW.revision<=OLD.revision) THEN RAISE EXCEPTION 'GRADES_IMMUTABLE'; END IF;
+ IF NEW.published_at IS NOT NULL THEN
+  IF e.ends_at>clock_timestamp() OR EXISTS(SELECT 1 FROM exam_attempts WHERE exam_id=e.id AND status<>'submitted') OR
+   EXISTS(SELECT 1 FROM exam_attempts a JOIN paper_version_items i ON i.paper_version_id=a.paper_version_id LEFT JOIN attempt_scores s ON s.attempt_id=a.id AND s.position=i.position WHERE a.exam_id=e.id AND (s.attempt_id IS NULL OR s.score_units IS NULL))
+  THEN RAISE EXCEPTION 'GRADING_NOT_READY'; END IF;
+ END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER exam_grading_guard BEFORE INSERT OR UPDATE OR DELETE ON exam_grading FOR EACH ROW EXECUTE FUNCTION guard_grading_state();
+CREATE FUNCTION guard_score_change() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE a exam_attempts; p paper_version_items; kind text; released timestamptz;
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'GRADES_IMMUTABLE'; END IF;
+ SELECT * INTO a FROM exam_attempts WHERE id=NEW.attempt_id;
+ IF a.status<>'submitted' THEN RAISE EXCEPTION 'GRADING_NOT_READY'; END IF;
+ SELECT published_at INTO released FROM exam_grading WHERE exam_id=a.exam_id FOR UPDATE;
+ IF NOT FOUND OR released IS NOT NULL THEN RAISE EXCEPTION 'GRADES_IMMUTABLE'; END IF;
+ SELECT * INTO p FROM paper_version_items WHERE paper_version_id=a.paper_version_id AND position=NEW.position;
+ IF NOT FOUND OR NEW.score_units>p.score_units THEN RAISE EXCEPTION 'GRADE_INVALID'; END IF;
+ SELECT content->'content'->>'type' INTO kind FROM question_versions WHERE id=p.question_version_id;
+ IF (kind='essay')<>(NEW.mode='manual') OR (NEW.mode='auto' AND (NEW.score_units IS NULL OR NEW.graded_by IS NOT NULL)) OR (NEW.mode='manual' AND NEW.score_units IS NOT NULL AND NEW.graded_by IS NULL) THEN RAISE EXCEPTION 'GRADE_INVALID'; END IF;
+ IF TG_OP='UPDATE' AND (OLD.mode='auto' OR NEW.attempt_id<>OLD.attempt_id OR NEW.position<>OLD.position OR NEW.mode<>OLD.mode OR NEW.revision<>OLD.revision+1) THEN RAISE EXCEPTION 'GRADES_IMMUTABLE'; END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER attempt_scores_guard BEFORE INSERT OR UPDATE OR DELETE ON attempt_scores FOR EACH ROW EXECUTE FUNCTION guard_score_change();
+`;
 export const MIGRATIONS = [
   MIGRATION,
   identity,
@@ -278,6 +323,7 @@ export const MIGRATIONS = [
   papers,
   exams,
   attempts,
+  grading,
 ].map((sql, index) => ({
   version: index + 1,
   sql,
@@ -333,6 +379,8 @@ export const RUNTIME_TABLES = [
   'exam_roster',
   'exam_attempts',
   'attempt_answers',
+  'exam_grading',
+  'attempt_scores',
 ];
 // Fixed identifiers only. Never grant DDL or future tables implicitly.
 export async function grantRuntimeAccess(

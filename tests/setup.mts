@@ -11,7 +11,7 @@ try {
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
   const api = app.getHttpAdapter().getInstance();
-  assert.equal((await api.inject({ url: '/health/ready' })).json().schemaVersion, 9);
+  assert.equal((await api.inject({ url: '/health/ready' })).json().schemaVersion, 10);
   const token = randomBytes(32).toString('hex');
   await new BootstrapRepository(t.db).issue(digestToken(token), new Date(Date.now() + 60000), {
     requestId: 'setup-http-test',

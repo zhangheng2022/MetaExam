@@ -122,7 +122,7 @@ export function AttemptPage() {
             type="success"
             showIcon
             title={meta.submitReason === 'timeout' ? '已到截止时间，系统已收卷' : '交卷成功'}
-            description="已保存答案已封存，不能再次作答。成绩尚未发布。"
+            description="已保存答案已封存，不能再次作答。成绩以教师发布结果为准。"
           />
           <Typography.Paragraph className="question-history">
             {meta.name} · 已填写 {meta.answeredCount} / {meta.items.length} 题
@@ -130,6 +130,7 @@ export function AttemptPage() {
           <Typography.Paragraph>
             交卷时间（北京）：{dateText(meta.submittedAt!)}
           </Typography.Paragraph>
+          <Link to={`/my-exams/${meta.examId}/result`}>查看成绩</Link>
         </Card>
       ) : (
         <>

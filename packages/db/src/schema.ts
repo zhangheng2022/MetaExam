@@ -21,6 +21,45 @@ const dates = () => ({
   createdAt: time('created_at').notNull().defaultNow(),
   updatedAt: time('updated_at').notNull().defaultNow(),
 });
+export const examGrading = pgTable(
+  'exam_grading',
+  {
+    examId: uuid('exam_id')
+      .primaryKey()
+      .references(() => exams.id),
+    revision: integer('revision').notNull().default(0),
+    policyVersion: integer('policy_version').notNull().default(1),
+    publishedAt: time('published_at'),
+    publishedBy: uuid('published_by').references(() => users.id),
+  },
+  (t) => [
+    check('exam_grading_revision', sql`${t.revision}>=0`),
+    check('exam_grading_policy', sql`${t.policyVersion}=1`),
+    check('exam_grading_release', sql`(${t.publishedAt} IS NULL)=(${t.publishedBy} IS NULL)`),
+  ],
+);
+export const attemptScores = pgTable(
+  'attempt_scores',
+  {
+    attemptId: uuid('attempt_id')
+      .notNull()
+      .references(() => examAttempts.id),
+    position: integer('position').notNull(),
+    scoreUnits: integer('score_units'),
+    mode: text('mode').notNull(),
+    revision: integer('revision').notNull().default(1),
+    comment: text('comment').notNull().default(''),
+    gradedBy: uuid('graded_by').references(() => users.id),
+    updatedAt: time('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.attemptId, t.position] }),
+    check('attempt_scores_nonnegative', sql`${t.scoreUnits}>=0`),
+    check('attempt_scores_mode', sql`${t.mode} IN ('auto','manual')`),
+    check('attempt_scores_revision', sql`${t.revision}>0`),
+    check('attempt_scores_comment', sql`length(${t.comment})<=2000`),
+  ],
+);
 export const examAttempts = pgTable(
   'exam_attempts',
   {

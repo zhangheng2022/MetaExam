@@ -118,6 +118,11 @@ export function MyExamsPage() {
               ),
           },
           { title: '课程', dataIndex: 'courseName' },
+          {
+            title: '成绩',
+            render: (_, r) =>
+              r.phase !== 'cancelled' ? <Link to={`/my-exams/${r.id}/result`}>查看成绩</Link> : '—',
+          },
           ...timeColumns,
           { title: '题数 / 总分', render: (_, r) => `${r.itemCount} 题 / ${r.totalScore} 分` },
           { title: '取消原因', render: (_, r) => r.cancellationReason || '—' },
@@ -480,6 +485,11 @@ function Detail({ id }: { id: string }) {
                 课程：{exam.courseName} · 试卷：{exam.paperName} · {exam.itemCount} 题 /{' '}
                 {exam.totalScore} 分
               </Typography.Paragraph>
+              {exam.status === 'published' && (
+                <Typography.Paragraph>
+                  <Link to={`/exams/${exam.id}/grading`}>阅卷与成绩</Link>
+                </Typography.Paragraph>
+              )}
               <Typography.Paragraph>
                 北京时间：{dateText(exam.startsAt)} 至 {dateText(exam.endsAt)} · 答题时长{' '}
                 {exam.durationMinutes} 分钟

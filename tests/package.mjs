@@ -463,6 +463,65 @@ try {
     (await fetch(url + '/attempts/' + attemptId)).headers.get('content-type').includes('text/html'),
     true,
   );
+  const gradingPath = '/api/v1/grading/exams/' + activeExam;
+  await wait(async () => {
+    const state = await (await fetch(url + gradingPath, { headers: { cookie } })).json();
+    return state.readyCount === 1;
+  }, worker);
+  const review = await fetch(url + gradingPath + '/attempts/' + attemptId + '/questions/1', {
+    headers: { cookie },
+  });
+  assert.equal(review.status, 200);
+  const scored = await review.json();
+  assert.equal(scored.items[0].mode, 'auto');
+  const hiddenResult = await (
+    await fetch(url + '/api/v1/my-exams/' + activeExam + '/result', {
+      headers: { cookie: freshStudentCookie },
+    })
+  ).json();
+  assert.equal(hiddenResult.state, 'unpublished');
+  assert.equal(hiddenResult.totalScore, null);
+  const finishClient = await db.pool.connect();
+  try {
+    await finishClient.query('BEGIN');
+    await finishClient.query('ALTER TABLE exams DISABLE TRIGGER exams_guard');
+    await finishClient.query(
+      "UPDATE exams SET starts_at=clock_timestamp()-interval '3 hours',ends_at=clock_timestamp()-interval '1 second' WHERE id=$1",
+      [activeExam],
+    );
+    await finishClient.query('ALTER TABLE exams ENABLE TRIGGER exams_guard');
+    await finishClient.query('COMMIT');
+  } catch (e) {
+    await finishClient.query('ROLLBACK');
+    throw e;
+  } finally {
+    finishClient.release();
+  }
+  const gradingState = await (await fetch(url + gradingPath, { headers: { cookie } })).json();
+  assert.equal(
+    (await post(gradingPath + '/publish', { revision: gradingState.revision }, cookie)).status,
+    200,
+  );
+  const publishedResult = await (
+    await fetch(url + '/api/v1/my-exams/' + activeExam + '/result', {
+      headers: { cookie: freshStudentCookie },
+    })
+  ).json();
+  assert.equal(publishedResult.state, 'published');
+  assert.equal(publishedResult.totalScore, scored.items[0].score);
+  assert.equal(publishedResult.items[0].question, undefined);
+  assert.equal(
+    (await fetch(url + `/exams/${activeExam}/grading`)).headers
+      .get('content-type')
+      .includes('text/html'),
+    true,
+  );
+  assert.equal(
+    (await fetch(url + `/my-exams/${activeExam}/result`)).headers
+      .get('content-type')
+      .includes('text/html'),
+    true,
+  );
   assert.equal(
     (
       await post(
@@ -534,6 +593,7 @@ try {
           'bundled paper draw, fixed question/image snapshot, fractional score, immutable freeze, copy and deep route',
           'bundled local-license publication, roster, student schedule redaction, forced-password boundary and cancellation',
           'bundled admission, sanitized questions and images, persistent answer, submission receipt and closed-write boundary',
+          'bundled Worker objective grading, teacher review, hidden unpublished results, immutable publication and student score',
           'bundled Worker completes API task',
           'bundled CLI validates persisted license',
           'packaged Electron IPC returns database ready',

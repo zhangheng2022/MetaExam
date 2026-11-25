@@ -30,7 +30,11 @@ const PapersPage = lazy(() => import('./papers/pages').then((m) => ({ default: m
 const ExamsPage = lazy(() => import('./exams/pages').then((m) => ({ default: m.ExamsPage })));
 const MyExamsPage = lazy(() => import('./exams/pages').then((m) => ({ default: m.MyExamsPage })));
 const AttemptPage = lazy(() => import('./attempts/page').then((m) => ({ default: m.AttemptPage })));
+const GradingPage = lazy(() => import('./grading/pages').then((m) => ({ default: m.GradingPage })));
+const ResultPage = lazy(() => import('./grading/pages').then((m) => ({ default: m.ResultPage })));
 const pages = {
+  grading: ['阅卷与成绩', '核对客观题得分、评阅简答题，确认后发布成绩。'],
+  result: ['我的成绩', '查看教师已发布的本人得分与评语。'],
   exams: ['考试管理', '安排考试时间、确认考生名单并发布冻结试卷。'],
   'my-exams': ['我的考试', '查看本人考试安排与取消通知。'],
   attempts: ['考试作答', '答案保存在本地考试服务器，请留意保存状态与截止时间。'],
@@ -175,14 +179,20 @@ function Protected({ page = 'profile' }: { page?: Page }) {
       exams: 'exams.manage',
       'my-exams': 'exams.self',
       attempts: 'exams.self',
+      grading: 'exams.manage',
+      result: 'exams.self',
     } as Partial<Record<Page, string>>
   )[page];
   const allowed =
     !required ||
     (user.permissions.includes(required) &&
       (page === 'workspace' ||
-        ((page === 'my-exams' || page === 'attempts') && user.roles.includes('student')) ||
-        ((page === 'question-banks' || page === 'papers' || page === 'exams') &&
+        ((page === 'my-exams' || page === 'attempts' || page === 'result') &&
+          user.roles.includes('student')) ||
+        ((page === 'question-banks' ||
+          page === 'papers' ||
+          page === 'exams' ||
+          page === 'grading') &&
           user.roles.includes('teacher')) ||
         user.roles.includes('admin')));
   return (
@@ -190,7 +200,9 @@ function Protected({ page = 'profile' }: { page?: Page }) {
       title={pages[page][0]}
       description={pages[page][1]}
       displayName={user.displayName}
-      selected={page === 'attempts' ? 'my-exams' : page}
+      selected={
+        page === 'attempts' || page === 'result' ? 'my-exams' : page === 'grading' ? 'exams' : page
+      }
       permissions={
         user.roles.includes('admin')
           ? user.permissions
@@ -223,6 +235,10 @@ function Protected({ page = 'profile' }: { page?: Page }) {
       )}
       {!allowed ? (
         <Alert type="warning" title="没有访问权限" description="请从导航进入有权访问的页面。" />
+      ) : page === 'grading' || page === 'result' ? (
+        <Suspense fallback={<Skeleton paragraph={{ rows: 5 }} />}>
+          {page === 'grading' ? <GradingPage /> : <ResultPage />}
+        </Suspense>
       ) : page === 'attempts' ? (
         <Suspense fallback={<Skeleton paragraph={{ rows: 5 }} />}>
           <AttemptPage />
@@ -383,6 +399,8 @@ function Business() {
         <Route path="/papers/:paperId" element={<Protected page="papers" />} />
         <Route path="/exams/:examId" element={<Protected page="exams" />} />
         <Route path="/attempts/:attemptId" element={<Protected page="attempts" />} />
+        <Route path="/exams/:examId/grading" element={<Protected page="grading" />} />
+        <Route path="/my-exams/:examId/result" element={<Protected page="result" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>
