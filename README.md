@@ -2,7 +2,7 @@
 
 M1 基础平台工程：Node.js 24、NestJS + Fastify、React + Ant Design 6、Electron、PostgreSQL 18。Windows x64 开发与内部离线安装验证。2026-11-25 用户已确认本机及独立环境验收完成：M0 完成，M1 第一批验收完成，详见 [交付记录](docs/m1-status.md)。
 
-Web 与 Electron 共用 packages/ui 的 Ant Design 组件；MetaExamProvider 统一中文 locale，使用 Ant Design 默认蓝色主色 #1677ff 和默认深色菜单。成功/警告状态仍使用各自语义色。组件样式、图标均由 Vite 本地打包，无 CDN 依赖。CSP 仅为组件动态样式允许内联 CSS，脚本仍仅允许本地来源；Electron 保持 sandbox、contextIsolation 和受限 IPC。
+Web 与 Electron 共用 packages/ui 的 Ant Design 组件；MetaExamProvider 统一中文 locale，采用 Ant Design 默认蓝色主题与语义色。账号中心使用浅色导航及移动端抽屉，运行诊断页保留深色菜单。布局依据 [Ant Design 视觉语言](https://ant.design/design.md)，实现范围见 [UI 交付记录](docs/ui-ant-design.md)。组件样式、图标均由 Vite 本地打包，无 CDN 依赖。CSP 仅为组件动态样式允许内联 CSS，脚本仍仅允许本地来源；Electron 保持 sandbox、contextIsolation 和受限 IPC。
 
 ## 开发启动
 

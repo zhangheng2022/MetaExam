@@ -14,6 +14,20 @@ try {
   const base = 'http://127.0.0.1:' + app.getHttpServer().address().port;
   browser = await chromium.launch({ channel: 'msedge', headless: true });
   const page = await browser.newPage();
+  mkdirSync('artifacts/m1', { recursive: true });
+  const cspViolations: string[] = [];
+  const externalRequests: string[] = [];
+  await page.addInitScript(() => {
+    document.addEventListener('securitypolicyviolation', (event) => {
+      console.error('CSP_VIOLATION:' + event.violatedDirective);
+    });
+  });
+  page.on('console', (message) => {
+    if (message.text().startsWith('CSP_VIOLATION:')) cspViolations.push(message.text());
+  });
+  page.on('request', (request) => {
+    if (new URL(request.url()).origin !== base) externalRequests.push(request.url());
+  });
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(base + '/login');
@@ -33,6 +47,8 @@ try {
   });
   assert.equal(setup.status, 201);
   await page.reload();
+  await page.getByLabel('用户名', { exact: true }).waitFor();
+  await page.screenshot({ path: 'artifacts/m1/login-desktop.png', fullPage: true });
   await page.getByLabel('用户名', { exact: true }).fill('admin');
   await page.getByLabel('密码', { exact: true }).fill('incorrect');
   await page.getByRole('button', { name: /登\s*录/ }).click();
@@ -50,6 +66,19 @@ try {
   assert.equal(await page.evaluate(() => document.cookie), '');
   await page.getByRole('button', { name: '查看管理概览' }).click();
   await page.getByText('账号数', { exact: true }).waitFor();
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.screenshot({ path: 'artifacts/m1/profile-desktop.png', fullPage: true });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({ path: 'artifacts/m1/profile-mobile.png', fullPage: true });
+  await page.getByRole('button', { name: '打开导航' }).click();
+  await page.getByRole('dialog').getByRole('menuitem', { name: '账号安全' }).click();
+  await page.getByRole('heading', { name: '修改密码', exact: true }).waitFor();
+  assert.equal(await page.getByRole('dialog').count(), 0);
+  await page.screenshot({ path: 'artifacts/m1/password-mobile.png', fullPage: true });
+  await page.getByRole('link', { name: '返回个人信息' }).click();
+  await page.setViewportSize({ width: 1366, height: 768 });
   await page.route('**/api/v1/auth/me', (r) =>
     r.fulfill({
       status: 503,
@@ -89,6 +118,8 @@ try {
   mkdirSync('artifacts/m1', { recursive: true });
   await page.screenshot({ path: 'artifacts/m1/login-mobile.png', fullPage: true });
   assert.deepEqual(errors, []);
+  assert.deepEqual(cspViolations, []);
+  assert.deepEqual(externalRequests, []);
   writeFileSync(
     'artifacts/m1/browser-results.json',
     JSON.stringify({
@@ -104,6 +135,8 @@ try {
         'session expiry',
         'logout',
         'mobile and default blue',
+        'responsive profile and mobile navigation',
+        'no CSP violations or external resources',
         'no browser exceptions',
       ],
     }),

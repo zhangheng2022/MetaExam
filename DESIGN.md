@@ -1,10 +1,10 @@
 ---
 name: MetaExam
-description: 基于 Ant Design 的本地考试运行状态与离线授权界面
+description: 基于 Ant Design 默认视觉语言的账号中心与本地运行维护界面
 colors:
-  ink: '#202f39'
-  muted: '#566570'
-  background: '#f3f5f6'
+  ink: 'rgba(0, 0, 0, 0.88)'
+  muted: 'rgba(0, 0, 0, 0.65)'
+  background: '#f5f5f5'
   surface: '#ffffff'
   line: '#dce3e6'
   accent: '#1677ff'
@@ -32,6 +32,15 @@ colors:
   info-background: '#e6f4ff'
   info-border: '#91caff'
 typography:
+  page-title:
+    fontSize: '24px'
+    fontWeight: 600
+  brand:
+    fontSize: '20px'
+    fontWeight: 600
+  section-title:
+    fontSize: '16px'
+    fontWeight: 600
   headline:
     fontFamily: '"Segoe UI", "Microsoft YaHei", sans-serif'
     fontSize: '28px'
@@ -107,9 +116,23 @@ components:
 
 # Design System: MetaExam
 
+## 账号中心视觉更新（2026-11-25）
+
+视觉依据：[Ant Design design.md](https://ant.design/design.md)，本次通过终端 HTTPS 读取原文；组件 API 通过项目锁定的 Ant Design CLI 6.7.2 查询。以下当前规则优先于后面的运行状态页历史说明。
+
+- 使用 Ant Design 默认浅色算法和蓝色主色，恢复默认功能色、文本色、背景和 32px 控件高度。登录及密码表单使用原生 large 尺寸（40px）；保留中文、离线系统字体与既有关闭动画配置。
+- 业务区采用白色侧栏、浅蓝选中态、白色顶部栏及浅灰内容背景；运行诊断页保留原有深色侧栏。账号中心只展示已实现的个人信息和账号安全导航。
+- 共享 ThemeSurface 通过 theme.useToken 将容器、页面、文字、分隔线和主色映射为 CSS 变量。自定义业务布局使用这些变量；不通过单独色值改写组件背景。Descriptions 标签使用次要文字色以保证可读性。
+- 正文 14px，品牌 20px，页面标题 24px；字重 400/600。主要布局间距采用 8/16/24/32px，卡片与控件圆角沿用原生 Token。
+- 登录采用独立品牌区、432px 表单容器和页脚。账号中心侧栏 224px、顶部栏 64px，内容最大 1440px；资料与安全分区展示，下方管理概览按需读取真实统计。
+- 窄屏使用可打开的 Drawer 导航；资料区域转为单列。用户名截断可查看完整 title，资料长文本换行；支持跳转主要内容和明确焦点。
+- 保留真实登录、退出、改密后撤销会话、503 重试及会话过期反馈。概览请求失败有错误说明，已有结果明确标为上次读取，不用零值代替未知统计。
+
+验证与实现范围见 [UI 交付记录](docs/ui-ant-design.md)。未增加账号、班级、课程管理页或虚构统计，不代表 M1 第二批业务功能已完成。
+
 ## Overview
 
-采用 Ant Design 默认深色导航与蓝色交互，保留浅灰底与白色服务面板，帮助本机维护人员读懂真实状态。Web 与 Electron 通过 `packages/ui` 共享 Ant Design（6.7.2）；`MetaExamProvider` 使用 `ConfigProvider` 统一 `zhCN` 中文配置与主题。离线系统字体、内联 SVG 品牌与打包图标不依赖外部素材。
+以下记录原有运行诊断页面的布局与实现，主题变更以文首当前规则为准。Web 与 Electron 通过 `packages/ui` 共享 Ant Design（6.7.2）；`MetaExamProvider` 使用 `ConfigProvider` 统一 `zhCN` 中文配置与主题。离线系统字体、内联 SVG 品牌与打包图标不依赖外部素材。
 
 本文依据当前组件源码、样式和桌面、移动端截图更新。按用户选择采用 Ant Design 默认蓝色主题；没有新增或补造 Creative North Star、FORM seed、QUALITY BAR 或批准的视觉稿。
 

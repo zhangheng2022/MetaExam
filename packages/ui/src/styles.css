@@ -1,7 +1,7 @@
 :root {
   font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
-  color: #202f39;
-  background: #f3f5f6;
+  color: rgba(0, 0, 0, 0.88);
+  background: #f5f5f5;
   font-synthesis: none;
   color-scheme: light;
 }
@@ -233,14 +233,264 @@ body {
 }
 .identity-panel {
   width: min(100% - 32px, 480px);
-  margin: 40px auto;
+  margin: 32px auto;
 }
 .identity-alert {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 .identity-actions {
   display: flex;
   flex-wrap: wrap;
+  gap: 16px;
+  margin: 24px 0 0;
+}
+.theme-surface {
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.5714;
+}
+.theme-surface :focus-visible {
+  outline: 2px solid var(--mx-primary);
+  outline-offset: 4px;
+}
+.theme-surface input {
+  caret-color: var(--mx-primary);
+}
+.theme-surface a {
+  text-underline-offset: 4px;
+}
+.product-brand {
+  display: flex;
+  align-items: center;
   gap: 12px;
-  margin: 20px 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+.product-brand .anticon {
+  color: var(--mx-primary);
+  font-size: 24px;
+}
+.login-surface {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 24px 32px;
+}
+.login-main {
+  flex: 1;
+  display: grid;
+  align-items: center;
+  padding: 24px 0 64px;
+}
+.login-main .identity-panel {
+  width: min(100% - 32px, 432px);
+  margin: 0 auto;
+}
+.identity-panel h1.ant-typography {
+  font-size: 24px;
+  line-height: 32px;
+  margin-bottom: 16px;
+}
+.identity-panel .ant-card-body {
+  padding: 32px;
+}
+.login-footer,
+.business-footer {
+  text-align: center;
+  color: var(--mx-secondary);
+  font-size: 12px;
+  padding: 24px;
+}
+.business-shell {
+  min-height: 100dvh;
+}
+.business-sidebar {
+  border-inline-end: 1px solid var(--mx-border);
+}
+.business-sidebar .ant-layout-sider-children {
+  display: flex;
+  flex-direction: column;
+}
+.business-brand {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--mx-border);
+}
+.business-sidebar nav {
+  padding: 16px 8px;
+}
+.business-sidebar .ant-menu {
+  border-inline-end: 0;
+}
+.business-sidebar-footer {
+  margin-top: auto;
+  padding: 24px;
+  color: var(--mx-secondary);
+  font-size: 12px;
+}
+.business-body {
+  min-width: 0;
+}
+.business-header.ant-layout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 32px;
+  height: 64px;
+  line-height: normal;
+  background: var(--mx-surface);
+  border-bottom: 1px solid var(--mx-border);
+}
+.business-header-start,
+.business-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.business-user-name {
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.business-main {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 32px;
+  outline: none;
+}
+.business-page-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.business-page-heading h1.ant-typography {
+  font-size: 24px;
+  line-height: 32px;
+  margin: 0 0 8px;
+}
+.business-page-heading .ant-typography {
+  margin-bottom: 0;
+}
+.profile-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.profile-card .ant-descriptions-item-content {
+  overflow-wrap: anywhere;
+}
+.security-card h3.ant-typography {
+  font-size: 16px;
+  line-height: 24px;
+}
+.overview-statistics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  font-variant-numeric: tabular-nums;
+}
+.overview-statistics > * + * {
+  border-inline-start: 1px solid var(--mx-border);
+  padding-inline-start: 24px;
+}
+.overview-description.ant-typography {
+  margin: 0;
+}
+.password-card {
+  max-width: 640px;
+}
+.password-card .ant-form {
+  max-width: 448px;
+}
+.mobile-navigation.ant-btn {
+  display: none;
+}
+.skip-link {
+  position: fixed;
+  top: -80px;
+  left: 16px;
+  z-index: 1100;
+  background: var(--mx-surface);
+  padding: 8px 16px;
+}
+.skip-link:focus {
+  top: 8px;
+}
+@media (max-width: 1024px) {
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+  .business-main {
+    padding: 24px;
+  }
+}
+@media (max-width: 767px) {
+  .business-sidebar {
+    display: none;
+  }
+  .mobile-navigation.ant-btn {
+    display: inline-flex;
+  }
+  .business-header.ant-layout-header {
+    padding: 0 16px;
+  }
+  .business-header .ant-breadcrumb {
+    display: none;
+  }
+  .business-user {
+    gap: 8px;
+  }
+  .business-user-name {
+    max-width: 96px;
+  }
+  .business-main {
+    padding: 24px 16px;
+  }
+  .business-page-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .profile-grid {
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .overview-card .ant-card-head {
+    flex-wrap: wrap;
+    padding: 16px;
+  }
+  .overview-card .ant-card-head-wrapper {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .overview-statistics {
+    gap: 16px;
+  }
+  .overview-statistics > * + * {
+    padding-inline-start: 16px;
+  }
+  .login-brand {
+    padding: 24px;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .login-main {
+    padding-bottom: 32px;
+  }
+  .identity-panel .ant-card-body {
+    padding: 24px;
+  }
 }

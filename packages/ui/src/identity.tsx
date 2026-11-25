@@ -6,7 +6,7 @@ export function IdentityPanel({ title, children }: PropsWithChildren<{ title: st
   return (
     <section className="identity-panel">
       <Card>
-        <Typography.Title level={2}>{title}</Typography.Title>
+        <Typography.Title level={1}>{title}</Typography.Title>
         {children}
       </Card>
     </section>
@@ -84,7 +84,14 @@ export function IdentityForm({
     }
   };
   return (
-    <Form form={form} layout="vertical" onFinish={submit} disabled={busy} clearOnDestroy>
+    <Form
+      form={form}
+      layout="vertical"
+      size="large"
+      onFinish={submit}
+      disabled={busy}
+      clearOnDestroy
+    >
       {error && <Alert type="error" title={error} showIcon className="identity-alert" />}
       {mode !== 'password' && (
         <Form.Item

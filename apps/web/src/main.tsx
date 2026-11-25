@@ -10,6 +10,13 @@ import {
   Button,
   Descriptions,
   Typography,
+  BusinessShell,
+  LoginSurface,
+  Card,
+  Skeleton,
+  Statistic,
+  Tag,
+  Space,
 } from '@metaexam/ui';
 import type { SystemStatus, CurrentUser, SetupStatus } from '@metaexam/contracts';
 import '@metaexam/ui/styles.css';
@@ -31,141 +38,215 @@ function Login() {
   useEffect(() => {
     void check();
   }, []);
-  if (auth.loading) return <IdentityPanel title="正在检查登录状态" />;
+  if (auth.loading)
+    return (
+      <LoginSurface>
+        <IdentityPanel title="正在检查登录状态">
+          <Skeleton paragraph={{ rows: 3 }} />
+        </IdentityPanel>
+      </LoginSurface>
+    );
   if (auth.user) return <Navigate to="/" replace />;
   return (
-    <IdentityPanel title="登录 MetaExam">
-      <Typography.Paragraph>使用管理员为你创建的账号登录。</Typography.Paragraph>
-      {!!auth.notice && <Alert type="success" title={auth.notice} className="identity-alert" />}
-      {auth.expired && !auth.notice && (
-        <Alert type="info" title="登录已过期，请重新登录。" className="identity-alert" />
-      )}
-      {error ? (
-        <>
-          <Alert type="error" title={error} />
-          <Button onClick={() => void check()}>重新检查</Button>
-        </>
-      ) : setup?.adminInitialized ? (
-        <IdentityForm
-          mode="login"
-          onSubmit={async (input) => {
-            const user = await api<CurrentUser>('/auth/login', 'POST', input);
-            auth.setNotice('');
-            auth.setUser(user);
-            navigate('/', { replace: true });
-          }}
-        />
-      ) : setup ? (
-        <Alert
-          type="info"
-          title="系统尚未初始化"
-          description="请在服务器上以管理员身份运行 MetaExam 客户端，完成首次管理员设置。"
-        />
-      ) : (
-        <Typography.Paragraph>正在检查系统…</Typography.Paragraph>
-      )}
-    </IdentityPanel>
+    <LoginSurface>
+      <IdentityPanel title="登录 MetaExam">
+        <Typography.Paragraph>使用管理员为你创建的账号登录。</Typography.Paragraph>
+        {!!auth.notice && <Alert type="success" title={auth.notice} className="identity-alert" />}
+        {auth.expired && !auth.notice && (
+          <Alert type="info" title="登录已过期，请重新登录。" className="identity-alert" />
+        )}
+        {error ? (
+          <>
+            <Alert type="error" title={error} />
+            <Button onClick={() => void check()}>重新检查</Button>
+          </>
+        ) : setup?.adminInitialized ? (
+          <IdentityForm
+            mode="login"
+            onSubmit={async (input) => {
+              const user = await api<CurrentUser>('/auth/login', 'POST', input);
+              auth.setNotice('');
+              auth.setUser(user);
+              navigate('/', { replace: true });
+            }}
+          />
+        ) : setup ? (
+          <Alert
+            type="info"
+            title="系统尚未初始化"
+            description="请在服务器上以管理员身份运行 MetaExam 客户端，完成首次管理员设置。"
+          />
+        ) : (
+          <Typography.Paragraph>正在检查系统…</Typography.Paragraph>
+        )}
+      </IdentityPanel>
+    </LoginSurface>
   );
 }
 function Protected({ password = false }: { password?: boolean }) {
   const auth = useAuth(),
     navigate = useNavigate(),
     [error, setError] = useState('');
+  const [overviewBusy, setOverviewBusy] = useState(false),
+    [overviewError, setOverviewError] = useState(''),
+    [loggingOut, setLoggingOut] = useState(false);
   const [overview, setOverview] = useState<{
     users: number;
     classes: number;
     courses: number;
   } | null>(null);
-  const loadOverview = () =>
-    api<{ users: number; classes: number; courses: number }>('/admin/overview')
+  const loadOverview = () => {
+    setOverviewBusy(true);
+    setOverviewError('');
+    return api<{ users: number; classes: number; courses: number }>('/admin/overview')
       .then((v) => {
         setOverview(v);
-        setError('');
       })
-      .catch((e) => setError(e.message));
+      .catch((e) => setOverviewError(e.message))
+      .finally(() => setOverviewBusy(false));
+  };
   if (auth.loading)
     return (
-      <IdentityPanel title="正在读取账号">
-        <Typography.Paragraph>请稍候…</Typography.Paragraph>
-      </IdentityPanel>
+      <LoginSurface>
+        <IdentityPanel title="正在读取账号">
+          <Skeleton paragraph={{ rows: 3 }} />
+        </IdentityPanel>
+      </LoginSurface>
     );
   if (auth.error)
     return (
-      <IdentityPanel title="服务暂时不可用">
-        <Alert type="error" title={auth.error} />
-        <Button onClick={() => void auth.refresh()}>重试</Button>
-      </IdentityPanel>
+      <LoginSurface>
+        <IdentityPanel title="服务暂时不可用">
+          <Alert type="error" title={auth.error} />
+          <Button onClick={() => void auth.refresh()}>重试</Button>
+        </IdentityPanel>
+      </LoginSurface>
     );
   if (!auth.user) return <Navigate to="/login" replace />;
   const user = auth.user;
   return (
-    <IdentityPanel title={password ? '修改密码' : '个人信息'}>
-      {error && <Alert type="error" title={error} className="identity-alert" />}
-      {password ? (
-        <IdentityForm
-          mode="password"
-          onSubmit={async (input) => {
-            await api('/auth/change-password', 'POST', input);
-            auth.setNotice('密码已修改，请重新登录。');
+    <BusinessShell
+      title={password ? '修改密码' : '个人信息'}
+      description={
+        password ? '更新登录密码，保护你的账号安全。' : '查看账号资料与角色，管理你的登录安全。'
+      }
+      displayName={user.displayName}
+      selected={password ? 'security' : 'profile'}
+      onNavigate={(key) => navigate(key === 'security' ? '/change-password' : '/')}
+      loggingOut={loggingOut}
+      onLogout={() => {
+        setLoggingOut(true);
+        void api('/auth/logout', 'POST')
+          .then(() => {
             auth.setUser(null);
             navigate('/login', { replace: true });
-          }}
-        />
+          })
+          .catch((e) => setError(e.message))
+          .finally(() => setLoggingOut(false));
+      }}
+      actions={!password && <Button onClick={() => void auth.refresh()}>刷新个人信息</Button>}
+    >
+      {error && (
+        <Alert showIcon role="alert" type="error" title={error} className="identity-alert" />
+      )}
+      {password ? (
+        <Card className="password-card" title="设置新密码">
+          <Alert
+            type="info"
+            showIcon
+            title="修改成功后需要重新登录"
+            description="当前账号在所有设备上的登录会话都将失效。"
+            className="identity-alert"
+          />
+          <IdentityForm
+            mode="password"
+            onSubmit={async (input) => {
+              await api('/auth/change-password', 'POST', input);
+              auth.setNotice('密码已修改，请重新登录。');
+              auth.setUser(null);
+              navigate('/login', { replace: true });
+            }}
+          />
+          <div className="identity-actions">
+            <Link to="/">返回个人信息</Link>
+          </div>
+        </Card>
       ) : (
         <>
-          <Descriptions
-            column={1}
-            items={[
-              { key: 'name', label: '姓名', children: user.displayName },
-              { key: 'username', label: '用户名', children: user.username },
-              {
-                key: 'roles',
-                label: '角色',
-                children: user.roles
-                  .map(
-                    (role) => ({ admin: '管理员', teacher: '教师', student: '学生' })[role] ?? role,
-                  )
-                  .join('、'),
-              },
-            ]}
-          />
+          <div className="profile-grid">
+            <Card title="基本资料" className="profile-card">
+              <Descriptions
+                column={1}
+                size="middle"
+                items={[
+                  { key: 'name', label: '姓名', children: user.displayName },
+                  { key: 'username', label: '用户名', children: user.username },
+                  {
+                    key: 'roles',
+                    label: '角色',
+                    children: (
+                      <Space size={[0, 8]} wrap>
+                        {user.roles.map((role) => (
+                          <Tag color="blue" key={role}>
+                            {{ admin: '管理员', teacher: '教师', student: '学生' }[role] ?? role}
+                          </Tag>
+                        ))}
+                      </Space>
+                    ),
+                  },
+                ]}
+              />
+            </Card>
+            <Card title="账号安全" className="security-card">
+              <Typography.Title level={3}>登录密码</Typography.Title>
+              <Typography.Paragraph type="secondary">
+                使用仅用于此账号的密码。如果密码已泄露，请及时修改。
+              </Typography.Paragraph>
+              <Link to="/change-password">修改密码</Link>
+            </Card>
+          </div>
           {user.roles.includes('admin') && (
-            <>
-              <Button onClick={() => void loadOverview()}>查看管理概览</Button>
-              {overview && (
-                <Descriptions
-                  column={1}
-                  items={[
-                    { key: 'users', label: '账号数', children: overview.users },
-                    { key: 'classes', label: '班级数', children: overview.classes },
-                    { key: 'courses', label: '课程数', children: overview.courses },
-                  ]}
+            <Card
+              className="overview-card"
+              title="管理概览"
+              extra={
+                <Button type="primary" loading={overviewBusy} onClick={() => void loadOverview()}>
+                  {overview ? '刷新管理概览' : '查看管理概览'}
+                </Button>
+              }
+            >
+              {overviewError && (
+                <Alert
+                  type="error"
+                  showIcon
+                  role="alert"
+                  title={overviewError}
+                  description={
+                    overview
+                      ? '以下为上次读取的统计，请重试获取最新数据。'
+                      : '未能获取统计，请重新查看管理概览。'
+                  }
+                  className="identity-alert"
                 />
               )}
-            </>
+              {overviewBusy && !overview ? (
+                <Skeleton paragraph={{ rows: 2 }} />
+              ) : overview ? (
+                <div className="overview-statistics" aria-live="polite">
+                  <Statistic title="账号数" value={overview.users} />
+                  <Statistic title="班级数" value={overview.classes} />
+                  <Statistic title="课程数" value={overview.courses} />
+                </div>
+              ) : (
+                <Typography.Paragraph type="secondary" className="overview-description">
+                  查看当前系统中的账号、班级与课程数量。统计由本地数据库提供。
+                </Typography.Paragraph>
+              )}
+            </Card>
           )}
-          <div className="identity-actions">
-            <Button onClick={() => void auth.refresh()}>刷新个人信息</Button>
-            <Link to="/change-password">修改密码</Link>
-          </div>
         </>
       )}
-      <div className="identity-actions">
-        {password && <Link to="/">返回个人信息</Link>}
-        <Button
-          onClick={() =>
-            void api('/auth/logout', 'POST')
-              .then(() => {
-                auth.setUser(null);
-                navigate('/login', { replace: true });
-              })
-              .catch((e) => setError(e.message))
-          }
-        >
-          退出登录
-        </Button>
-      </div>
-    </IdentityPanel>
+    </BusinessShell>
   );
 }
 function Business() {

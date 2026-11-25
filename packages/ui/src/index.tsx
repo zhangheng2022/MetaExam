@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useState, type PropsWithChildren } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type PropsWithChildren,
+  type CSSProperties,
+} from 'react';
 import {
   Alert,
   Button,
@@ -8,6 +14,7 @@ import {
   Menu,
   Tag,
   Typography,
+  theme as antdTheme,
   type ThemeConfig,
 } from 'antd';
 import { DashboardOutlined, ReloadOutlined } from '@ant-design/icons';
@@ -18,33 +25,40 @@ import type { SystemStatus } from '@metaexam/contracts';
 const theme: ThemeConfig = {
   token: {
     // Use Ant Design's default blue primary color and generated interaction colors.
-    colorSuccess: '#176b5b',
-    colorText: '#202f39',
-    colorTextSecondary: '#566570',
-    colorTextDescription: '#566570',
-    colorSuccessBg: '#e4f2ed',
-    colorSuccessBorder: '#b7d9ce',
-    colorWarning: '#77500a',
-    colorWarningBg: '#faf0dc',
-    colorWarningBorder: '#e8d7b0',
-    colorBgLayout: '#f3f5f6',
-    colorBorderSecondary: '#dce3e6',
-    borderRadius: 6,
     fontFamily: '"Segoe UI", "Microsoft YaHei", sans-serif',
-    controlHeight: 44,
     motion: false,
   },
   components: {
     Typography: { titleMarginTop: 0, titleMarginBottom: 8 },
     Card: { headerFontSize: 18 },
-    Descriptions: { labelColor: '#566570' },
+    Descriptions: { labelColor: 'rgba(0, 0, 0, 0.65)' },
   },
 };
 export function MetaExamProvider({ children }: PropsWithChildren) {
   return (
     <ConfigProvider locale={zhCN} theme={theme}>
-      {children}
+      <ThemeSurface>{children}</ThemeSurface>
     </ConfigProvider>
+  );
+}
+function ThemeSurface({ children }: PropsWithChildren) {
+  const { token } = antdTheme.useToken();
+  const style = {
+    '--mx-layout': token.colorBgLayout,
+    '--mx-surface': token.colorBgContainer,
+    '--mx-text': token.colorText,
+    '--mx-secondary': token.colorTextSecondary,
+    '--mx-border': token.colorBorderSecondary,
+    '--mx-primary': token.colorPrimary,
+    '--mx-primary-bg': token.colorPrimaryBg,
+    '--mx-radius': `${token.borderRadiusLG}px`,
+    color: token.colorText,
+    background: token.colorBgLayout,
+  } as CSSProperties;
+  return (
+    <div className="theme-surface" style={style}>
+      {children}
+    </div>
   );
 }
 export interface DashboardProps {
@@ -307,3 +321,4 @@ function StatusOverview({ loadStatus, desktop = false }: DashboardProps) {
   );
 }
 export * from './identity';
+export * from './business';
