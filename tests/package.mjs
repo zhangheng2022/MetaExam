@@ -168,6 +168,30 @@ try {
     code: 'payload_course',
     name: '课程',
   });
+  const bankId = await create('/question-banks', {
+    name: '包内题库',
+    courseId,
+    visibility: 'public',
+  });
+  const questionId = await create('/question-banks/' + bankId + '/questions', {
+    stem: '包内判断题',
+    content: { type: 'boolean', answer: true },
+    difficulty: 2,
+    tags: [],
+    knowledgePoints: [],
+    explanation: '仅供教师查看',
+  });
+  const questionPath = '/api/v1/question-banks/' + bankId + '/questions/' + questionId;
+  assert.equal(
+    (await fetch(url + questionPath + '/versions', { headers: { cookie } })).status,
+    200,
+  );
+  assert.equal(
+    (await fetch(url + '/question-banks/' + bankId)).headers
+      .get('content-type')
+      .includes('text/html'),
+    true,
+  );
   assert.equal(
     (await post('/api/v1/admin/classes/' + classId + '/members', { studentId }, cookie)).status,
     204,
@@ -182,6 +206,10 @@ try {
   });
   assert.equal((await temporary.clone().json()).mustChangePassword, true);
   const studentCookie = temporary.headers.get('set-cookie').split(';')[0];
+  assert.equal(
+    (await fetch(url + questionPath, { headers: { cookie: studentCookie } })).status,
+    403,
+  );
   assert.equal(
     (await fetch(url + '/api/v1/teaching/me', { headers: { cookie: studentCookie } })).status,
     403,
@@ -256,6 +284,7 @@ try {
           'bundled API ready and static web',
           'bundled setup, login, protected overview and password revocation',
           'bundled account/organization/assignment management and forced password boundary',
+          'bundled question bank, immutable version read, deep route and student answer denial',
           'bundled Worker completes API task',
           'bundled CLI validates persisted license',
           'packaged Electron IPC returns database ready',

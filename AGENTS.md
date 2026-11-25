@@ -33,7 +33,7 @@
 ## 业务与运行约束
 
 - Nest 使用 Fastify adapter；不要直接套用 Express 请求类型、中间件或测试启动方式。外部输入须在服务端验证；当前协议使用 Zod。
-- 数据库迁移由 packages/db/src/migrations.ts 中的 V1～V4 注册表及 index.ts 中的逐版事务/连接咨询锁管理。schema.ts 声明现有表；仍禁止用 push 代替显式迁移。已执行迁移不可原地改写；新迁移需单独设计升级路径。
+- 数据库迁移由 packages/db/src/migrations.ts 中的 V1～V5 注册表及 index.ts 中的逐版事务/连接咨询锁管理。schema.ts 声明现有表；仍禁止用 push 代替显式迁移。已执行迁移不可原地改写；新迁移需单独设计升级路径。
 - pg 事务必须使用同一 PoolClient 并释放连接；查询参数化。任务租约领取、幂等和重启恢复语义须保留。
 - 授权使用 Node crypto Ed25519 完全本地验签；不加入授权服务器、公钥下载或在线时间依赖。签发工具与私钥不进入客户包。
 - Electron 保持 sandbox、contextIsolation、受限 preload/IPC；窗口退出不停止 API/Worker。动态 CSS 的既有 CSP 例外不能扩展成任意脚本执行。
@@ -57,6 +57,13 @@
 - M1 第二批实现与验收见 docs/m1-management.md；test:management 使用独立数据库验证接口与真实浏览器流程，新包独立环境回归单独记录。
 - 身份数据库测试使用 tests/database-fixture.mts 的独立测试库；不能清空开发账号。test:m1 覆盖迁移、初始化、会话、权限、队列和浏览器；普通权限 Electron 测试不代表提升权限 ACL 验收。
 - M1 安装维护与独立环境回归清单见 docs/m1-acceptance.md；2026-11-25 用户确认独立环境验收完成，M0 完成、M1 第一批验收完成，不代表后续 M1 批次完成。确认记录见 docs/m1-status.md。
+
+## 题库与版本
+
+- M2 第一批范围和权限矩阵见 docs/m2-questions.md；test:questions 使用独立数据库和真实浏览器验证。
+- 公共题库仅管理员可写；教师按当前有效授课课程读取公共题库、维护个人题库；管理员可管理所有题库，学生不得访问题库答案。
+- 历史 question_versions 不可修改或删除，运行身份仅 SELECT/INSERT；保存题目必须新增版本并原子更新当前版本。后续试卷引用固定版本 ID，不能跟随当前题目变化。
+- 本批题干／答案／解析为纯文本，不解析 HTML；选项和填空使用稳定 UUID；审计不复制题目正文或答案。题库维护不受未激活限制，考试发布／入场另做授权判定。
 
 ## 代码提交
 

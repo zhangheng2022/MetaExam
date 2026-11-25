@@ -91,6 +91,9 @@ export function BusinessShell({
           ...(!mustChangePassword
             ? [
                 { key: 'workspace', icon: <HomeOutlined />, label: '工作台' },
+                ...(permissions.includes('questions.use')
+                  ? [{ key: 'question-banks', icon: <ReadOutlined />, label: '题库管理' }]
+                  : []),
                 ...(permissions.includes('users.manage')
                   ? [{ key: 'users', icon: <TeamOutlined />, label: '账号管理' }]
                   : []),

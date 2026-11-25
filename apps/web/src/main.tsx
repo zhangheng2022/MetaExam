@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link, useNavigate } from 'react-router';
 import {
   Dashboard,
@@ -25,7 +25,9 @@ import { AuthProvider, useAuth } from './auth';
 import { UsersPage } from './management/users';
 import { OrganizationsPage } from './management/organizations';
 import { AssignmentsPage, AuditPage, WorkspacePage } from './management/teaching';
+const BanksPage = lazy(() => import('./questions/pages').then((m) => ({ default: m.BanksPage })));
 const pages = {
+  'question-banks': ['题库管理', '维护课程题目，保留每次修订的版本。'],
   profile: ['个人信息', '查看账号资料与角色，管理你的登录安全。'],
   security: ['修改密码', '更新登录密码，保护你的账号安全。'],
   workspace: ['工作台', '查看与你相关的教学安排和系统信息。'],
@@ -160,18 +162,26 @@ function Protected({ page = 'profile' }: { page?: Page }) {
       assignments: 'organizations.manage',
       audit: 'audit.read',
       workspace: 'teaching.self',
+      'question-banks': 'questions.use',
     } as Partial<Record<Page, string>>
   )[page];
   const allowed =
     !required ||
-    (user.permissions.includes(required) && (page === 'workspace' || user.roles.includes('admin')));
+    (user.permissions.includes(required) &&
+      (page === 'workspace' ||
+        (page === 'question-banks' && user.roles.includes('teacher')) ||
+        user.roles.includes('admin')));
   return (
     <BusinessShell
       title={pages[page][0]}
       description={pages[page][1]}
       displayName={user.displayName}
       selected={page}
-      permissions={user.roles.includes('admin') ? user.permissions : []}
+      permissions={
+        user.roles.includes('admin')
+          ? user.permissions
+          : user.permissions.filter((p) => p === 'questions.use' && user.roles.includes('teacher'))
+      }
       mustChangePassword={user.mustChangePassword}
       onNavigate={(key) => navigate(pagePath(key))}
       loggingOut={loggingOut}
@@ -194,6 +204,10 @@ function Protected({ page = 'profile' }: { page?: Page }) {
       )}
       {!allowed ? (
         <Alert type="warning" title="没有访问权限" description="请从导航进入有权访问的页面。" />
+      ) : page === 'question-banks' ? (
+        <Suspense fallback={<Skeleton paragraph={{ rows: 5 }} />}>
+          <BanksPage user={user} />
+        </Suspense>
       ) : page === 'users' ? (
         <UsersPage user={user} refreshUser={auth.refresh} />
       ) : page === 'classes' || page === 'courses' ? (
@@ -317,12 +331,21 @@ function Business() {
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Protected />} />
         <Route path="/change-password" element={<Protected page="security" />} />
-        {(['workspace', 'users', 'classes', 'courses', 'assignments', 'audit'] as const).map(
-          (page) => (
-            <Route key={page} path={'/' + page} element={<Protected page={page} />} />
-          ),
-        )}
+        {(
+          [
+            'workspace',
+            'users',
+            'classes',
+            'courses',
+            'assignments',
+            'audit',
+            'question-banks',
+          ] as const
+        ).map((page) => (
+          <Route key={page} path={'/' + page} element={<Protected page={page} />} />
+        ))}
         <Route path="/classes/:id" element={<Protected page="classes" />} />
+        <Route path="/question-banks/:bankId" element={<Protected page="question-banks" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>

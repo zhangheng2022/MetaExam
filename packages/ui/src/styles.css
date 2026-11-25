@@ -539,3 +539,30 @@ body {
     padding: 24px;
   }
 }
+.question-fields,
+.question-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.question-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.question-option textarea {
+  min-width: 0;
+}
+.question-answer {
+  width: 100%;
+}
+.question-type {
+  min-width: 160px;
+}
+.question-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.question-history {
+  margin-top: 24px;
+}

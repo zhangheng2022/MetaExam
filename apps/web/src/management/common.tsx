@@ -187,6 +187,7 @@ export function Editor({
   save,
   done,
   close,
+  size = 480,
 }: {
   title: string;
   initialValues?: object;
@@ -194,6 +195,7 @@ export function Editor({
   save: (values: Record<string, unknown>) => Promise<unknown>;
   done: () => void;
   close: () => void;
+  size?: number;
 }) {
   const [form] = Form.useForm(),
     [modal, holder] = Modal.useModal();
@@ -219,7 +221,7 @@ export function Editor({
       <Drawer
         title={title}
         open
-        size={480}
+        size={size}
         onClose={cancel}
         closable={!busy}
         maskClosable={!busy}
@@ -280,11 +282,13 @@ export function RemotePicker({
   value,
   onChange,
   id,
+  enabledOnly = true,
 }: {
   endpoint: string;
   value?: string;
   onChange?: (value: string) => void;
   id?: string;
+  enabledOnly?: boolean;
 }) {
   const [search, setSearch] = useState(''),
     [page, setPage] = useState(1),
@@ -310,7 +314,12 @@ export function RemotePicker({
         >(
           endpoint +
             (endpoint.includes('?') ? '&' : '?') +
-            new URLSearchParams({ enabled: 'true', q: search, page: String(page), pageSize: '20' }),
+            new URLSearchParams({
+              ...(enabledOnly ? { enabled: 'true' } : {}),
+              q: search,
+              page: String(page),
+              pageSize: '20',
+            }),
         );
         if (active) {
           setItems(
@@ -334,7 +343,7 @@ export function RemotePicker({
       active = false;
       clearTimeout(timer);
     };
-  }, [endpoint, search, page]);
+  }, [endpoint, search, page, enabledOnly]);
   const options =
     selected && !items.some((i) => i.value === selected.value) ? [selected, ...items] : items;
   return (

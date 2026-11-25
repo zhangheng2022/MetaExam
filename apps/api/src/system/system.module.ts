@@ -39,6 +39,8 @@ export class Routes {
     '/courses',
     '/assignments',
     '/audit',
+    '/question-banks',
+    '/question-banks/:bankId',
   ])
   page(@Res() res: FastifyReply) {
     return res

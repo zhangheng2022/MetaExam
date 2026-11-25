@@ -1,5 +1,7 @@
 # MetaExam
 
+M2 第一批已实现公共／个人题库、五类题型、题目版本历史及课程权限隔离。当前数据库版本 V5，见 [题库开发与验收说明](docs/m2-questions.md)。导入、附件、组卷和考试发布尚未交付。
+
 M1 第二批已实现账号、班级、课程、授课安排、角色工作台及操作日志，沿用 Ant Design 默认蓝色。开发与验收步骤见 [M1 第二批交付说明](docs/m1-management.md)。首次登录或管理员重置密码后，用户须先修改密码。
 
 M1 基础平台工程：Node.js 24、NestJS + Fastify、React + Ant Design 6、Electron、PostgreSQL 18。Windows x64 开发与内部离线安装验证。2026-11-25 用户已确认本机及独立环境验收完成：M0 完成，M1 第一批验收完成，详见 [交付记录](docs/m1-status.md)。
@@ -114,4 +116,4 @@ $env:LICENSE_SEQUENCE = '1'
 
 安装版维护命令：管理员终端设置 `METAEXAM_CONFIG=C:\ProgramData\MetaExam\config.json`，然后使用 `C:\Program Files\MetaExam\runtime\node.exe --use-system-ca C:\Program Files\MetaExam\server\cli.cjs license-request <输出路径>` 等同名命令。含空格路径需 PowerShell 的 `&` 与引号。
 
-已有数据库禁止重新 initdb；安装器拒绝覆盖安装；当前有序迁移升级至 V4，维护命令和备份前置步骤见 [M1 第二批交付说明](docs/m1-management.md)。卸载删除应用服务和应用文件、保留 ProgramData 数据。保留数据的恢复/重装须先备份并人工维护，不提供一键恢复承诺。当前仍为内部测试包，完整考试业务及正式发布尚未交付；后续变更按影响范围回归。当前结果见 [阶段状态](docs/phase1-status.md)。
+已有数据库禁止重新 initdb；安装器拒绝覆盖安装；当前有序迁移升级至 V5，维护命令和备份前置步骤见 [M2 题库交付说明](docs/m2-questions.md)。卸载删除应用服务和应用文件、保留 ProgramData 数据。保留数据的恢复/重装须先备份并人工维护，不提供一键恢复承诺。当前仍为内部测试包，完整考试业务及正式发布尚未交付；后续变更按影响范围回归。
