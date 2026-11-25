@@ -1,6 +1,6 @@
 # MetaExam
 
-M1 基础平台工程：Node.js 24、NestJS + Fastify、React + Ant Design 6、Electron、PostgreSQL 18。Windows x64 开发与内部离线安装验证。M0 仍等待独立测试环境的安装、服务与重启验收。
+M1 基础平台工程：Node.js 24、NestJS + Fastify、React + Ant Design 6、Electron、PostgreSQL 18。Windows x64 开发与内部离线安装验证。2026-11-25 用户已确认本机及独立环境验收完成：M0 完成，M1 第一批验收完成，详见 [交付记录](docs/m1-status.md)。
 
 Web 与 Electron 共用 packages/ui 的 Ant Design 组件；MetaExamProvider 统一中文 locale，使用 Ant Design 默认蓝色主色 #1677ff 和默认深色菜单。成功/警告状态仍使用各自语义色。组件样式、图标均由 Vite 本地打包，无 CDN 依赖。CSP 仅为组件动态样式允许内联 CSS，脚本仍仅允许本地来源；Electron 保持 sandbox、contextIsolation 和受限 IPC。
 
@@ -112,4 +112,4 @@ $env:LICENSE_SEQUENCE = '1'
 
 安装版维护命令：管理员终端设置 `METAEXAM_CONFIG=C:\ProgramData\MetaExam\config.json`，然后使用 `C:\Program Files\MetaExam\runtime\node.exe --use-system-ca C:\Program Files\MetaExam\server\cli.cjs license-request <输出路径>` 等同名命令。含空格路径需 PowerShell 的 `&` 与引号。
 
-已有数据库禁止重新 initdb；安装器拒绝覆盖安装；维护身份的显式 V1→V3 迁移命令和备份前置步骤见 [M1 验收说明](docs/m1-acceptance.md)，已安装环境升级流程仍待独立验收。卸载删除应用服务和应用文件、保留 ProgramData 数据。保留数据的恢复/重装须先备份并人工维护，不提供一键恢复承诺。独立验收未通过前不得用于正式考试。当前结果见 [阶段状态](docs/phase1-status.md)。
+已有数据库禁止重新 initdb；安装器拒绝覆盖安装；维护身份的显式 V1→V3 迁移命令和备份前置步骤见 [M1 验收说明](docs/m1-acceptance.md)。卸载删除应用服务和应用文件、保留 ProgramData 数据。保留数据的恢复/重装须先备份并人工维护，不提供一键恢复承诺。当前仍为内部测试包，完整考试业务及正式发布尚未交付；后续变更按影响范围回归。当前结果见 [阶段状态](docs/phase1-status.md)。
