@@ -1,6 +1,6 @@
 # MetaExam
 
-M2 第一批已实现公共／个人题库、五类题型、题目版本历史及课程权限隔离。当前数据库版本 V5，见 [题库开发与验收说明](docs/m2-questions.md)。导入、附件、组卷和考试发布尚未交付。
+M2 第二批已实现 Excel 题目预检／确认导入和图片附件，沿用公共／个人题库、五类题型及不可变版本。当前数据库版本 V6，见 [导入与图片验收说明](docs/m2-imports.md) 和 [题库基础说明](docs/m2-questions.md)。组卷和考试发布尚未交付。
 
 M1 第二批已实现账号、班级、课程、授课安排、角色工作台及操作日志，沿用 Ant Design 默认蓝色。开发与验收步骤见 [M1 第二批交付说明](docs/m1-management.md)。首次登录或管理员重置密码后，用户须先修改密码。
 
@@ -65,7 +65,7 @@ AI 开发先读取 [AGENTS.md](AGENTS.md) 和 [官方工具与资料](docs/ai-de
 
 ## 数据与任务
 
-项目数据库普通进程数据在 `.local/postgres`；安装版在 `%ProgramData%\MetaExam\postgres\data`，程序在 Program Files。授权、序号、任务均落 PostgreSQL。版本迁移用事务、咨询锁及校验和，重复执行安全，不在 API 启动时自动迁移。任务领取用 `FOR UPDATE SKIP LOCKED`、租约 token 和重试上限；过期租约可重领。本阶段任务只有幂等 diagnostic.echo，后续有外部副作用的任务仍需单独的业务幂等设计。
+项目数据库普通进程数据在 `.local/postgres`；安装版在 `%ProgramData%\MetaExam\postgres\data`，程序在 Program Files。授权、序号、任务均落 PostgreSQL。版本迁移用事务、咨询锁及校验和，重复执行安全，不在 API 启动时自动迁移。任务领取用 `FOR UPDATE SKIP LOCKED`、租约 token 和重试上限；过期租约可重领。任务包括 diagnostic.echo、题目预检和确认导入；确认导入采用整批事务及业务幂等。原始 Excel 和图片保存在配置 `home/files`，备份必须同时包含数据库与文件。
 
 安装版数据库使用独立低权限 Windows 虚拟服务账户，应用数据库角色只有所需表的 DML 权限，初始化角色与应用角色分离。数据库口令用 Windows DPAPI LocalMachine 加密并通过文件 ACL 限制读取。管理员始终可控制本机数据；本地验签不承诺抵御管理员整体回滚磁盘或修改程序。
 
@@ -116,4 +116,4 @@ $env:LICENSE_SEQUENCE = '1'
 
 安装版维护命令：管理员终端设置 `METAEXAM_CONFIG=C:\ProgramData\MetaExam\config.json`，然后使用 `C:\Program Files\MetaExam\runtime\node.exe --use-system-ca C:\Program Files\MetaExam\server\cli.cjs license-request <输出路径>` 等同名命令。含空格路径需 PowerShell 的 `&` 与引号。
 
-已有数据库禁止重新 initdb；安装器拒绝覆盖安装；当前有序迁移升级至 V5，维护命令和备份前置步骤见 [M2 题库交付说明](docs/m2-questions.md)。卸载删除应用服务和应用文件、保留 ProgramData 数据。保留数据的恢复/重装须先备份并人工维护，不提供一键恢复承诺。当前仍为内部测试包，完整考试业务及正式发布尚未交付；后续变更按影响范围回归。
+已有数据库禁止重新 initdb；安装器拒绝覆盖安装；当前有序迁移升级至 V6，维护命令和备份前置步骤见 [M2 导入交付说明](docs/m2-imports.md)。卸载删除应用服务和应用文件、保留 ProgramData 数据。保留数据的恢复/重装须先备份并人工维护，不提供一键恢复承诺。当前仍为内部测试包，完整考试业务及正式发布尚未交付；后续变更按影响范围回归。

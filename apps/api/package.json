@@ -9,6 +9,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@fastify/multipart": "10.1.9",
     "@fastify/static": "10.1.12",
     "@metaexam/contracts": "workspace:*",
     "@metaexam/db": "workspace:*",

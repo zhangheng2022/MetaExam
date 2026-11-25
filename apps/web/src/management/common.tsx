@@ -188,6 +188,7 @@ export function Editor({
   done,
   close,
   size = 480,
+  externalBusy = false,
 }: {
   title: string;
   initialValues?: object;
@@ -196,6 +197,7 @@ export function Editor({
   done: () => void;
   close: () => void;
   size?: number;
+  externalBusy?: boolean;
 }) {
   const [form] = Form.useForm(),
     [modal, holder] = Modal.useModal();
@@ -204,7 +206,7 @@ export function Editor({
     [conflict, setConflict] = useState(false),
     [dirty, setDirty] = useState(false);
   const cancel = () => {
-    if (busy) return;
+    if (busy || externalBusy) return;
     if (dirty)
       modal.confirm({
         title: '放弃尚未保存的修改？',
@@ -223,15 +225,15 @@ export function Editor({
         open
         size={size}
         onClose={cancel}
-        closable={!busy}
-        maskClosable={!busy}
+        closable={!busy && !externalBusy}
+        maskClosable={!busy && !externalBusy}
         destroyOnHidden
         footer={
           <Space>
-            <Button type="primary" loading={busy} onClick={() => form.submit()}>
+            <Button type="primary" loading={busy || externalBusy} onClick={() => form.submit()}>
               保存
             </Button>
-            <Button disabled={busy} onClick={cancel}>
+            <Button disabled={busy || externalBusy} onClick={cancel}>
               取消
             </Button>
           </Space>
@@ -252,10 +254,11 @@ export function Editor({
           name="management-editor"
           layout="vertical"
           initialValues={initialValues}
-          disabled={busy}
+          disabled={busy || externalBusy}
           clearOnDestroy
           onValuesChange={() => setDirty(true)}
           onFinish={async (values) => {
+            if (externalBusy || busy) return;
             setBusy(true);
             setError('');
             setConflict(false);

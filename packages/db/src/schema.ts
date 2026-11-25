@@ -91,6 +91,92 @@ export const schemaMigrations = pgTable('schema_migrations', {
   checksum: text('checksum').notNull(),
   appliedAt: time('applied_at').notNull().defaultNow(),
 });
+export const questionImports = pgTable(
+  'question_imports',
+  {
+    id: uuid('id').primaryKey(),
+    bankId: uuid('bank_id')
+      .notNull()
+      .references(() => questionBanks.id),
+    actorId: uuid('actor_id')
+      .notNull()
+      .references(() => users.id),
+    filename: text('filename').notNull(),
+    sourceDigest: text('source_digest').notNull(),
+    status: text('status').notNull().default('pending'),
+    total: integer('total').notNull().default(0),
+    errors: integer('errors').notNull().default(0),
+    duplicates: integer('duplicates').notNull().default(0),
+    imported: integer('imported').notNull().default(0),
+    skipped: integer('skipped').notNull().default(0),
+    duplicatePolicy: text('duplicate_policy'),
+    errorCode: text('error_code'),
+    createdAt: time('created_at').notNull().defaultNow(),
+    expiresAt: time('expires_at')
+      .notNull()
+      .default(sql`now()+interval '24 hours'`),
+  },
+  (t) => [
+    index('question_imports_owner_idx').on(t.actorId, t.bankId, t.createdAt),
+    check(
+      'question_imports_status_check',
+      sql`${t.status} IN ('pending','processing','ready','queued','completed','failed')`,
+    ),
+    check('question_imports_duplicate_policy_check', sql`${t.duplicatePolicy} IN ('skip','keep')`),
+  ],
+);
+export const questionImportRows = pgTable(
+  'question_import_rows',
+  {
+    importId: uuid('import_id')
+      .notNull()
+      .references(() => questionImports.id),
+    rowNumber: integer('row_number').notNull(),
+    content: jsonb('content'),
+    errors: jsonb('errors').notNull(),
+    duplicate: boolean('duplicate').notNull().default(false),
+    questionId: uuid('question_id').references(() => questions.id),
+  },
+  (t) => [primaryKey({ columns: [t.importId, t.rowNumber] })],
+);
+export const questionAttachments = pgTable(
+  'question_attachments',
+  {
+    id: uuid('id').primaryKey(),
+    bankId: uuid('bank_id')
+      .notNull()
+      .references(() => questionBanks.id),
+    actorId: uuid('actor_id')
+      .notNull()
+      .references(() => users.id),
+    digest: text('digest').notNull(),
+    width: integer('width').notNull(),
+    height: integer('height').notNull(),
+    bytes: integer('bytes').notNull(),
+    createdAt: time('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('question_attachments_bank_idx').on(t.bankId),
+    check('question_attachments_width_check', sql`${t.width}>0`),
+    check('question_attachments_height_check', sql`${t.height}>0`),
+    check('question_attachments_bytes_check', sql`${t.bytes}>0`),
+  ],
+);
+export const questionVersionAttachments = pgTable(
+  'question_version_attachments',
+  {
+    versionId: uuid('version_id')
+      .notNull()
+      .references(() => questionVersions.id),
+    attachmentId: uuid('attachment_id')
+      .notNull()
+      .references(() => questionAttachments.id),
+  },
+  (t) => [
+    primaryKey({ columns: [t.versionId, t.attachmentId] }),
+    index('question_version_attachments_file_idx').on(t.attachmentId),
+  ],
+);
 export const instanceInfo = pgTable(
   'instance_info',
   {
@@ -137,7 +223,10 @@ export const jobs = pgTable(
   },
   (t) => [
     index('jobs_claim_idx').on(t.status, t.leaseUntil, t.createdAt),
-    check('jobs_kind_check', sql`${t.kind}='diagnostic.echo'`),
+    check(
+      'jobs_kind_check',
+      sql`${t.kind} IN ('diagnostic.echo','question.preflight','question.apply')`,
+    ),
     check('jobs_status_check', sql`${t.status} IN ('pending','running','completed','failed')`),
   ],
 );

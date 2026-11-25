@@ -74,6 +74,15 @@ export const questionInputSchema = z
       .array(text(80))
       .max(10, '最多 10 个知识点')
       .refine((v) => new Set(v).size === v.length, '知识点不能重复'),
+    images: z
+      .array(
+        z
+          .object({ id: idSchema, alt: z.string().trim().min(1, '请填写图片说明').max(200) })
+          .strict(),
+      )
+      .max(6)
+      .refine((v) => new Set(v.map((x) => x.id)).size === v.length, '图片不能重复')
+      .optional(),
   })
   .strict()
   .superRefine((v, ctx) => {

@@ -83,7 +83,32 @@ CREATE TRIGGER question_versions_immutable BEFORE UPDATE OR DELETE ON question_v
 INSERT INTO permissions VALUES ('questions.use','使用课程题库');
 INSERT INTO role_permissions VALUES ('admin','questions.use'),('teacher','questions.use');
 `;
-export const MIGRATIONS = [MIGRATION, identity, teaching, management, questions].map(
+const imports = `
+ALTER TABLE jobs DROP CONSTRAINT jobs_kind_check;
+ALTER TABLE jobs ADD CONSTRAINT jobs_kind_check CHECK(kind IN ('diagnostic.echo','question.preflight','question.apply'));
+CREATE TABLE question_imports(
+ id uuid PRIMARY KEY,bank_id uuid NOT NULL REFERENCES question_banks(id),actor_id uuid NOT NULL REFERENCES users(id),
+ filename text NOT NULL,source_digest text NOT NULL,status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','processing','ready','queued','completed','failed')),
+ total integer NOT NULL DEFAULT 0,errors integer NOT NULL DEFAULT 0,duplicates integer NOT NULL DEFAULT 0,imported integer NOT NULL DEFAULT 0,skipped integer NOT NULL DEFAULT 0,
+ duplicate_policy text CHECK(duplicate_policy IN ('skip','keep')),error_code text,created_at timestamptz NOT NULL DEFAULT now(),expires_at timestamptz NOT NULL DEFAULT now()+interval '24 hours'
+);
+CREATE INDEX question_imports_owner_idx ON question_imports(actor_id,bank_id,created_at);
+CREATE TABLE question_import_rows(
+ import_id uuid NOT NULL REFERENCES question_imports(id),row_number integer NOT NULL,content jsonb,errors jsonb NOT NULL,duplicate boolean NOT NULL DEFAULT false,
+ question_id uuid REFERENCES questions(id),PRIMARY KEY(import_id,row_number)
+);
+CREATE TABLE question_attachments(
+ id uuid PRIMARY KEY,bank_id uuid NOT NULL REFERENCES question_banks(id),actor_id uuid NOT NULL REFERENCES users(id),digest text NOT NULL,
+ width integer NOT NULL CHECK(width>0),height integer NOT NULL CHECK(height>0),bytes integer NOT NULL CHECK(bytes>0),created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX question_attachments_bank_idx ON question_attachments(bank_id);
+CREATE TABLE question_version_attachments(
+ version_id uuid NOT NULL REFERENCES question_versions(id),attachment_id uuid NOT NULL REFERENCES question_attachments(id),PRIMARY KEY(version_id,attachment_id)
+);
+CREATE INDEX question_version_attachments_file_idx ON question_version_attachments(attachment_id);
+CREATE TRIGGER question_version_attachments_immutable BEFORE UPDATE OR DELETE ON question_version_attachments FOR EACH ROW EXECUTE FUNCTION reject_question_version_change();
+`;
+export const MIGRATIONS = [MIGRATION, identity, teaching, management, questions, imports].map(
   (sql, index) => ({
     version: index + 1,
     sql,
@@ -130,6 +155,9 @@ export const RUNTIME_TABLES = [
   'teaching_assignments',
   'question_banks',
   'questions',
+  'question_imports',
+  'question_import_rows',
+  'question_attachments',
 ];
 // Fixed identifiers only. Never grant DDL or future tables implicitly.
 export async function grantRuntimeAccess(
@@ -153,4 +181,6 @@ export async function grantRuntimeAccess(
   await c.query('GRANT SELECT,INSERT,UPDATE,DELETE ON ' + RUNTIME_TABLES.join(',') + ' TO ' + role);
   await c.query('REVOKE ALL ON question_versions FROM ' + role);
   await c.query('GRANT SELECT,INSERT ON question_versions TO ' + role);
+  await c.query('REVOKE ALL ON question_version_attachments FROM ' + role);
+  await c.query('GRANT SELECT,INSERT ON question_version_attachments TO ' + role);
 }

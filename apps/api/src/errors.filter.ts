@@ -2,6 +2,20 @@ import { Catch, HttpException, type ArgumentsHost, type ExceptionFilter } from '
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { IdentityError } from '@metaexam/db';
 const messages: Record<string, string> = {
+  INVALID_UPLOAD: '请上传一个不超过 2 MiB 的文件',
+  INVALID_WORKBOOK: 'Excel 文件不符合要求：请使用模板，最多 500 行，不含公式、链接或嵌入对象',
+  INVALID_TEMPLATE: '请使用下载的模板并保留“题目”工作表及标题',
+  EMPTY_WORKBOOK: '工作表中没有可导入的题目',
+  INVALID_IMAGE: '仅支持完整的 PNG/JPEG 静态图片，不超过 2 MiB、800 万像素',
+  INVALID_ATTACHMENT: '图片不存在或不属于当前题库',
+  FILE_UNAVAILABLE: '文件暂时不可用，请联系管理员检查本地文件',
+  FILE_PROCESSING_TIMEOUT: '文件处理超时，请缩小文件后重试',
+  FILE_PROCESSING_FAILED: '文件处理失败，请检查文件内容',
+  UPLOAD_QUOTA: '已达到今天的上传上限，请稍后再试',
+  IMPORT_NOT_READY: '预检未完成或存在错误，请修正后重新上传',
+  IMPORT_EXPIRED: '导入预检已超过 24 小时，请重新上传',
+  IMPORT_ALREADY_CONFIRMED: '该导入已确认，不能更改重复题处理方式',
+  SOURCE_CHANGED: '导入源文件已发生变化，请重新上传',
   BANK_READ_ONLY: '题库已归档或课程已停用，暂不能修改',
   INVALID_COURSE: '请选择启用且有权使用的课程',
   QUESTION_ARCHIVED: '题目已归档，请恢复后再编辑',

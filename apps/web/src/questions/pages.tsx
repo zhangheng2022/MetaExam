@@ -28,6 +28,7 @@ import type {
 import { api } from '../api';
 import { DataTable, Editor, RemotePicker, dateText, usePaged } from '../management/common';
 import { QuestionEditor, QuestionPreview, typeName, typeOptions } from './editor';
+import { ImportManager } from './imports';
 function BankEditor({
   bank,
   user,
@@ -216,6 +217,7 @@ function ArchiveSelect(props: { value?: string; onChange?: (v: string) => void; 
   );
 }
 function BankDetail({ bankId }: { bankId: string }) {
+  const [imports, setImports] = useState(false);
   const list = usePaged<QuestionSummary>(`/question-banks/${bankId}/questions`);
   const [bank, setBank] = useState<QuestionBank>(),
     [error, setError] = useState(''),
@@ -248,6 +250,17 @@ function BankDetail({ bankId }: { bankId: string }) {
   return (
     <>
       {holder}
+      <div className="management-toolbar">
+        <Button onClick={() => setImports(true)}>Excel 导入与记录</Button>
+      </div>
+      {imports && (
+        <ImportManager
+          bankId={bankId}
+          writable={!!writable}
+          changed={reload}
+          close={() => setImports(false)}
+        />
+      )}
       <div className="management-toolbar">
         <Link to="/question-banks">返回题库列表</Link>
       </div>
@@ -498,7 +511,7 @@ function History({ bankId, id, close }: { bankId: string; id: string; close: () 
           <Typography.Title level={4}>
             V{selected.version} <Tag>历史内容保留</Tag>
           </Typography.Title>
-          <QuestionPreview question={selected.question} />
+          <QuestionPreview bankId={bankId} question={selected.question} />
         </div>
       )}
     </Drawer>

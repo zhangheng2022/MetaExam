@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import fastifyStatic from '@fastify/static';
+import fastifyMultipart from '@fastify/multipart';
 import { readFileSync, existsSync } from 'node:fs';
 import { loadConfig, type RuntimeConfig } from '@metaexam/db';
 import { DatabaseModule } from './database/database.module';
@@ -66,12 +67,23 @@ export async function createApp(
       bodyLimit: 65536,
       trustProxy: false,
       logger: false,
+      requestTimeout: 30000,
     }),
     { logger: ['error', 'warn'] },
   );
   app.enableCsrfProtection({ trustedOrigins });
   app.useGlobalFilters(new ErrorsFilter());
   app.enableShutdownHooks();
+  await app.register(fastifyMultipart, {
+    limits: {
+      fileSize: 2 * 1024 * 1024,
+      files: 1,
+      fields: 0,
+      parts: 1,
+      fieldNameSize: 30,
+      headerPairs: 32,
+    },
+  });
   const server = app.getHttpAdapter().getInstance();
   server.addHook('onSend', async (_req, reply, payload) => {
     reply.header('X-Content-Type-Options', 'nosniff');

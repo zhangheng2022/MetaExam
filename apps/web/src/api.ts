@@ -8,14 +8,15 @@ export class RequestError extends Error {
     super(message);
   }
 }
-export async function api<T>(url: string, method = 'GET', body?: unknown): Promise<T> {
+export async function apiResponse(url: string, method = 'GET', body?: unknown): Promise<Response> {
   let r: Response;
   try {
     r = await fetch('/api/v1' + url, {
       method,
       credentials: 'same-origin',
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
+      headers:
+        body && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : undefined,
+      body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(20000),
     });
   } catch {
@@ -37,5 +38,9 @@ export async function api<T>(url: string, method = 'GET', body?: unknown): Promi
       error.message ?? messages[r.status] ?? '请求失败，请重试。',
     );
   }
+  return r;
+}
+export async function api<T>(url: string, method = 'GET', body?: unknown): Promise<T> {
+  const r = await apiResponse(url, method, body);
   return r.status === 204 ? (undefined as T) : (r.json() as Promise<T>);
 }

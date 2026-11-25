@@ -81,6 +81,10 @@ UI 开发必读：[Ant Design 官方视觉语言 design.md](https://ant.design/d
 
 没有为每个依赖机械安装一个 skill。未核实到适合本项目的官方推荐技能时，直接保留官方文档和已有 CLI；官方提到的实验性集成、跨主版本迁移和云服务不因本次接入自动启用。
 
+## M2 文件处理依赖
+
+锁定 `@fastify/multipart` 10.1.9、ExcelJS 4.4.0、Sharp 0.35.5、yauzl 3.2.0；版本以锁文件为准。参考 [Fastify multipart 官方 README](https://github.com/fastify/fastify-multipart)、[ExcelJS 官方 README](https://github.com/exceljs/exceljs)、[Sharp 输入限制](https://sharp.pixelplumbing.com/api-constructor/)、[Sharp 离线原生依赖安装](https://sharp.pixelplumbing.com/install/)、[yauzl 官方 ZIP 读取接口](https://github.com/thejoshwolfe/yauzl)。Fastify multipart 单独限制文件／字段／part 数量和大小，不能依赖 JSON bodyLimit；Excel 在解析前检查解压体积；Sharp 做真实解码和像素限制。二者在有超时的 worker thread 执行，安装包复制生产依赖及当前 Windows x64 的原生库并保留许可证，不在线下载，不新增社区技能。
+
 ## M1 身份开发依赖
 
 本批按 [官方认证文档](https://docs.nestjs.com/security/authentication)、[官方权限文档](https://docs.nestjs.com/security/authorization)、[官方 CSRF 文档](https://docs.nestjs.com/security/csrf) 接入 @nestjs/authentication 0.1.6 与 @nestjs/authorization 0.1.4。React Router 8.5.3 使用 [官方声明式路由](https://reactrouter.com/start/declarative/routing)。认证只启用本机 Cookie 会话和密码，不启用在线账户、第三方登录或云服务。依赖仍以 pnpm-lock.yaml 为准。

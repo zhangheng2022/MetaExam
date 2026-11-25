@@ -566,3 +566,20 @@ body {
 .question-history {
   margin-top: 24px;
 }
+.question-image {
+  max-width: 100%;
+  height: auto;
+  align-self: start;
+  justify-self: start;
+  display: block;
+  object-fit: contain;
+}
+.question-image-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.question-image-editor img {
+  max-height: 240px;
+  align-self: flex-start;
+}

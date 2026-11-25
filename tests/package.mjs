@@ -173,6 +173,88 @@ try {
     courseId,
     visibility: 'public',
   });
+  const worker = start(node, ['server/worker.cjs']);
+  const bankRoute = '/api/v1/question-banks/' + bankId;
+  const template = await fetch(url + bankRoute + '/import-template', { headers: { cookie } });
+  assert.equal(template.status, 200, await template.clone().text());
+  const runtimeRequire = createRequire(path.join(isolated, 'server/api.cjs'));
+  const Excel = runtimeRequire('exceljs');
+  const book = new Excel.Workbook();
+  await book.xlsx.load(Buffer.from(await template.arrayBuffer()));
+  book
+    .getWorksheet('题目')
+    .addRow([
+      '判断',
+      '离线包导入判断题',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '正确',
+      '',
+      2,
+      '',
+      '',
+      '',
+      '',
+    ]);
+  const upload = async (route, bytes, name, type) => {
+    const form = new FormData();
+    form.append('file', new Blob([bytes], { type }), name);
+    return fetch(url + bankRoute + route, { method: 'POST', headers: { cookie }, body: form });
+  };
+  const uploaded = await upload(
+    '/imports',
+    await book.xlsx.writeBuffer(),
+    'payload.xlsx',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  );
+  assert.equal(uploaded.status, 202, await uploaded.clone().text());
+  const importId = (await uploaded.json()).id;
+  const report = async () =>
+    (await (await fetch(url + bankRoute + '/imports/' + importId, { headers: { cookie } })).json())
+      .summary;
+  await wait(async () => (await report()).status === 'ready', worker);
+  assert.equal(
+    (
+      await post(
+        bankRoute + '/imports/' + importId + '/confirm',
+        { duplicatePolicy: 'skip' },
+        cookie,
+      )
+    ).status,
+    202,
+  );
+  await wait(async () => (await report()).status === 'completed', worker);
+  assert.equal((await report()).imported, 1);
+  // A child releases its native DLL before Windows removes the isolated payload.
+  const png = execFileSync(
+    node,
+    [
+      '-e',
+      "require('sharp')({create:{width:30,height:20,channels:3,background:'#1677ff'}}).png().toBuffer().then(b=>process.stdout.write(b))",
+    ],
+    { cwd: path.join(isolated, 'server'), windowsHide: true },
+  );
+  const imageUpload = await upload('/attachments', png, 'diagram.png', 'image/png');
+  assert.equal(imageUpload.status, 201, await imageUpload.clone().text());
+  const uploadedImage = await imageUpload.json();
+  const imageId = uploadedImage.id;
+  assert.equal(uploadedImage.width, 30);
+  const imageResponse = await fetch(url + bankRoute + '/attachments/' + imageId + '/content', {
+    headers: { cookie },
+  });
+  assert.equal(imageResponse.status, 200);
+  assert.equal(
+    Buffer.from(await imageResponse.arrayBuffer())
+      .subarray(0, 8)
+      .toString('hex'),
+    '89504e470d0a1a0a',
+  );
   const questionId = await create('/question-banks/' + bankId + '/questions', {
     stem: '包内判断题',
     content: { type: 'boolean', answer: true },
@@ -229,7 +311,6 @@ try {
     204,
   );
   assert.equal((await fetch(url + '/api/v1/auth/me', { headers: { cookie } })).status, 401);
-  const worker = start(node, ['server/worker.cjs']);
   const headers = {
     'Content-Type': 'application/json',
     Authorization: 'Bearer ' + config.api.managementToken,
@@ -285,6 +366,8 @@ try {
           'bundled setup, login, protected overview and password revocation',
           'bundled account/organization/assignment management and forced password boundary',
           'bundled question bank, immutable version read, deep route and student answer denial',
+          'isolated ExcelJS template, multipart import, worker-thread preflight and atomic confirmation',
+          'isolated Sharp native PNG normalization and authenticated image read',
           'bundled Worker completes API task',
           'bundled CLI validates persisted license',
           'packaged Electron IPC returns database ready',

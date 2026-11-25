@@ -9,12 +9,14 @@ import {
   Post,
   Query,
   Req,
+  Res,
 } from '@nestjs/common';
 import { CurrentUser as SignedInUser } from '@nestjs/authentication';
 import { Can, Policy } from '@nestjs/authorization';
-import type { FastifyRequest } from 'fastify';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { CurrentUser } from '@metaexam/contracts';
 import { QuestionsService } from './questions.service';
+import { QuestionFilesService } from './files.service';
 @Policy()
 class QuestionsPolicy {
   use(user: CurrentUser | null) {
@@ -30,7 +32,71 @@ const context = (r: FastifyRequest) => ({ requestId: r.id, ip: r.ip });
 @Controller('/api/v1/question-banks')
 @Can(QuestionsPolicy, 'use')
 class QuestionsController {
-  constructor(private readonly service: QuestionsService) {}
+  constructor(
+    private readonly service: QuestionsService,
+    private readonly files: QuestionFilesService,
+  ) {}
+  @Get(':bank/import-template') async template(
+    @SignedInUser() u: CurrentUser,
+    @Param('bank') bank: string,
+    @Res() reply: FastifyReply,
+  ) {
+    const bytes = await this.files.template(u.id, bank);
+    return reply
+      .type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      .header('Content-Disposition', 'attachment; filename="MetaExam-questions-template.xlsx"')
+      .send(bytes);
+  }
+  @Post(':bank/imports') @HttpCode(202) uploadImport(
+    @SignedInUser() u: CurrentUser,
+    @Param('bank') bank: string,
+    @Req() req: FastifyRequest,
+  ) {
+    return this.files.upload(u.id, bank, req, false);
+  }
+  @Get(':bank/imports') imports(
+    @SignedInUser() u: CurrentUser,
+    @Param('bank') bank: string,
+    @Query() q: unknown,
+  ) {
+    return this.files.list(u.id, bank, q);
+  }
+  @Get(':bank/imports/:id') report(
+    @SignedInUser() u: CurrentUser,
+    @Param('bank') bank: string,
+    @Param('id') id: string,
+    @Query() q: unknown,
+  ) {
+    return this.files.report(u.id, bank, id, q);
+  }
+  @Post(':bank/imports/:id/confirm') @HttpCode(202) confirm(
+    @SignedInUser() u: CurrentUser,
+    @Param('bank') bank: string,
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: FastifyRequest,
+  ) {
+    return this.files.confirm(u.id, bank, id, body, req);
+  }
+  @Post(':bank/attachments') image(
+    @SignedInUser() u: CurrentUser,
+    @Param('bank') bank: string,
+    @Req() req: FastifyRequest,
+  ) {
+    return this.files.upload(u.id, bank, req, true);
+  }
+  @Get(':bank/attachments/:id/content') async content(
+    @SignedInUser() u: CurrentUser,
+    @Param('bank') bank: string,
+    @Param('id') id: string,
+    @Res() reply: FastifyReply,
+  ) {
+    const bytes = await this.files.content(u.id, bank, id);
+    return reply
+      .type('image/png')
+      .header('Content-Disposition', 'inline; filename="question-image.png"')
+      .send(bytes);
+  }
   @Get('courses') courses(@SignedInUser() u: CurrentUser, @Query() q: unknown) {
     return this.service.courses(u.id, q);
   }
@@ -100,5 +166,8 @@ class QuestionsController {
     return this.service.archive(u.id, bank, id, b, context(r));
   }
 }
-@Module({ controllers: [QuestionsController], providers: [QuestionsPolicy, QuestionsService] })
+@Module({
+  controllers: [QuestionsController],
+  providers: [QuestionsPolicy, QuestionsService, QuestionFilesService],
+})
 export class QuestionsModule {}

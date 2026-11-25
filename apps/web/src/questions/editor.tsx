@@ -20,6 +20,7 @@ import {
 } from '@metaexam/contracts';
 import { Editor } from '../management/common';
 import { api } from '../api';
+import { ImageEditor, QuestionImage } from './images';
 export const typeOptions = [
   { value: 'single', label: '单选题' },
   { value: 'multiple', label: '多选题' },
@@ -244,6 +245,7 @@ export function QuestionEditor({
   done: () => void;
   close: () => void;
 }) {
+  const [uploading, setUploading] = useState(false);
   const [initial] = useState(
     () =>
       detail?.current.question ?? {
@@ -257,6 +259,7 @@ export function QuestionEditor({
   );
   return (
     <Editor
+      externalBusy={uploading}
       size={720}
       title={detail ? '编辑题目 · 保存为新版本' : '录入题目'}
       initialValues={initial}
@@ -287,6 +290,9 @@ export function QuestionEditor({
       <Form.Item name="content">
         <ContentEditor value={initial.content} />
       </Form.Item>
+      <Form.Item name="images" label="题目图片">
+        <ImageEditor bankId={bankId} onBusy={setUploading} />
+      </Form.Item>
       <Form.Item name="difficulty" label="难度" rules={[{ required: true }]}>
         <Select
           options={[1, 2, 3, 4, 5].map((value) => ({
@@ -307,7 +313,13 @@ export function QuestionEditor({
     </Editor>
   );
 }
-export function QuestionPreview({ question }: { question: QuestionInput }) {
+export function QuestionPreview({
+  question,
+  bankId,
+}: {
+  question: QuestionInput;
+  bankId?: string;
+}) {
   const c = question.content;
   return (
     <div className="question-preview">
@@ -319,6 +331,10 @@ export function QuestionPreview({ question }: { question: QuestionInput }) {
         ))}
       </Space>
       <Typography.Paragraph className="question-text">{question.stem}</Typography.Paragraph>
+      {bankId &&
+        question.images?.map((image) => (
+          <QuestionImage key={image.id} bankId={bankId} {...image} />
+        ))}
       {(c.type === 'single' || c.type === 'multiple') && (
         <>
           {c.options.map((o, i) => (

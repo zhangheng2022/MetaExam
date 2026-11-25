@@ -23,7 +23,7 @@ const summary = `q.id,q.bank_id AS "bankId",q.current_version AS version,q.revis
 const versionColumns = `v.id,v.question_id AS "questionId",v.version,v.content AS question,v.created_at AS "createdAt",u.display_name AS "authorName"`;
 export class QuestionRepository {
   constructor(readonly db: Database) {}
-  private run<T>(
+  protected run<T>(
     actorId: string,
     write: boolean,
     action: (c: PoolClient, actor: Actor) => Promise<T>,
@@ -61,7 +61,7 @@ export class QuestionRepository {
     ).rows;
     return { items, total, page: q.page, pageSize: q.pageSize };
   }
-  private async bank(c: PoolClient, actor: Actor, id: string) {
+  protected async bank(c: PoolClient, actor: Actor, id: string) {
     const row = (
       await c.query<QuestionBank>(
         `SELECT ${bankColumns} FROM ${bankFrom} WHERE b.id=$3 AND ${bankScope}`,
@@ -71,7 +71,7 @@ export class QuestionRepository {
     if (!row) throw new IdentityError('NOT_FOUND', 404);
     return row;
   }
-  private editable(bank: QuestionBank, allowArchived = false) {
+  protected editable(bank: QuestionBank, allowArchived = false) {
     if (!bank.canEdit) throw new IdentityError('FORBIDDEN', 403);
     if (!bank.courseEnabled || (!allowArchived && bank.archived))
       throw new IdentityError('BANK_READ_ONLY', 409);
@@ -104,6 +104,18 @@ export class QuestionRepository {
   }
   getBank(actorId: string, id: string) {
     return this.run(actorId, false, (c, a) => this.bank(c, a, id));
+  }
+  withBank<T>(
+    actorId: string,
+    bankId: string,
+    write: boolean,
+    action: (c: PoolClient, bank: QuestionBank) => Promise<T>,
+  ) {
+    return this.run(actorId, write, async (c, a) => {
+      const bank = await this.bank(c, a, bankId);
+      if (write) this.editable(bank);
+      return action(c, bank);
+    });
   }
   createBank(actorId: string, input: BankInput, context: AuditContext) {
     return this.run(actorId, true, async (c, a) => {
@@ -223,11 +235,7 @@ export class QuestionRepository {
           [id, version],
         );
       } else await c.query('INSERT INTO questions(id,bank_id) VALUES($1,$2)', [id, bankId]);
-      const versionId = randomUUID();
-      await c.query(
-        'INSERT INTO question_versions(id,question_id,version,content,author_id) VALUES($1,$2,$3,$4,$5)',
-        [versionId, id, version, JSON.stringify(input), a.id],
-      );
+      const versionId = await appendQuestionVersion(c, bankId, a.id, id, version, input);
       await audit(c, edit ? 'question.update' : 'question.create', 'success', context, a.id, {
         type: 'question',
         id,
@@ -258,4 +266,32 @@ export class QuestionRepository {
       });
     });
   }
+}
+export async function appendQuestionVersion(
+  c: PoolClient,
+  bankId: string,
+  actorId: string,
+  id: string,
+  version: number,
+  input: QuestionInput,
+) {
+  const images = input.images ?? [];
+  if (images.length) {
+    const valid = await c.query(
+      `SELECT id FROM question_attachments a WHERE id=ANY($1::uuid[]) AND bank_id=$2 AND (actor_id=$3 OR EXISTS(SELECT 1 FROM question_version_attachments va WHERE va.attachment_id=a.id))`,
+      [images.map((i) => i.id), bankId, actorId],
+    );
+    if (valid.rowCount !== images.length) throw new IdentityError('INVALID_ATTACHMENT', 400);
+  }
+  const versionId = randomUUID();
+  await c.query(
+    'INSERT INTO question_versions(id,question_id,version,content,author_id) VALUES($1,$2,$3,$4,$5)',
+    [versionId, id, version, JSON.stringify(input), actorId],
+  );
+  for (const image of images)
+    await c.query(
+      'INSERT INTO question_version_attachments(version_id,attachment_id) VALUES($1,$2)',
+      [versionId, image.id],
+    );
+  return versionId;
 }

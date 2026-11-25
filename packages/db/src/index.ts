@@ -15,6 +15,10 @@ import { MIGRATIONS, validateMigrations, migrationRows } from './migrations';
 export { MIGRATION, MIGRATIONS, SCHEMA_VERSION, grantRuntimeAccess } from './migrations';
 export * from './management';
 export * from './questions';
+export * from './imports';
+export * from './files';
+export * from './attachments';
+import { processImportJob } from './imports';
 export function createDatabase(config = loadConfig()) {
   const pool = new Pool({
     ...config.database,
@@ -271,16 +275,36 @@ export async function processOne(db: Database): Promise<boolean> {
   await db.pool.query(
     "UPDATE jobs SET status='failed',error_code='RETRIES_EXHAUSTED' WHERE status='running' AND lease_until<now() AND attempts>=3",
   );
+  await db.pool.query(
+    "UPDATE question_imports i SET status='failed',error_code='RETRIES_EXHAUSTED' WHERE status IN ('pending','processing','queued') AND EXISTS(SELECT 1 FROM jobs j WHERE j.payload->>'importId'=i.id::text AND j.status='failed')",
+  );
   const claimed = await db.pool.query<{
     id: string;
-    payload: { message: string };
+    payload: { message?: string; importId?: string };
     lease_token: string;
+    kind: string;
   }>(
-    "WITH next AS (SELECT id FROM jobs WHERE (status='pending' OR (status='running' AND lease_until<now())) AND attempts<3 ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1) UPDATE jobs j SET status='running',attempts=attempts+1,lease_token=$1,lease_until=now()+$2*interval '1 second' FROM next WHERE j.id=next.id RETURNING j.id,j.payload,j.lease_token",
+    "WITH next AS (SELECT id FROM jobs WHERE (status='pending' OR (status='running' AND lease_until<now())) AND attempts<3 ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1) UPDATE jobs j SET status='running',attempts=attempts+1,lease_token=$1,lease_until=now()+(CASE WHEN kind='diagnostic.echo' THEN $2 ELSE GREATEST($2,60) END)*interval '1 second' FROM next WHERE j.id=next.id RETURNING j.id,j.payload,j.lease_token,j.kind",
     [randomUUID(), db.config.leaseSeconds],
   );
   const job = claimed.rows[0];
   if (!job) return false;
+  if (job.kind !== 'diagnostic.echo') {
+    try {
+      await processImportJob(db, job);
+      await db.pool.query(
+        "UPDATE jobs SET status='completed',completed_at=now(),lease_until=NULL,result=$1 WHERE id=$2 AND lease_token=$3 AND status='running'",
+        [JSON.stringify({ importProcessed: true }), job.id, job.lease_token],
+      );
+    } catch (error) {
+      await db.pool.query(
+        "UPDATE jobs SET lease_until=now() WHERE id=$1 AND lease_token=$2 AND status='running'",
+        [job.id, job.lease_token],
+      );
+      throw error;
+    }
+    return true;
+  }
   await db.pool.query(
     "UPDATE jobs SET status='completed',result=$1,completed_at=now(),lease_until=NULL WHERE id=$2 AND lease_token=$3 AND status='running'",
     [JSON.stringify({ echo: job.payload.message }), job.id, job.lease_token],

@@ -26,6 +26,7 @@ export {
   Drawer,
   Tabs,
   message,
+  Upload,
 } from 'antd';
 export type { TableColumnsType } from 'antd';
 

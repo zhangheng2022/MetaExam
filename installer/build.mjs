@@ -65,15 +65,79 @@ const externals = [
   'class-transformer',
   'class-validator',
   '@fastify/view',
-  '@fastify/multipart',
+  'exceljs',
+  'sharp',
 ];
 const entries = {
   api: 'apps/api/dist/main.js',
   worker: 'apps/worker/dist/main.js',
   cli: 'apps/worker/dist/cli.js',
   db: 'packages/db/dist/index.js',
+  'file-processor': 'packages/db/dist/file-processor.js',
 };
 const dependencyDirs = new Set();
+// Keep native image binaries and ExcelJS's runtime resources beside their packages.
+// Resolve every edge from its owning package, preserving pnpm's pinned versions.
+function packageDir(name, parent) {
+  const require = createRequire(path.join(parent, 'package.json'));
+  // Native optional packages may export only ./sharp.node, with neither a main
+  // entry nor package.json export. Resolve their installed directories directly.
+  for (const search of require.resolve.paths(name + '/package.json') ?? []) {
+    const dir = path.join(search, name),
+      file = path.join(dir, 'package.json');
+    if (existsSync(file) && JSON.parse(readFileSync(file, 'utf8')).name === name) return dir;
+  }
+  throw new Error('RUNTIME_PACKAGE_MISSING: ' + name);
+}
+function copyRuntime(name, parent, destination) {
+  const source = realpathSync(packageDir(name, parent));
+  const pkg = JSON.parse(readFileSync(path.join(source, 'package.json'), 'utf8'));
+  const server = path.join(payload, 'server');
+  // Reuse the nearest installed version exactly as Node will resolve it. Hoist the
+  // first version, nesting only conflicts; no junctions point back to the workspace.
+  for (let at = destination; at.startsWith(server); at = path.dirname(at)) {
+    const existing = path.join(at, 'node_modules', name, 'package.json');
+    if (existsSync(existing)) {
+      if (JSON.parse(readFileSync(existing, 'utf8')).version === pkg.version) return;
+      break;
+    }
+    if (at === server) break;
+  }
+  const hoisted = path.join(server, 'node_modules', name);
+  const dest = existsSync(hoisted) ? path.join(destination, 'node_modules', name) : hoisted;
+  if (existsSync(dest)) throw new Error('RUNTIME_VERSION_CONFLICT: ' + name);
+  dependencyDirs.add(source);
+  cpSync(source, dest, {
+    recursive: true,
+    dereference: true,
+    filter(file) {
+      const relative = path.relative(source, file);
+      if (/^tsconfig(?:\.[\w-]+)?\.json$/.test(path.basename(file))) return false;
+      return !relative
+        .split(path.sep)
+        .some((p) =>
+          /^(node_modules|test|tests|__tests__|examples|benchmark|benchmarks|coverage|\.git)$/.test(
+            p,
+          ),
+        );
+    },
+  });
+  for (const dep of Object.keys(pkg.dependencies ?? {})) copyRuntime(dep, source, dest);
+  for (const dep of Object.keys(pkg.optionalDependencies ?? {})) {
+    let dir;
+    try {
+      dir = packageDir(dep, source);
+    } catch {
+      continue;
+    }
+    const optional = JSON.parse(readFileSync(path.join(dir, 'package.json'), 'utf8'));
+    if (optional.os && !optional.os.includes(process.platform)) continue;
+    if (optional.cpu && !optional.cpu.includes(process.arch)) continue;
+    copyRuntime(dep, source, dest);
+  }
+}
+for (const name of ['exceljs', 'sharp'])
+  copyRuntime(name, path.join(root, 'packages/db'), path.join(payload, 'server'));
 const uiRequire = createRequire(path.join(root, 'packages/ui/package.json'));
 const visited = new Set();
 function collectUiNotices(dir) {
@@ -230,7 +294,7 @@ for (const value of Object.values(keys))
 writeFileSync(path.join(payload, 'public-keys.json'), JSON.stringify(keys, null, 2));
 writeFileSync(
   path.join(payload, 'INTERNAL-TEST.txt'),
-  'Internal unsigned M1 identity package. No production signing key. Windows service installation and restart acceptance pending. Public test key only; no signing tool included.\n',
+  'Internal unsigned M2 question-import package. No production signing key. Updated package Windows service installation and restart regression pending. Public test key only; no signing tool included.\n',
 );
 if (existsSync(path.join(root, 'docs/phase1-acceptance.md')))
   copyFileSync(path.join(root, 'docs/phase1-acceptance.md'), path.join(payload, 'ACCEPTANCE.md'));

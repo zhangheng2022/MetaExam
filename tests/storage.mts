@@ -82,6 +82,18 @@ try {
     await c.query('SET ROLE ' + role);
     assert.equal((await c.query('SELECT count(*) FROM users')).rows[0].count, '1');
     await c.query('UPDATE users SET display_name=$1 WHERE id=$2', ['Updated', id]);
+    for (const table of ['question_imports', 'question_import_rows', 'question_attachments']) {
+      assert.equal((await c.query('SELECT count(*) FROM ' + table)).rows[0].count, '0');
+      await c.query('DELETE FROM ' + table + ' WHERE false');
+    }
+    assert.equal(
+      (await c.query('SELECT count(*) FROM question_version_attachments')).rows[0].count,
+      '0',
+    );
+    await assert.rejects(
+      c.query('DELETE FROM question_version_attachments WHERE false'),
+      (e: unknown) => (e as { code: string }).code === '42501',
+    );
     await assert.rejects(
       c.query('CREATE TABLE forbidden_table(id integer)'),
       (e: unknown) => (e as { code: string }).code === '42501',
