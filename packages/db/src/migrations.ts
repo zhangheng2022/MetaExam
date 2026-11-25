@@ -52,11 +52,44 @@ INSERT INTO permissions VALUES ('users.manage','管理账号'),('organizations.m
 INSERT INTO role_permissions SELECT 'admin',code FROM permissions WHERE code IN ('users.manage','organizations.manage','audit.read','teaching.self');
 INSERT INTO role_permissions VALUES ('teacher','teaching.self'),('student','teaching.self');
 `;
-export const MIGRATIONS = [MIGRATION, identity, teaching, management].map((sql, index) => ({
-  version: index + 1,
-  sql,
-  checksum: createHash('sha256').update(sql).digest('hex'),
-}));
+const questions = `
+CREATE TABLE question_banks (
+  id uuid PRIMARY KEY, name text NOT NULL, description text NOT NULL DEFAULT '',
+  course_id uuid NOT NULL REFERENCES courses(id), owner_id uuid NOT NULL REFERENCES users(id),
+  visibility text NOT NULL CHECK(visibility IN ('public','private')),
+  archived boolean NOT NULL DEFAULT false, revision integer NOT NULL DEFAULT 1 CHECK(revision>0),
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX question_banks_course_idx ON question_banks(course_id,created_at,id);
+CREATE INDEX question_banks_owner_idx ON question_banks(owner_id);
+CREATE TABLE questions (
+  id uuid PRIMARY KEY, bank_id uuid NOT NULL REFERENCES question_banks(id),
+  current_version integer NOT NULL DEFAULT 1 CHECK(current_version>0),
+  revision integer NOT NULL DEFAULT 1 CHECK(revision>0), archived boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX questions_bank_idx ON questions(bank_id,created_at,id);
+CREATE TABLE question_versions (
+  id uuid PRIMARY KEY, question_id uuid NOT NULL REFERENCES questions(id),
+  version integer NOT NULL CHECK(version>0), content jsonb NOT NULL,
+  author_id uuid NOT NULL REFERENCES users(id), created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(question_id,version)
+);
+ALTER TABLE questions ADD CONSTRAINT questions_current_version_fk FOREIGN KEY(id,current_version) REFERENCES question_versions(question_id,version) DEFERRABLE INITIALLY DEFERRED;
+CREATE FUNCTION reject_question_version_change() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN RAISE EXCEPTION 'QUESTION_VERSION_IMMUTABLE'; END;
+$$;
+CREATE TRIGGER question_versions_immutable BEFORE UPDATE OR DELETE ON question_versions FOR EACH ROW EXECUTE FUNCTION reject_question_version_change();
+INSERT INTO permissions VALUES ('questions.use','使用课程题库');
+INSERT INTO role_permissions VALUES ('admin','questions.use'),('teacher','questions.use');
+`;
+export const MIGRATIONS = [MIGRATION, identity, teaching, management, questions].map(
+  (sql, index) => ({
+    version: index + 1,
+    sql,
+    checksum: createHash('sha256').update(sql).digest('hex'),
+  }),
+);
 export const SCHEMA_VERSION = MIGRATIONS.length;
 export type AppliedMigration = { version: number; checksum: string };
 export function validateMigrations(rows: AppliedMigration[], complete: boolean) {
@@ -95,6 +128,8 @@ export const RUNTIME_TABLES = [
   'courses',
   'class_members',
   'teaching_assignments',
+  'question_banks',
+  'questions',
 ];
 // Fixed identifiers only. Never grant DDL or future tables implicitly.
 export async function grantRuntimeAccess(
@@ -116,4 +151,6 @@ export async function grantRuntimeAccess(
       role,
   );
   await c.query('GRANT SELECT,INSERT,UPDATE,DELETE ON ' + RUNTIME_TABLES.join(',') + ' TO ' + role);
+  await c.query('REVOKE ALL ON question_versions FROM ' + role);
+  await c.query('GRANT SELECT,INSERT ON question_versions TO ' + role);
 }

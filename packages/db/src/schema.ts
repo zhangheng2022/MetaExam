@@ -10,6 +10,8 @@ import {
   primaryKey,
   index,
   check,
+  unique,
+  foreignKey,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 const time = (name: string) => timestamp(name, { withTimezone: true });
@@ -17,6 +19,73 @@ const dates = () => ({
   createdAt: time('created_at').notNull().defaultNow(),
   updatedAt: time('updated_at').notNull().defaultNow(),
 });
+export const questionBanks = pgTable(
+  'question_banks',
+  {
+    id: uuid('id').primaryKey(),
+    name: text('name').notNull(),
+    description: text('description').notNull().default(''),
+    courseId: uuid('course_id')
+      .notNull()
+      .references(() => courses.id),
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => users.id),
+    visibility: text('visibility').notNull(),
+    archived: boolean('archived').notNull().default(false),
+    revision: integer('revision').notNull().default(1),
+    ...dates(),
+  },
+  (t) => [
+    index('question_banks_course_idx').on(t.courseId, t.createdAt, t.id),
+    index('question_banks_owner_idx').on(t.ownerId),
+    check('question_banks_visibility_check', sql`${t.visibility} IN ('public','private')`),
+    check('question_banks_revision_check', sql`${t.revision}>0`),
+  ],
+);
+export const questions = pgTable(
+  'questions',
+  {
+    id: uuid('id').primaryKey(),
+    bankId: uuid('bank_id')
+      .notNull()
+      .references(() => questionBanks.id),
+    currentVersion: integer('current_version').notNull().default(1),
+    revision: integer('revision').notNull().default(1),
+    archived: boolean('archived').notNull().default(false),
+    ...dates(),
+  },
+  (t) => [
+    index('questions_bank_idx').on(t.bankId, t.createdAt, t.id),
+    check('questions_revision_check', sql`${t.revision}>0`),
+    check('questions_current_version_check', sql`${t.currentVersion}>0`),
+    foreignKey({
+      name: 'questions_current_version_fk',
+      columns: [t.id, t.currentVersion],
+      foreignColumns: [questionVersions.questionId, questionVersions.version],
+    }),
+  ],
+);
+export const questionVersions = pgTable(
+  'question_versions',
+  {
+    id: uuid('id').primaryKey(),
+    questionId: uuid('question_id')
+      .notNull()
+      .references((): import('drizzle-orm/pg-core').AnyPgColumn => questions.id),
+    version: integer('version').notNull(),
+    content: jsonb('content').notNull(),
+    authorId: uuid('author_id')
+      .notNull()
+      .references(() => users.id),
+    createdAt: time('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.questionId, t.version),
+    check('question_versions_version_check', sql`${t.version}>0`),
+  ],
+);
+// The deferred current-version FK and immutable-version trigger are maintained by explicit SQL.
 export const schemaMigrations = pgTable('schema_migrations', {
   version: integer('version').primaryKey(),
   checksum: text('checksum').notNull(),

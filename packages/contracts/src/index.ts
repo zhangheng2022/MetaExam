@@ -104,3 +104,4 @@ export interface ApiError {
   requestId: string;
 }
 export * from './management';
+export * from './questions';

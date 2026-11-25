@@ -2,6 +2,9 @@ import { Catch, HttpException, type ArgumentsHost, type ExceptionFilter } from '
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { IdentityError } from '@metaexam/db';
 const messages: Record<string, string> = {
+  BANK_READ_ONLY: '题库已归档或课程已停用，暂不能修改',
+  INVALID_COURSE: '请选择启用且有权使用的课程',
+  QUESTION_ARCHIVED: '题目已归档，请恢复后再编辑',
   INVALID_REQUEST: '请检查填写内容',
   INVALID_CREDENTIALS: '账号或密码错误',
   DATABASE_UNAVAILABLE: '数据库暂时不可用，请稍后重试',

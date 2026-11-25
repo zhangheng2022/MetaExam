@@ -14,6 +14,14 @@ try {
   const prior = execFileSync('git', ['show', '5cb204c:packages/db/src/migrations.ts'], {
     encoding: 'utf8',
   });
+  const previous = execFileSync('git', ['show', 'd4f94b5:packages/db/src/migrations.ts'], {
+    encoding: 'utf8',
+  });
+  assert.equal(
+    MIGRATIONS[3]!.sql,
+    previous.split('const management = `')[1]!.split('`;')[0]!,
+    'V4 SQL bytes preserved',
+  );
   for (const [index, name] of [
     [1, 'identity'],
     [2, 'teaching'],
