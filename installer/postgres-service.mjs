@@ -6,9 +6,14 @@ const app = process.env.METAEXAM_INSTALL_ROOT,
   data = process.env.METAEXAM_DATA_ROOT;
 if (!app || !data) throw new Error('SERVICE_CONFIGURATION_REQUIRED');
 const require = createRequire(path.join(app, 'server/db.cjs'));
-const { createDatabase, migrate, ensureInstance, loadConfig } = require(
-  path.join(app, 'server/db.cjs'),
-);
+const {
+  createDatabase,
+  migrate,
+  ensureInstance,
+  loadConfig,
+  readiness,
+  grantRuntimeAccess,
+} = require(path.join(app, 'server/db.cjs'));
 const config = loadConfig(),
   pgData = path.join(data, 'postgres/data'),
   bin = path.join(app, 'postgres/bin');
@@ -92,14 +97,9 @@ try {
     if (fresh) {
       await migrate(owner);
       await ensureInstance(owner);
-      await owner.pool.query(
-        'GRANT CONNECT ON DATABASE metaexam TO metaexam_app; GRANT USAGE ON SCHEMA public TO metaexam_app; GRANT SELECT ON schema_migrations TO metaexam_app; GRANT SELECT,INSERT,UPDATE,DELETE ON instance_info,license_state,license_history,jobs,worker_heartbeat TO metaexam_app',
-      );
     }
-    const check = await owner.pool.query(
-      'SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1',
-    );
-    if (check.rows[0]?.version !== 1) throw new Error('Explicit schema migration required');
+    if (!(await readiness(owner))) throw new Error('Explicit schema migration required');
+    await grantRuntimeAccess(owner.pool);
     writeFileSync(
       path.join(data, 'runtime/database-ready.json'),
       JSON.stringify({ readyAt: new Date().toISOString() }),

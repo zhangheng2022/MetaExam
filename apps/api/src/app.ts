@@ -12,6 +12,7 @@ import {
   licenseStatus,
   enqueue,
   APP_VERSION,
+  SCHEMA_VERSION,
   loadConfig,
   type RuntimeConfig,
   type Database,
@@ -20,7 +21,7 @@ import { jobRequestSchema, type SystemStatus } from '@metaexam/contracts';
 
 @Injectable()
 export class Runtime {
-  db: Database = createDatabase();
+  constructor(readonly db: Database) {}
   async onModuleDestroy() {
     await this.db.pool.end();
   }
@@ -43,7 +44,7 @@ export class Routes {
   @Get('/health/ready') async ready(@Res({ passthrough: true }) res: FastifyReply) {
     const ok = await readiness(this.runtime.db);
     res.status(ok ? 200 : 503);
-    return { status: ok ? 'ready' : 'unavailable', schemaVersion: ok ? 1 : 0 };
+    return { status: ok ? 'ready' : 'unavailable', schemaVersion: ok ? SCHEMA_VERSION : 0 };
   }
   @Get('/api/v1/system/status') async status(
     @Req() req: FastifyRequest,
@@ -65,7 +66,7 @@ export class Routes {
       version: APP_VERSION,
       initialized: ok,
       database: ok ? 'ready' : 'unavailable',
-      schemaVersion: ok ? 1 : 0,
+      schemaVersion: ok ? SCHEMA_VERSION : 0,
       worker: heartbeat?.rows[0]?.online ? 'online' : 'offline',
       checkedAt: new Date().toISOString(),
       stage: 'phase1',
@@ -140,7 +141,7 @@ export class Routes {
     return { status: 'stopping' };
   }
 }
-@Module({ controllers: [Routes], providers: [Runtime] })
+@Module({})
 class AppModule {}
 export async function createApp(
   config: RuntimeConfig = loadConfig(),
@@ -150,7 +151,11 @@ export async function createApp(
       ? { cert: readFileSync(config.api.tlsCert), key: readFileSync(config.api.tlsKey) }
       : undefined;
   const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule,
+    {
+      module: AppModule,
+      controllers: [Routes],
+      providers: [{ provide: Runtime, useFactory: () => new Runtime(createDatabase(config)) }],
+    },
     new FastifyAdapter({
       https,
       bodyLimit: 65536,

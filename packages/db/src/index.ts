@@ -10,15 +10,8 @@ import { instanceInfo } from './schema';
 import { loadConfig, type RuntimeConfig } from './config';
 export { loadConfig, type RuntimeConfig };
 export const APP_VERSION = '0.1.0';
-export const MIGRATION = `
-CREATE TABLE instance_info(id integer PRIMARY KEY CHECK(id=1), installation_id uuid NOT NULL UNIQUE, device_hash text NOT NULL, fingerprint_mode text NOT NULL);
-CREATE TABLE license_state(id integer PRIMARY KEY CHECK(id=1), highest_sequence bigint NOT NULL DEFAULT 0, digest text, raw text, last_trusted_at timestamptz NOT NULL DEFAULT now());
-INSERT INTO license_state(id) VALUES (1);
-CREATE TABLE license_history(id uuid PRIMARY KEY, sequence bigint NOT NULL UNIQUE, digest text NOT NULL, raw text NOT NULL, imported_at timestamptz NOT NULL DEFAULT now());
-CREATE TABLE jobs(id uuid PRIMARY KEY, business_key text NOT NULL UNIQUE, kind text NOT NULL CHECK(kind='diagnostic.echo'), payload jsonb NOT NULL, status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','running','completed','failed')), attempts integer NOT NULL DEFAULT 0, lease_token uuid, lease_until timestamptz, result jsonb, error_code text, created_at timestamptz NOT NULL DEFAULT now(), completed_at timestamptz);
-CREATE INDEX jobs_claim_idx ON jobs(status,lease_until,created_at);
-CREATE TABLE worker_heartbeat(id integer PRIMARY KEY CHECK(id=1), seen_at timestamptz NOT NULL);
-`;
+import { MIGRATIONS, validateMigrations, migrationRows } from './migrations';
+export { MIGRATION, MIGRATIONS, SCHEMA_VERSION, grantRuntimeAccess } from './migrations';
 export function createDatabase(config = loadConfig()) {
   const pool = new Pool({
     ...config.database,
@@ -48,32 +41,39 @@ export async function transaction<T>(
   }
 }
 export async function migrate(db: Database): Promise<void> {
-  await transaction(db, async (c) => {
-    await c.query('SELECT pg_advisory_xact_lock(184426)');
+  const c = await db.pool.connect();
+  let locked = false;
+  try {
+    await c.query('SELECT pg_advisory_lock(184426)');
+    locked = true;
     await c.query(
       'CREATE TABLE IF NOT EXISTS schema_migrations(version integer PRIMARY KEY, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())',
     );
-    const checksum = createHash('sha256').update(MIGRATION).digest('hex');
-    const existing = await c.query<{ checksum: string }>(
-      'SELECT checksum FROM schema_migrations WHERE version=1',
-    );
-    if (existing.rows.length) {
-      if (existing.rows[0]!.checksum !== checksum) throw new Error('MIGRATION_CHECKSUM_MISMATCH');
-      return;
+    const rows = await migrationRows(c);
+    validateMigrations(rows, false);
+    for (const migration of MIGRATIONS.slice(rows.length)) {
+      await c.query('BEGIN');
+      try {
+        await c.query(migration.sql);
+        await c.query('INSERT INTO schema_migrations(version,checksum) VALUES($1,$2)', [
+          migration.version,
+          migration.checksum,
+        ]);
+        await c.query('COMMIT');
+      } catch (error) {
+        await c.query('ROLLBACK');
+        throw error;
+      }
     }
-    await c.query(MIGRATION);
-    await c.query('INSERT INTO schema_migrations(version,checksum) VALUES(1,$1)', [checksum]);
-  });
+  } finally {
+    if (locked) await c.query('SELECT pg_advisory_unlock(184426)');
+    c.release();
+  }
 }
 export async function readiness(db: Database): Promise<boolean> {
   try {
-    const result = await db.pool.query<{ version: number; checksum: string }>(
-      'SELECT version,checksum FROM schema_migrations ORDER BY version DESC LIMIT 1',
-    );
-    return (
-      result.rows[0]?.version === 1 &&
-      result.rows[0]?.checksum === createHash('sha256').update(MIGRATION).digest('hex')
-    );
+    validateMigrations(await migrationRows(db.pool), true);
+    return true;
   } catch {
     return false;
   }
