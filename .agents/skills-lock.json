@@ -1,0 +1,190 @@
+{
+  "verifiedOn": "2026-11-25",
+  "installation": "Official package bundled skills, unchanged",
+  "skills": [
+    {
+      "officialDocumentation": "https://ant.design/docs/react/cli/",
+      "package": "@ant-design/cli",
+      "version": "6.7.2",
+      "skill": "antd",
+      "files": [
+        {
+          "sha256": "5df4da1f4cf44425dfa12daa486fb39bf56475e2ad545ccd8044b0c708e7e183",
+          "path": "SKILL.md"
+        }
+      ],
+      "license": "licenses/ant-designcli-LICENSE"
+    },
+    {
+      "officialDocumentation": "https://docs.nestjs.com/first-steps",
+      "package": "@nestjs/skills",
+      "version": "0.1.1",
+      "skill": "nestjs",
+      "files": [
+        {
+          "sha256": "51bf36de6c59e042b617556f6c170c95a37c63de74654375c50432b183f97933",
+          "path": "SKILL.md"
+        },
+        {
+          "sha256": "c0f348a743428b0b87910633df41dc50a2c67ade8a496a8044a68c99c495f7ee",
+          "path": "references/docs-map.md"
+        }
+      ],
+      "license": "licenses/nestjsskills-LICENSE"
+    },
+    {
+      "officialDocumentation": "https://docs.nestjs.com/first-steps",
+      "package": "@nestjs/skills",
+      "version": "0.1.1",
+      "skill": "nestjs-auth",
+      "files": [
+        {
+          "sha256": "2c6730e842a42316771c0c39664f721bd8a39ae9d2dcc4c7b0db7aa82440e273",
+          "path": "SKILL.md"
+        },
+        {
+          "sha256": "382256c6d52757bba0d73ebf14f70f5996512cd121fd21f4e669ce9d1391b956",
+          "path": "references/authentication.md"
+        },
+        {
+          "sha256": "f08dd8fda7da3dc86d06496ace816a1f49cc6a4330ab063f43faa12215967ac4",
+          "path": "references/authorization.md"
+        }
+      ],
+      "license": "licenses/nestjsskills-LICENSE"
+    },
+    {
+      "officialDocumentation": "https://docs.nestjs.com/first-steps",
+      "package": "@nestjs/skills",
+      "version": "0.1.1",
+      "skill": "nestjs-data",
+      "files": [
+        {
+          "sha256": "5a1107eda3b3b6f6f6e626bf841887f353517e2f96107cc11ad01165a1d0c383",
+          "path": "SKILL.md"
+        },
+        {
+          "sha256": "89351bd70b2f9425a5e4b119826c0a73edb0b7047c5896c992c915bc071268a4",
+          "path": "references/data.md"
+        }
+      ],
+      "license": "licenses/nestjsskills-LICENSE"
+    },
+    {
+      "officialDocumentation": "https://docs.nestjs.com/first-steps",
+      "package": "@nestjs/skills",
+      "version": "0.1.1",
+      "skill": "nestjs-feature",
+      "files": [
+        {
+          "sha256": "f1ececf60d65d88c59aa6e9f0ed7c2cd58be761bd92b85304856d7ea24380056",
+          "path": "SKILL.md"
+        },
+        {
+          "sha256": "63aeaf64643d98c6f5fb363f5d784d2f564a7643128ea8cae584664b92795844",
+          "path": "references/http.md"
+        },
+        {
+          "sha256": "ec77c164d7d031ba3f4b202d382a1322bf791dd27ae98416b3332a71ea7458bc",
+          "path": "references/modules.md"
+        },
+        {
+          "sha256": "1d7639692663c392d955d5f655afc29871b1222fa4460a3d2a7c9ece3273d930",
+          "path": "references/structure.md"
+        },
+        {
+          "sha256": "c0beaf87d98f524eb23fd814a33b417b10df480f01c551c353c3c059244312cf",
+          "path": "references/validation.md"
+        }
+      ],
+      "license": "licenses/nestjsskills-LICENSE"
+    },
+    {
+      "officialDocumentation": "https://docs.nestjs.com/first-steps",
+      "package": "@nestjs/skills",
+      "version": "0.1.1",
+      "skill": "nestjs-production",
+      "files": [
+        {
+          "sha256": "2ebbe17c977f0a1d4f30dbf03e87ea44fff2bc00668ff68d4a1b5b3212fcd9c3",
+          "path": "SKILL.md"
+        },
+        {
+          "sha256": "a8d2a90d4e0465aee93da2b0edb1ccdb4e3a1cb623811541b661a24247c67b0f",
+          "path": "references/production.md"
+        }
+      ],
+      "license": "licenses/nestjsskills-LICENSE"
+    },
+    {
+      "officialDocumentation": "https://docs.nestjs.com/first-steps",
+      "package": "@nestjs/skills",
+      "version": "0.1.1",
+      "skill": "nestjs-testing",
+      "files": [
+        {
+          "sha256": "ecbd1053b50deb67cdc0bdc4999dd5cddf8505264df3c364ed90358f66d54c83",
+          "path": "SKILL.md"
+        },
+        {
+          "sha256": "3d7f7ef27118511d0277b94d9bcca0bbe9ce41abaaf3fa816f94654cea0c99a8",
+          "path": "references/testing.md"
+        }
+      ],
+      "license": "licenses/nestjsskills-LICENSE"
+    },
+    {
+      "officialDocumentation": "https://playwright.dev/agent-cli/skills",
+      "package": "@playwright/cli",
+      "version": "0.1.25",
+      "skill": "playwright-cli",
+      "files": [
+        {
+          "sha256": "1c4c34000f6102ee71fe91bf25351a221f7da37f48f2d556e1756f66e17d356f",
+          "path": "SKILL.md"
+        },
+        {
+          "sha256": "bf19aa4671e0a50a0fefa9c790f39124e803060eefe395042b723c29fcb7faa2",
+          "path": "references/element-attributes.md"
+        },
+        {
+          "sha256": "c5b0719fef2cfdff50bd744051b2f9afc119775db4b48e9b2882c1cf3886797c",
+          "path": "references/playwright-tests.md"
+        },
+        {
+          "sha256": "24b118e74598be72e73e24fe223d295b9099c85b1860a7c8f6e5690c9038fa2a",
+          "path": "references/pr-attachments.md"
+        },
+        {
+          "sha256": "54e801c9663fc2b6d68ceb058cb1c360724c2499f42acc7852a68e83e5b5f37c",
+          "path": "references/request-mocking.md"
+        },
+        {
+          "sha256": "eac97e0b77e723f8b1d7b64f276f92efa72f74453f45a805352d27ea1853a495",
+          "path": "references/running-code.md"
+        },
+        {
+          "sha256": "2f4d953136cbfb998136095c064c38f4223ea049d6e13610e17db078dde8971c",
+          "path": "references/session-management.md"
+        },
+        {
+          "sha256": "71e90f774b5a7d61367f2336940f30be7c5693d43197b63d1154634b99ae5045",
+          "path": "references/storage-state.md"
+        },
+        {
+          "sha256": "b9c5dda349a469b9abf9f10f3787135e6521f433f5743de399a164e14e76f7ce",
+          "path": "references/test-generation.md"
+        },
+        {
+          "sha256": "4e397e16e6bd92d8696cb815c4ee6dc4ce0be1da9e760e261a9c30b44c7857c7",
+          "path": "references/tracing.md"
+        },
+        {
+          "sha256": "1c800b897824cb54394c34265d8ebffdbb530adfc8d612c5d798b667a1799f48",
+          "path": "references/video-recording.md"
+        }
+      ],
+      "license": "licenses/playwrightcli-LICENSE"
+    }
+  ]
+}

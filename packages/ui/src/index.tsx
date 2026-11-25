@@ -71,22 +71,31 @@ function StatusOverview({ loadStatus, desktop = false }: DashboardProps) {
   const [status, setStatus] = useState<SystemStatus | null>(null),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(true);
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(
+    () =>
+      Promise.resolve()
+        .then(loadStatus)
+        .then(
+          (nextStatus) => {
+            setStatus(nextStatus);
+            setError('');
+          },
+          () => setError('暂时无法连接考试服务。请检查服务是否启动，然后重试。'),
+        )
+        .finally(() => setBusy(false)),
+    [loadStatus],
+  );
+  const requestRefresh = useCallback(() => {
     setBusy(true);
-    try {
-      setStatus(await loadStatus());
-      setError('');
-    } catch {
-      setError('暂时无法连接考试服务。请检查服务是否启动，然后重试。');
-    } finally {
-      setBusy(false);
-    }
-  }, [loadStatus]);
-  useEffect(() => {
     void refresh();
-    const id = setInterval(() => void refresh(), 15000);
-    return () => clearInterval(id);
   }, [refresh]);
+  useEffect(() => {
+    // Initial loading is already represented by busy's initial state. Start the
+    // request here; manual and timer events set busy before subsequent requests.
+    void refresh();
+    const id = setInterval(requestRefresh, 15000);
+    return () => clearInterval(id);
+  }, [refresh, requestRefresh]);
   const ready = !!status && status.database === 'ready' && status.worker === 'online';
   const unavailable = !!error && !status && !busy;
   const serviceRows = [
@@ -170,7 +179,7 @@ function StatusOverview({ loadStatus, desktop = false }: DashboardProps) {
             icon={<ReloadOutlined />}
             loading={busy}
             disabled={busy}
-            onClick={() => void refresh()}
+            onClick={requestRefresh}
           >
             {busy ? '检查中…' : '重新检查'}
           </Button>

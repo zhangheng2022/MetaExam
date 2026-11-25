@@ -1,0 +1,3 @@
+# Preserve official skill and license bytes for the provenance hashes.
+.agents/skills/** -text
+.agents/licenses/** -text

@@ -8,3 +8,5 @@ pnpm-lock.yaml
 **/dist
 **/renderer-dist
 *.docx
+.agents/skills
+.playwright-cli

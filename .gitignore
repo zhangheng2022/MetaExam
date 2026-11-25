@@ -13,3 +13,4 @@ work/
 **/*private*.pem
 .impeccable/review/
 graphify-out/
+.playwright-cli/

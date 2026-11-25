@@ -32,6 +32,8 @@ $env:METAEXAM_CONFIG = (Resolve-Path .local/config.json).Path
 
 ## 工程与命令
 
+AI 开发先读取 [AGENTS.md](AGENTS.md) 和 [官方工具与资料](docs/ai-development.md)。项目只接入官方发布或官方明确推荐的技能与 CLI，版本随依赖锁文件固定。
+
 | 目录               | 职责                                                    |
 | ------------------ | ------------------------------------------------------- |
 | apps/api           | NestJS 模块、Fastify HTTP/HTTPS、健康检查、生产静态资源 |
