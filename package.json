@@ -29,7 +29,9 @@
     "package:win": "node installer/build.mjs",
     "dev:backend": "tsc-watch -b tsconfig.dev.json --noClear --onSuccess \"pnpm run dev:services\"",
     "dev:services": "concurrently --kill-others --names api,worker \"node apps/api/dist/main.js\" \"node apps/worker/dist/main.js\"",
-    "test:dev": "node tests/dev.mjs"
+    "test:dev": "node tests/dev.mjs",
+    "test:m1": "tsx tests/migrations.mts && tsx tests/identity.mts && tsx tests/setup.mts && tsx tests/auth.mts && tsx tests/storage.mts && tsx tests/desktop-setup.mts && tsx tests/auth-ui.mts",
+    "setup:token": "node apps/worker/dist/cli.js setup-token"
   },
   "devDependencies": {
     "@ant-design/cli": "6.7.2",

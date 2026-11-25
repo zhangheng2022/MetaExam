@@ -48,13 +48,13 @@ try {
   });
   page.on('pageerror', (e) => errors.push(e.message));
   await page.route('**/api/v1/system/status', (route) => route.abort());
-  await page.goto('http://127.0.0.1:' + port);
+  await page.goto('http://127.0.0.1:' + port + '/status');
   await page.getByRole('alert').waitFor();
   assert.equal(await page.getByText('无法获取', { exact: true }).count(), 3);
   assert.ok(await page.getByText('尚未获取检查结果', { exact: true }).isVisible());
   await page.screenshot({ path: path.join(output, 'initial-error.png'), fullPage: true });
   await page.unroute('**/api/v1/system/status');
-  await page.goto('http://127.0.0.1:' + port);
+  await page.goto('http://127.0.0.1:' + port + '/status');
   await page.getByText('本地数据库', { exact: true }).waitFor();
   await page.getByRole('button', { name: '重新检查' }).waitFor();
   assert.ok(await page.getByRole('heading', { name: '运行概览', exact: true }).isVisible());

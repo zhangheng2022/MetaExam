@@ -2,6 +2,8 @@ import { Public } from '@nestjs/authentication';
 import 'reflect-metadata';
 import { Controller, Get, Post, Body, Param, Req, Res, Module } from '@nestjs/common';
 import type { FastifyRequest, FastifyReply } from 'fastify';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
 import {
   readiness,
@@ -26,6 +28,11 @@ function management(req: FastifyRequest, token: string): boolean {
 @Controller()
 export class Routes {
   constructor(private readonly runtime: Runtime) {}
+  @Get(['/login', '/change-password', '/status']) page(@Res() res: FastifyReply) {
+    return res
+      .type('text/html')
+      .send(readFileSync(path.join(this.runtime.db.config.api.webDir, 'index.html')));
+  }
   @Get('/health/live') live() {
     return { status: 'alive', version: APP_VERSION };
   }
@@ -40,7 +47,7 @@ export class Routes {
   ) {
     if (!local(req)) {
       res.status(403);
-      return { code: 'LOCAL_ONLY' };
+      return { code: 'LOCAL_ONLY', message: '只允许本机访问', requestId: req.id };
     }
     const db = this.runtime.db,
       ok = await readiness(db);
@@ -78,12 +85,12 @@ export class Routes {
   ) {
     if (!management(req, this.runtime.db.config.api.managementToken)) {
       res.status(403);
-      return { code: 'MANAGEMENT_REQUIRED' };
+      return { code: 'MANAGEMENT_REQUIRED', message: '需要本机管理凭据', requestId: req.id };
     }
     const parsed = jobRequestSchema.safeParse(body);
     if (!parsed.success) {
       res.status(400);
-      return { code: 'INVALID_REQUEST' };
+      return { code: 'INVALID_REQUEST', message: '请检查请求内容', requestId: req.id };
     }
     try {
       const job = await enqueue(this.runtime.db, parsed.data.businessKey, parsed.data.message);
@@ -91,7 +98,7 @@ export class Routes {
       return job;
     } catch {
       res.status(503);
-      return { code: 'DATABASE_UNAVAILABLE' };
+      return { code: 'DATABASE_UNAVAILABLE', message: '数据库暂时不可用', requestId: req.id };
     }
   }
   @Get('/api/v1/diagnostics/jobs/:id') async getJob(
@@ -101,11 +108,11 @@ export class Routes {
   ) {
     if (!management(req, this.runtime.db.config.api.managementToken)) {
       res.status(403);
-      return { code: 'MANAGEMENT_REQUIRED' };
+      return { code: 'MANAGEMENT_REQUIRED', message: '需要本机管理凭据', requestId: req.id };
     }
     if (!/^[0-9a-f-]{36}$/i.test(id)) {
       res.status(400);
-      return { code: 'INVALID_ID' };
+      return { code: 'INVALID_ID', message: '无效的任务编号', requestId: req.id };
     }
     const result = await this.runtime.db.pool.query(
       'SELECT id,status,attempts,result,error_code FROM jobs WHERE id=$1',
@@ -113,7 +120,7 @@ export class Routes {
     );
     if (!result.rows[0]) {
       res.status(404);
-      return { code: 'NOT_FOUND' };
+      return { code: 'NOT_FOUND', message: '任务不存在', requestId: req.id };
     }
     return result.rows[0] as Record<string, unknown>;
   }
@@ -123,7 +130,7 @@ export class Routes {
   ) {
     if (!management(req, this.runtime.db.config.api.managementToken)) {
       res.status(403);
-      return { code: 'MANAGEMENT_REQUIRED' };
+      return { code: 'MANAGEMENT_REQUIRED', message: '需要本机管理凭据', requestId: req.id };
     }
     // Phase 1 has no examination sessions. The exam phase must add the maintenance lock.
     setTimeout(() => process.emit('SIGTERM'), 200);

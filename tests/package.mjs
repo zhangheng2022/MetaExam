@@ -1,15 +1,21 @@
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdtempSync, cpSync, writeFileSync, readFileSync, rmSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, cpSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, randomBytes, generateKeyPairSync, sign } from 'node:crypto';
+import { createRequire } from 'node:module';
+import { isolatedDatabase } from './database-fixture.mts';
+const { licenseRequest, importLicense, BootstrapRepository, digestToken } = createRequire(
+  import.meta.url,
+)('../packages/db/dist/index.js');
 const root = path.resolve(import.meta.dirname, '..'),
   payload = path.join(root, 'artifacts/payload');
 const isolated = mkdtempSync(path.join(tmpdir(), 'MetaExam-smoke-')),
   children = [];
-const config = JSON.parse(readFileSync(path.join(root, '.local/config.json'), 'utf8'));
+const fixture = await isolatedDatabase();
+const { config, db } = fixture;
 const port = 3303,
   url = 'http://127.0.0.1:' + port;
 const conf = path.join(isolated, 'config.json');
@@ -55,9 +61,99 @@ try {
   cpSync(path.join(payload, 'server'), path.join(isolated, 'server'), { recursive: true });
   cpSync(path.join(payload, 'runtime'), path.join(isolated, 'runtime'), { recursive: true });
   const node = path.join(isolated, 'runtime/node.exe');
+  execFileSync(node, ['server/cli.cjs', 'migrate'], {
+    cwd: isolated,
+    env,
+    windowsHide: true,
+    stdio: 'pipe',
+  });
+  const request = await licenseRequest(db),
+    keys = generateKeyPairSync('ed25519');
+  writeFileSync(
+    config.trustFile,
+    JSON.stringify({ 'package-test': keys.publicKey.export({ type: 'spki', format: 'pem' }) }),
+  );
+  const issuedAt = new Date(Date.now() - 60000).toISOString();
+  const h = Buffer.from(
+    JSON.stringify({ typ: 'MetaExam-License-v1', alg: 'Ed25519', kid: 'package-test' }),
+  ).toString('base64url');
+  const p = Buffer.from(
+    JSON.stringify({
+      schemaVersion: 1,
+      product: 'MetaExam',
+      licenseId: randomUUID(),
+      customerId: 'package-test',
+      installationId: request.installationId,
+      fingerprintVersion: 1,
+      deviceHash: request.deviceHash,
+      sequence: 1,
+      issuedAt,
+      notBefore: issuedAt,
+      expiresAt: new Date(Date.now() + 86400000).toISOString(),
+      maxConcurrentAttempts: 10,
+      features: ['exam.core'],
+      minAppVersion: '0.1.0',
+      maxAppMajor: 0,
+    }),
+  ).toString('base64url');
+  await importLicense(
+    db,
+    JSON.stringify({
+      protected: h,
+      payload: p,
+      signature: sign(
+        null,
+        Buffer.from('MetaExam-License-v1.' + h + '.' + p),
+        keys.privateKey,
+      ).toString('base64url'),
+    }),
+  );
   const api = start(node, ['server/api.cjs']);
   await wait(async () => (await fetch(url + '/health/ready')).ok, api);
   assert.equal((await fetch(url + '/')).status, 200);
+  const token = randomBytes(32).toString('hex');
+  await new BootstrapRepository(db).issue(digestToken(token), new Date(Date.now() + 60000), {
+    requestId: 'package-test',
+  });
+  const post = (route, body, cookie, authorization) =>
+    fetch(url + route, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(cookie ? { cookie } : {}),
+        ...(authorization ? { authorization } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+  assert.equal(
+    (
+      await post(
+        '/api/v1/setup/administrator',
+        { username: 'package_admin', displayName: 'Package', password: 'package password phrase' },
+        undefined,
+        'Bearer ' + token,
+      )
+    ).status,
+    201,
+  );
+  const signed = await post('/api/v1/auth/login', {
+    username: 'package_admin',
+    password: 'package password phrase',
+  });
+  assert.equal(signed.status, 200);
+  const cookie = signed.headers.get('set-cookie').split(';')[0];
+  assert.equal((await fetch(url + '/api/v1/admin/overview', { headers: { cookie } })).status, 200);
+  assert.equal(
+    (
+      await post(
+        '/api/v1/auth/change-password',
+        { oldPassword: 'package password phrase', newPassword: 'package changed phrase' },
+        cookie,
+      )
+    ).status,
+    204,
+  );
+  assert.equal((await fetch(url + '/api/v1/auth/me', { headers: { cookie } })).status, 401);
   const worker = start(node, ['server/worker.cjs']);
   const headers = {
     'Content-Type': 'application/json',
@@ -111,6 +207,7 @@ try {
         isolatedFromWorkspace: true,
         checks: [
           'bundled API ready and static web',
+          'bundled setup, login, protected overview and password revocation',
           'bundled Worker completes API task',
           'bundled CLI validates persisted license',
           'packaged Electron IPC returns database ready',
@@ -136,6 +233,7 @@ try {
         /* stopped */
       }
   await delay(500);
+  await fixture.close();
   if (
     path.dirname(isolated) === path.resolve(tmpdir()) &&
     path.basename(isolated).startsWith('MetaExam-smoke-')

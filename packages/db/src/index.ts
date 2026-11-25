@@ -9,6 +9,7 @@ import type { LicenseSummary } from '@metaexam/contracts';
 import { instanceInfo } from './schema';
 import { loadConfig, type RuntimeConfig } from './config';
 export { loadConfig, type RuntimeConfig };
+export { loadMaintenanceConfig } from './config';
 export const APP_VERSION = '0.1.0';
 import { MIGRATIONS, validateMigrations, migrationRows } from './migrations';
 export { MIGRATION, MIGRATIONS, SCHEMA_VERSION, grantRuntimeAccess } from './migrations';

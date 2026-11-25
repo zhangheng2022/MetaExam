@@ -46,3 +46,21 @@ export function loadConfig(): RuntimeConfig {
   raw.leaseSeconds = Math.max(2, Math.min(raw.leaseSeconds ?? 30, 300));
   return raw;
 }
+
+/** Explicit elevated maintenance only; API/Worker never load the owner credential. */
+export function loadMaintenanceConfig(): RuntimeConfig {
+  const config = loadConfig();
+  if (config.database.user !== 'metaexam_app') throw new Error('INSTALLED_CONFIGURATION_REQUIRED');
+  const script =
+    'Add-Type -AssemblyName System.Security; $b=[Convert]::FromBase64String([Console]::In.ReadToEnd()); [Console]::Write([Text.Encoding]::UTF8.GetString([Security.Cryptography.ProtectedData]::Unprotect($b,$null,[Security.Cryptography.DataProtectionScope]::LocalMachine)))';
+  const password = execFileSync(
+    'powershell.exe',
+    ['-NoProfile', '-NonInteractive', '-Command', script],
+    {
+      input: readFileSync(path.join(config.home, '../secrets/owner.dpapi'), 'utf8'),
+      encoding: 'utf8',
+      windowsHide: true,
+    },
+  ).trim();
+  return { ...config, database: { ...config.database, user: 'metaexam_owner', password } };
+}

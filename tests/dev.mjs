@@ -7,11 +7,15 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright';
+import { isolatedDatabase } from './database-fixture.mts';
+import { createRequire } from 'node:module';
+const { migrate } = createRequire(import.meta.url)('../packages/db/dist/index.js');
 const root = path.resolve(import.meta.dirname, '..'),
   url = 'http://127.0.0.1:3310',
   web = 'http://127.0.0.1:5180';
 const pnpm = path.join(root, '.tools/pnpm/node_modules/pnpm/bin/pnpm.cjs');
-const config = JSON.parse(readFileSync(path.join(root, '.local/config.json'), 'utf8'));
+const fixture = await isolatedDatabase();
+const { config } = fixture;
 const conf = path.join(root, '.local/dev-check-config.json');
 writeFileSync(conf, JSON.stringify({ ...config, api: { ...config.api, port: 3310 } }));
 const saved = new Map(),
@@ -50,6 +54,7 @@ const pass = (label) => {
   console.log('PASS ' + label);
 };
 try {
+  await migrate(fixture.db);
   child = spawn(process.execPath, [pnpm, 'dev'], {
     cwd: root,
     env: {
@@ -91,7 +96,7 @@ try {
   pass('closing Electron leaves API, Worker and Vite running');
   if (!process.argv.includes('--startup-only')) {
     change(
-      'apps/api/src/app.ts',
+      'apps/api/src/system/system.module.ts',
       "return { status: 'alive', version: APP_VERSION };",
       "return { status: 'alive', version: APP_VERSION, devProbe: 'reload-ok' };",
     );
@@ -138,7 +143,7 @@ try {
     pass('shared contract changes reach API validation and Worker task execution');
     browser = await chromium.launch({ channel: 'msedge', headless: true });
     const page = await browser.newPage();
-    await page.goto(web);
+    await page.goto(web + '/status');
     await page.getByRole('heading', { name: '运行概览', exact: true }).waitFor();
     const marker = randomUUID();
     await page.evaluate((value) => {
@@ -154,7 +159,7 @@ try {
       .waitFor({ timeout: 30000 });
     assert.equal(await page.evaluate(() => window.__hmrProbe), marker);
     pass('shared React UI uses Vite HMR without full page reload');
-    const apiFile = 'apps/api/src/app.ts';
+    const apiFile = 'apps/api/src/system/system.module.ts';
     change(
       apiFile,
       "devProbe: 'reload-ok'",
@@ -205,6 +210,7 @@ try {
   }
   mkdirSync(path.join(root, '.local'), { recursive: true });
   writeFileSync(path.join(root, '.local/dev-check.log'), logs);
+  await fixture.close();
   // Restore generated output as well as source after the probes.
   if (!conflicted)
     execFileSync(process.execPath, [pnpm, 'build'], {

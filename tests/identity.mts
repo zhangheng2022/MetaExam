@@ -24,6 +24,13 @@ try {
   await assert.rejects(setup.create(input, token, 'test-only-hash', ctx), /TOKEN_INVALID/);
   await setup.issue(digestToken(token), new Date(Date.now() + 60000), ctx);
   await assert.rejects(setup.create(input, 'wrong', 'test-only-hash', ctx), /TOKEN_INVALID/);
+  await assert.rejects(
+    setup.create({ ...input, username: 'InvalidCase' }, token, 'test-only-hash', ctx),
+  );
+  assert.equal(
+    (await t.db.pool.query('SELECT token_hash FROM bootstrap_state')).rows[0].token_hash,
+    digestToken(token),
+  );
   const attempts = await Promise.allSettled([
     setup.create(input, token, 'test-only-hash', ctx),
     setup.create(input, token, 'test-only-hash', ctx),

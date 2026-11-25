@@ -1,6 +1,6 @@
 # MetaExam
 
-第一阶段工程：Node.js 24、NestJS + Fastify、React + Ant Design 6、Electron、PostgreSQL 18。Windows x64 开发与内部离线安装验证。M0 仍等待独立测试环境的安装、服务与重启验收。
+M1 基础平台工程：Node.js 24、NestJS + Fastify、React + Ant Design 6、Electron、PostgreSQL 18。Windows x64 开发与内部离线安装验证。M0 仍等待独立测试环境的安装、服务与重启验收。
 
 Web 与 Electron 共用 packages/ui 的 Ant Design 组件；MetaExamProvider 统一中文 locale，使用 Ant Design 默认蓝色主色 #1677ff 和默认深色菜单。成功/警告状态仍使用各自语义色。组件样式、图标均由 Vite 本地打包，无 CDN 依赖。CSP 仅为组件动态样式允许内联 CSS，脚本仍仅允许本地来源；Electron 保持 sandbox、contextIsolation 和受限 IPC。
 
@@ -17,7 +17,7 @@ Web 与 Electron 共用 packages/ui 的 Ant Design 组件；MetaExamProvider 统
 ./tools/run.ps1 dev
 ```
 
-访问 http://127.0.0.1:5173 。API 默认 3000，PostgreSQL 默认 55432，仅回环监听。端口被占用时启动失败，不自动杀进程或换端口。配置在首次 db:start 生成的 `.local/config.json`；复制到其他位置可用进程环境变量 `METAEXAM_CONFIG` 指定。设置示例见 [.env.example](.env.example)。
+访问 http://127.0.0.1:5173/login 。首次管理员在 Electron 中创建，首次需以 Windows 管理员身份运行客户端；步骤见 [M1 初始化与登录](docs/m1-acceptance.md)。运行状态页迁至 `/status`。API 默认 3000，PostgreSQL 默认 55432，仅回环监听。端口被占用时启动失败，不自动杀进程或换端口。配置在首次 db:start 生成的 `.local/config.json`；复制到其他位置可用进程环境变量 `METAEXAM_CONFIG` 指定。设置示例见 [.env.example](.env.example)。
 
 日常开发运行 `./tools/run.ps1 dev`（也可在 IDE 的 package.json 中运行 dev），会编译桌面端、启动 API/Worker/Vite，并在 API 启动后自动打开 Electron 管理窗口。只开发浏览器页面时运行 `dev:web`，不打开桌面窗口。TypeScript project references 按依赖顺序监听后端及共享包，编译成功后由 tsc-watch 自动重启 API 和 Worker；编译出错时暂停后台进程，修复后自动恢复。浏览器 React 和共享 UI 源码通过 Vite 热更新；Electron 当前加载启动时构建的本地页面，修改桌面代码后需要重新运行 dev。concurrently 统一管理开发进程；Ctrl+C 关闭本次启动的 API、Worker、Vite 和 Electron，数据库单独停止：
 
@@ -37,9 +37,9 @@ AI 开发先读取 [AGENTS.md](AGENTS.md) 和 [官方工具与资料](docs/ai-de
 | 目录               | 职责                                                    |
 | ------------------ | ------------------------------------------------------- |
 | apps/api           | NestJS 模块、Fastify HTTP/HTTPS、健康检查、生产静态资源 |
-| apps/web           | React + Vite 状态页面                                   |
+| apps/web           | React + Vite 登录、个人信息和状态页面                   |
 | apps/worker        | 独立数据库任务消费者、维护 CLI                          |
-| apps/desktop       | 沙箱 Electron、受限 preload IPC、复用 React 状态页      |
+| apps/desktop       | 沙箱 Electron、初始化向导与受限 IPC、运行状态           |
 | packages/contracts | 严格授权文件 schema、接口类型                           |
 | packages/domain    | 完全本地 Ed25519 验签与授权规则                         |
 | packages/db        | Drizzle + pg、显式迁移、设备绑定、授权持久化、任务租约  |
@@ -49,7 +49,7 @@ AI 开发先读取 [AGENTS.md](AGENTS.md) 和 [官方工具与资料](docs/ai-de
 | tests              | 单元、集成、开发监听、页面、数据库重启及客户包验证      |
 | provider           | 供应方测试签发工具，不进入客户安装包                    |
 
-统一命令均通过 `./tools/run.ps1 <command>` 使用：dev、build、typecheck、lint、format:check、test、test:integration、test:ui、test:dev、test:db-restart、test:package、db:migrate、package:win。
+统一命令均通过 `./tools/run.ps1 <command>` 使用：dev、build、typecheck、lint、format:check、test、test:integration、test:ui、test:dev、test:db-restart、test:package、test:m1、setup:token、db:migrate、package:win。
 
 `tools` 只保留四个入口：bootstrap.ps1 准备锁定工具链与依赖，run.ps1 使用项目 Node/pnpm 执行命令，dev.mjs 将配置交给标准监听工具，postgres.mjs 管理项目数据库普通进程。业务逻辑放在应用与共享包，不在这些脚本中实现。
 
@@ -90,7 +90,7 @@ $env:LICENSE_SEQUENCE = '1'
 ./.tools/node/node.exe provider/test-license.mjs sign .local/provider request.mreq issued.mlic
 ```
 
-测试公钥在打包时固化进客户文件；更换测试密钥后必须重新打包。集成测试另用进程内临时密钥，且会更新开发数据库测试授权，不作为正式授权。
+测试公钥在打包时固化进客户文件；更换测试密钥后必须重新打包。集成测试和包验证另用进程内临时密钥与独立测试库，不更新开发账号或授权，也不作为正式授权。
 
 新开考的有效授权/权益/容量判断，以及有效入场后中途到期可继续作答的纯规则已定义在 domain/attempt-policy。本阶段只固定规则契约并测试，实际名额分配、可信入场记录、用户所有权和考试会话在后续阶段开发。
 
@@ -112,4 +112,4 @@ $env:LICENSE_SEQUENCE = '1'
 
 安装版维护命令：管理员终端设置 `METAEXAM_CONFIG=C:\ProgramData\MetaExam\config.json`，然后使用 `C:\Program Files\MetaExam\runtime\node.exe --use-system-ca C:\Program Files\MetaExam\server\cli.cjs license-request <输出路径>` 等同名命令。含空格路径需 PowerShell 的 `&` 与引号。
 
-已有数据库禁止重新 initdb；本阶段拒绝覆盖安装及原地升级。卸载删除应用服务和应用文件、保留 ProgramData 数据。保留数据的恢复/重装须先备份并人工维护，不提供一键恢复承诺。独立验收未通过前不得用于正式考试。当前结果见 [阶段状态](docs/phase1-status.md)。
+已有数据库禁止重新 initdb；安装器拒绝覆盖安装；维护身份的显式 V1→V3 迁移命令和备份前置步骤见 [M1 验收说明](docs/m1-acceptance.md)，已安装环境升级流程仍待独立验收。卸载删除应用服务和应用文件、保留 ProgramData 数据。保留数据的恢复/重装须先备份并人工维护，不提供一键恢复承诺。独立验收未通过前不得用于正式考试。当前结果见 [阶段状态](docs/phase1-status.md)。

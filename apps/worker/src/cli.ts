@@ -9,6 +9,9 @@ import {
   licenseStatus,
   loadConfig,
   issueBootstrapFile,
+  requireAdministrator,
+  loadMaintenanceConfig,
+  grantRuntimeAccess,
 } from '@metaexam/db';
 import { LicenseError } from '@metaexam/domain';
 async function main() {
@@ -23,12 +26,20 @@ async function main() {
     if (!response.ok) throw new Error('STOP_FAILED');
     return;
   }
-  const db = createDatabase();
+  if (command === 'migrate-installed') requireAdministrator();
+  const db = createDatabase(
+    command === 'migrate-installed' ? loadMaintenanceConfig() : loadConfig(),
+  );
   try {
     switch (command) {
       case 'setup-token':
         await issueBootstrapFile(db);
         console.log('SETUP_TOKEN_READY');
+        break;
+      case 'migrate-installed':
+        await migrate(db);
+        await grantRuntimeAccess(db.pool);
+        console.log('INSTALLED_SCHEMA_READY');
         break;
       case 'migrate':
         await migrate(db);

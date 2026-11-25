@@ -95,9 +95,15 @@ export class AuthController {
     @Req() req: FastifyRequest,
     @Res({ passthrough: true }) res: FastifyReply,
   ) {
+    const current = await this.sessions.validate(this.sessions.tokenFrom(req));
     await this.signIn.signOut();
     res.header('Set-Cookie', this.sessions.clearCookie());
-    await this.audit.write('auth.logout', 'success', { requestId: req.id, ip: req.ip });
+    await this.audit.write(
+      'auth.logout',
+      'success',
+      { requestId: req.id, ip: req.ip },
+      current?.userId,
+    );
   }
   @Get('me') @Can.Anyone() me(@SignedInUser() user: CurrentUser) {
     return user;

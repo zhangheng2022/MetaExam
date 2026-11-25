@@ -142,7 +142,12 @@ async function main() {
   });
   ipcMain.handle('business:open', async (event) => {
     validateSender(event);
-    await shell.openExternal(endpoint() + '/login');
+    const webPort = Number(process.env.METAEXAM_WEB_PORT);
+    const business =
+      !app.isPackaged && Number.isInteger(webPort) && webPort > 0 && webPort < 65536
+        ? 'http://127.0.0.1:' + webPort
+        : endpoint();
+    await shell.openExternal(business + '/login');
   });
   await window.loadFile(file);
   window.show();

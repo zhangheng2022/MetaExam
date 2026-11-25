@@ -29,8 +29,8 @@ export async function createApp(
   const trustedOrigins = config.production
     ? []
     : [
-        'http://127.0.0.1:' + (config.api.webPort ?? 5173),
-        'http://localhost:' + (config.api.webPort ?? 5173),
+        'http://127.0.0.1:' + (process.env.METAEXAM_WEB_PORT ?? config.api.webPort ?? 5173),
+        'http://localhost:' + (process.env.METAEXAM_WEB_PORT ?? config.api.webPort ?? 5173),
       ];
   const https =
     config.api.tlsCert && config.api.tlsKey

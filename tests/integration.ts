@@ -5,21 +5,17 @@ import path from 'node:path';
 import { randomUUID, generateKeyPairSync, sign } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import {
-  createDatabase,
   migrate,
+  SCHEMA_VERSION,
   licenseRequest,
   importLicense,
   licenseStatus,
 } from '../packages/db/src';
 const root = process.cwd(),
-  configPath = path.resolve('.local/config.json'),
-  config = JSON.parse(readFileSync(configPath, 'utf8'));
-const db = createDatabase(config),
   port = 3300,
   url = 'http://127.0.0.1:' + port,
   children: ChildProcess[] = [];
 const testConfig = path.resolve('.local/integration-config.json');
-writeFileSync(testConfig, JSON.stringify({ ...config, api: { ...config.api, port } }));
 function start(file: string, conf = testConfig) {
   const p = spawn(process.execPath, [file], {
     cwd: root,
@@ -56,13 +52,16 @@ function pass(name: string) {
   console.log('PASS ' + name);
 }
 async function main() {
+  const fixture = await (await import('./database-fixture.mts')).isolatedDatabase();
+  const { db, config } = fixture;
+  writeFileSync(testConfig, JSON.stringify({ ...config, api: { ...config.api, port } }));
   let oldTrust = '';
   try {
     await migrate(db);
     await migrate(db);
     assert.equal(
       (await db.pool.query('SELECT count(*)::int AS n FROM schema_migrations')).rows[0].n,
-      1,
+      SCHEMA_VERSION,
     );
     pass('repeat migrations are safe');
     let api = start('apps/api/dist/main.js');
@@ -124,7 +123,6 @@ async function main() {
       'internal-test': keys.publicKey.export({ type: 'spki', format: 'pem' }),
     });
     writeFileSync(config.trustFile, publicStore);
-    writeFileSync(path.resolve('.local/test-trust.json'), publicStore);
     const current = Number(
       (await db.pool.query('SELECT highest_sequence FROM license_state WHERE id=1')).rows[0]
         .highest_sequence,
@@ -195,15 +193,13 @@ async function main() {
     stop(worker);
     stop(api);
     // Electron exits without owning or stopping API and worker.
-    api = start('apps/api/dist/main.js', configPath);
-    const w = start('apps/worker/dist/main.js', configPath);
-    await wait(
-      async () => (await fetch('http://127.0.0.1:' + config.api.port + '/health/ready')).ok,
-    );
+    api = start('apps/api/dist/main.js', testConfig);
+    const w = start('apps/worker/dist/main.js', testConfig);
+    await wait(async () => (await fetch('http://127.0.0.1:' + port + '/health/ready')).ok);
     const electronPath = path.join(root, 'apps/desktop/node_modules/electron/dist/electron.exe');
     const desktop = spawn(electronPath, ['apps/desktop'], {
       cwd: root,
-      env: { ...process.env, METAEXAM_CONFIG: configPath, METAEXAM_DESKTOP_SMOKE: '1' },
+      env: { ...process.env, METAEXAM_CONFIG: testConfig, METAEXAM_DESKTOP_SMOKE: '1' },
       stdio: 'pipe',
       windowsHide: true,
     });
@@ -220,10 +216,7 @@ async function main() {
         else reject(new Error('DESKTOP_EXIT_' + code));
       });
     });
-    assert.equal(
-      (await fetch('http://127.0.0.1:' + config.api.port + '/health/ready')).status,
-      200,
-    );
+    assert.equal((await fetch('http://127.0.0.1:' + port + '/health/ready')).status, 200);
     assert.equal(w.exitCode, null);
     pass('closing Electron leaves API and worker running');
     mkdirSync('artifacts', { recursive: true });
@@ -239,7 +232,7 @@ async function main() {
       } catch {
         /* exited */
       }
-    await db.pool.end();
+    await fixture.close();
   }
 }
 main().catch((error) => {

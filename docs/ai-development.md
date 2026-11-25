@@ -78,3 +78,7 @@ Ant Design 安装器还会维护 AGENTS.md 中自己的标记块，该块用 Pre
 | ESLint 10 / Prettier 3   | [flat config](https://eslint.org/docs/latest/use/configure/configuration-files)、[本地安装与锁版本](https://prettier.io/docs/install) | 沿用现有配置，补充 Hooks recommended；上游技能排除自动格式化             |
 
 没有为每个依赖机械安装一个 skill。未核实到适合本项目的官方推荐技能时，直接保留官方文档和已有 CLI；官方提到的实验性集成、跨主版本迁移和云服务不因本次接入自动启用。
+
+## M1 身份开发依赖
+
+本批按 [官方认证文档](https://docs.nestjs.com/security/authentication)、[官方权限文档](https://docs.nestjs.com/security/authorization)、[官方 CSRF 文档](https://docs.nestjs.com/security/csrf) 接入 @nestjs/authentication 0.1.6 与 @nestjs/authorization 0.1.4。React Router 8.5.3 使用 [官方声明式路由](https://reactrouter.com/start/declarative/routing)。认证只启用本机 Cookie 会话和密码，不启用在线账户、第三方登录或云服务。依赖仍以 pnpm-lock.yaml 为准。

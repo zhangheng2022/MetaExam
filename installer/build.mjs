@@ -106,6 +106,7 @@ function collectUiNotices(dir) {
 for (const name of ['antd', '@ant-design/icons'])
   collectUiNotices(path.dirname(uiRequire.resolve(name + '/package.json')));
 const webRequire = createRequire(path.join(root, 'apps/web/package.json'));
+collectUiNotices(path.dirname(webRequire.resolve('react-router/package.json')));
 for (const name of ['react', 'react-dom'])
   dependencyDirs.add(path.dirname(webRequire.resolve(name + '/package.json')));
 const reactDomRequire = createRequire(webRequire.resolve('react-dom/package.json'));
@@ -229,10 +230,11 @@ for (const value of Object.values(keys))
 writeFileSync(path.join(payload, 'public-keys.json'), JSON.stringify(keys, null, 2));
 writeFileSync(
   path.join(payload, 'INTERNAL-TEST.txt'),
-  'Internal unsigned phase 1 package. No production signing key. Windows service installation and restart acceptance pending. Public test key only; no signing tool included.\n',
+  'Internal unsigned M1 identity package. No production signing key. Windows service installation and restart acceptance pending. Public test key only; no signing tool included.\n',
 );
 if (existsSync(path.join(root, 'docs/phase1-acceptance.md')))
   copyFileSync(path.join(root, 'docs/phase1-acceptance.md'), path.join(payload, 'ACCEPTANCE.md'));
+copyFileSync(path.join(root, 'docs/m1-acceptance.md'), path.join(payload, 'M1-ACCEPTANCE.md'));
 const all = [];
 function walk(dir) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {

@@ -47,6 +47,7 @@ if (process.argv.includes('--desktop')) {
     ...process.env,
     METAEXAM_CONFIG: configPath,
     METAEXAM_API_PORT: String(config.api.port),
+    METAEXAM_WEB_PORT: process.env.METAEXAM_WEB_PORT ?? String(config.api.webPort ?? 5173),
   };
   const { result } = concurrently(
     [

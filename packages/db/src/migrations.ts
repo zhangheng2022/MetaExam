@@ -82,12 +82,23 @@ export const RUNTIME_TABLES = [
   'teaching_assignments',
 ];
 // Fixed identifiers only. Never grant DDL or future tables implicitly.
-export async function grantRuntimeAccess(c: Pick<PoolClient, 'query'>) {
-  await c.query('REVOKE CREATE ON SCHEMA public FROM PUBLIC,metaexam_app');
+export async function grantRuntimeAccess(
+  c: Pick<PoolClient, 'query'>,
+  role = 'metaexam_app',
+  database = 'metaexam',
+) {
+  if (!/^[a-z][a-z0-9_]{0,62}$/.test(role) || !/^[a-z][a-z0-9_]{0,62}$/.test(database))
+    throw new Error('INVALID_DATABASE_IDENTIFIER');
+  await c.query('REVOKE CREATE ON SCHEMA public FROM PUBLIC,' + role);
   await c.query(
-    'GRANT CONNECT ON DATABASE metaexam TO metaexam_app; GRANT USAGE ON SCHEMA public TO metaexam_app; GRANT SELECT ON schema_migrations TO metaexam_app',
+    'GRANT CONNECT ON DATABASE ' +
+      database +
+      ' TO ' +
+      role +
+      '; GRANT USAGE ON SCHEMA public TO ' +
+      role +
+      '; GRANT SELECT ON schema_migrations TO ' +
+      role,
   );
-  await c.query(
-    'GRANT SELECT,INSERT,UPDATE,DELETE ON ' + RUNTIME_TABLES.join(',') + ' TO metaexam_app',
-  );
+  await c.query('GRANT SELECT,INSERT,UPDATE,DELETE ON ' + RUNTIME_TABLES.join(',') + ' TO ' + role);
 }
