@@ -33,7 +33,7 @@
 ## 业务与运行约束
 
 - Nest 使用 Fastify adapter；不要直接套用 Express 请求类型、中间件或测试启动方式。外部输入须在服务端验证；当前协议使用 Zod。
-- 数据库迁移由 packages/db/src/migrations.ts 中的 V1～V3 注册表及 index.ts 中的逐版事务/连接咨询锁管理。schema.ts 声明现有表；仍禁止用 push 代替显式迁移。已执行迁移不可原地改写；新迁移需单独设计升级路径。
+- 数据库迁移由 packages/db/src/migrations.ts 中的 V1～V4 注册表及 index.ts 中的逐版事务/连接咨询锁管理。schema.ts 声明现有表；仍禁止用 push 代替显式迁移。已执行迁移不可原地改写；新迁移需单独设计升级路径。
 - pg 事务必须使用同一 PoolClient 并释放连接；查询参数化。任务租约领取、幂等和重启恢复语义须保留。
 - 授权使用 Node crypto Ed25519 完全本地验签；不加入授权服务器、公钥下载或在线时间依赖。签发工具与私钥不进入客户包。
 - Electron 保持 sandbox、contextIsolation、受限 preload/IPC；窗口退出不停止 API/Worker。动态 CSS 的既有 CSP 例外不能扩展成任意脚本执行。
@@ -52,6 +52,9 @@
 - 业务认证使用官方 @nestjs/authentication 和 @nestjs/authorization；Cookie 会话存 PostgreSQL，令牌原文不进数据库、日志或 localStorage。不要引入 JWT 或内存会话回退。
 - 初始化只允许回环请求 + 一次性令牌；仅提升权限 Electron 主进程/维护 CLI 读取令牌，不开放浏览器初始化表单。完成后不得重开初始化作为密码恢复。
 - 身份与软件授权分离；未激活不阻止初始化/登录/维护。改密更新凭据版本并撤销所有会话，创建会话必须复核版本。
+- 管理创建/重置账号必须强制改密；仅允许查看本人身份、改密和退出，业务权限策略须检查 mustChangePassword。重置与停用撤销会话；不提供删除账号或默认通用密码。
+- 管理写操作在数据库事务内重新校验管理员权限，并使用统一咨询锁保护最后管理员、角色与组织关系；新增管理写入口须复用此约束。教师/学生数据范围从认证身份计算，不信任客户端传入的账号 ID。编辑使用 revision 防止覆盖，审计不记录密码或令牌。
+- M1 第二批实现与验收见 docs/m1-management.md；test:management 使用独立数据库验证接口与真实浏览器流程，新包独立环境回归单独记录。
 - 身份数据库测试使用 tests/database-fixture.mts 的独立测试库；不能清空开发账号。test:m1 覆盖迁移、初始化、会话、权限、队列和浏览器；普通权限 Electron 测试不代表提升权限 ACL 验收。
 - M1 安装维护与独立环境回归清单见 docs/m1-acceptance.md；2026-11-25 用户确认独立环境验收完成，M0 完成、M1 第一批验收完成，不代表后续 M1 批次完成。确认记录见 docs/m1-status.md。
 

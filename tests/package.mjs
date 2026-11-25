@@ -143,6 +143,53 @@ try {
   assert.equal(signed.status, 200);
   const cookie = signed.headers.get('set-cookie').split(';')[0];
   assert.equal((await fetch(url + '/api/v1/admin/overview', { headers: { cookie } })).status, 200);
+  const create = async (route, data) => {
+    const r = await post('/api/v1' + route, data, cookie);
+    assert.equal(r.status, 201, await r.clone().text());
+    return (await r.json()).id;
+  };
+  const studentId = await create('/admin/users', {
+    username: 'payload_student',
+    displayName: '学生',
+    password: 'payload temporary phrase',
+    roles: ['student'],
+  });
+  const teacherId = await create('/admin/users', {
+    username: 'payload_teacher',
+    displayName: '教师',
+    password: 'payload temporary phrase',
+    roles: ['teacher'],
+  });
+  const classId = await create('/admin/organizations/classes', {
+    code: 'payload_class',
+    name: '班级',
+  });
+  const courseId = await create('/admin/organizations/courses', {
+    code: 'payload_course',
+    name: '课程',
+  });
+  assert.equal(
+    (await post('/api/v1/admin/classes/' + classId + '/members', { studentId }, cookie)).status,
+    204,
+  );
+  assert.equal(
+    (await post('/api/v1/admin/assignments', { teacherId, classId, courseId }, cookie)).status,
+    204,
+  );
+  const temporary = await post('/api/v1/auth/login', {
+    username: 'payload_student',
+    password: 'payload temporary phrase',
+  });
+  assert.equal((await temporary.clone().json()).mustChangePassword, true);
+  const studentCookie = temporary.headers.get('set-cookie').split(';')[0];
+  assert.equal(
+    (await fetch(url + '/api/v1/teaching/me', { headers: { cookie: studentCookie } })).status,
+    403,
+  );
+  assert.equal(
+    (await fetch(url + '/users')).headers.get('content-type').includes('text/html'),
+    true,
+  );
   assert.equal(
     (
       await post(
@@ -208,6 +255,7 @@ try {
         checks: [
           'bundled API ready and static web',
           'bundled setup, login, protected overview and password revocation',
+          'bundled account/organization/assignment management and forced password boundary',
           'bundled Worker completes API task',
           'bundled CLI validates persisted license',
           'packaged Electron IPC returns database ready',
