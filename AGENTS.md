@@ -14,6 +14,13 @@
 - 浏览器检查可用 Playwright 官方技能及项目现有测试。新增测试应验证用户可见行为，不能通过跳过失败测试来宣称功能通过。
 - 用户要求只安装官方发布或官方文档明确推荐的技能和工具；不要用同名社区技能替代，不自动升级整个技术栈。
 
+## UI 设计规范
+
+- 所有 Web 与 Electron 界面开发、生成和优化，必须先阅读并遵循 [Ant Design 官方视觉语言](https://ant.design/design.md)，结合 DESIGN.md 中当前页面约定实现。
+- 保持 Ant Design 默认蓝色主题，优先使用原生组件、默认算法和 Design Token；通过 ConfigProvider、组件 Token 或 theme.useToken 统一定制，不用零散硬编码样式覆盖组件视觉语言。
+- 布局采用 4px 间距体系，正文以 14px 为基准；统一字体层级、表单密度、导航和反馈状态。补全加载、空数据、失败、无权限及移动端状态，不展示虚构数据或未实现的操作入口。
+- design.md 用于视觉和交互指导；组件 API 必须通过锁定版本的本地 CLI 核对。用户明确的设计要求优先，不因官方文档更新自动升级依赖；界面约定发生变化时同步更新 DESIGN.md。
+
 ## 开发入口
 
 在仓库根目录使用 `./tools/run.ps1 <命令>`，它使用项目 Node.js 24 和锁定 pnpm；不修改系统 PATH。常用命令：dev、build、typecheck、lint、format:check、test。
