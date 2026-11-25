@@ -429,6 +429,51 @@ body {
 .skip-link:focus {
   top: 8px;
 }
+.management-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.management-filters.ant-form {
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.management-filters .ant-form-item {
+  margin: 0;
+}
+.filter-select {
+  min-width: 120px;
+}
+.business-main .ant-table-cell {
+  overflow-wrap: anywhere;
+}
+.business-main .ant-card {
+  min-width: 0;
+}
+.ant-drawer-body .ant-form {
+  width: 100%;
+}
+@media (max-width: 767px) {
+  .management-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .management-filters.ant-form {
+    flex-direction: column;
+  }
+  .management-filters .ant-form-item {
+    width: 100%;
+  }
+  .management-filters .ant-input-affix-wrapper,
+  .management-filters .ant-select {
+    width: 100%;
+  }
+  .business-main .ant-card-body {
+    padding: 16px;
+  }
+}
 @media (max-width: 1024px) {
   .profile-grid {
     grid-template-columns: 1fr;

@@ -12,8 +12,8 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format": "prettier --write \"{apps,packages,tests,tools,installer,provider,docs}/**/*\" \"*.{json,md,yaml,mjs,js,cjs}\" \".playwright/*.json\" --ignore-unknown",
+    "format:check": "prettier --check \"{apps,packages,tests,tools,installer,provider,docs}/**/*\" \"*.{json,md,yaml,mjs,js,cjs}\" \".playwright/*.json\" --ignore-unknown",
     "test": "tsx --test tests/*.test.ts",
     "test:integration": "tsx tests/integration.ts",
     "test:ui": "node tests/ui.mjs",
@@ -31,7 +31,8 @@
     "dev:services": "concurrently --kill-others --names api,worker \"node apps/api/dist/main.js\" \"node apps/worker/dist/main.js\"",
     "test:dev": "node tests/dev.mjs",
     "test:m1": "tsx tests/migrations.mts && tsx tests/identity.mts && tsx tests/setup.mts && tsx tests/auth.mts && tsx tests/storage.mts && tsx tests/desktop-setup.mts && tsx tests/auth-ui.mts",
-    "setup:token": "node apps/worker/dist/cli.js setup-token"
+    "setup:token": "node apps/worker/dist/cli.js setup-token",
+    "test:management": "tsx tests/management.mts && tsx tests/management-ui.mts"
   },
   "devDependencies": {
     "@ant-design/cli": "6.7.2",

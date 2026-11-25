@@ -22,10 +22,25 @@ import type { SystemStatus, CurrentUser, SetupStatus } from '@metaexam/contracts
 import '@metaexam/ui/styles.css';
 import { api } from './api';
 import { AuthProvider, useAuth } from './auth';
+import { UsersPage } from './management/users';
+import { OrganizationsPage } from './management/organizations';
+import { AssignmentsPage, AuditPage, WorkspacePage } from './management/teaching';
+const pages = {
+  profile: ['个人信息', '查看账号资料与角色，管理你的登录安全。'],
+  security: ['修改密码', '更新登录密码，保护你的账号安全。'],
+  workspace: ['工作台', '查看与你相关的教学安排和系统信息。'],
+  users: ['账号管理', '维护教师、学生和管理员账号。'],
+  classes: ['班级管理', '维护班级资料与学生归属。'],
+  courses: ['课程管理', '维护课程资料及授课关联。'],
+  assignments: ['授课安排', '将教师、课程与班级关联起来。'],
+  audit: ['操作日志', '查询操作结果与变更记录，时间以北京时间显示。'],
+} as const;
+type Page = keyof typeof pages;
+const pagePath = (key: string) =>
+  key === 'profile' ? '/' : key === 'security' ? '/change-password' : '/' + key;
 const loadStatus = (): Promise<SystemStatus> => api('/system/status');
 function Login() {
-  const auth = useAuth(),
-    navigate = useNavigate();
+  const auth = useAuth();
   const [setup, setSetup] = useState<SetupStatus | null>(null),
     [error, setError] = useState('');
   const check = () =>
@@ -46,7 +61,19 @@ function Login() {
         </IdentityPanel>
       </LoginSurface>
     );
-  if (auth.user) return <Navigate to="/" replace />;
+  if (auth.user)
+    return (
+      <Navigate
+        to={
+          auth.user.mustChangePassword
+            ? '/change-password'
+            : auth.user.roles.includes('admin')
+              ? '/'
+              : '/workspace'
+        }
+        replace
+      />
+    );
   return (
     <LoginSurface>
       <IdentityPanel title="登录 MetaExam">
@@ -67,7 +94,6 @@ function Login() {
               const user = await api<CurrentUser>('/auth/login', 'POST', input);
               auth.setNotice('');
               auth.setUser(user);
-              navigate('/', { replace: true });
             }}
           />
         ) : setup ? (
@@ -83,7 +109,8 @@ function Login() {
     </LoginSurface>
   );
 }
-function Protected({ password = false }: { password?: boolean }) {
+function Protected({ page = 'profile' }: { page?: Page }) {
+  const password = page === 'security';
   const auth = useAuth(),
     navigate = useNavigate(),
     [error, setError] = useState('');
@@ -124,15 +151,29 @@ function Protected({ password = false }: { password?: boolean }) {
     );
   if (!auth.user) return <Navigate to="/login" replace />;
   const user = auth.user;
+  if (user.mustChangePassword && !password) return <Navigate to="/change-password" replace />;
+  const required = (
+    {
+      users: 'users.manage',
+      classes: 'organizations.manage',
+      courses: 'organizations.manage',
+      assignments: 'organizations.manage',
+      audit: 'audit.read',
+      workspace: 'teaching.self',
+    } as Partial<Record<Page, string>>
+  )[page];
+  const allowed =
+    !required ||
+    (user.permissions.includes(required) && (page === 'workspace' || user.roles.includes('admin')));
   return (
     <BusinessShell
-      title={password ? '修改密码' : '个人信息'}
-      description={
-        password ? '更新登录密码，保护你的账号安全。' : '查看账号资料与角色，管理你的登录安全。'
-      }
+      title={pages[page][0]}
+      description={pages[page][1]}
       displayName={user.displayName}
-      selected={password ? 'security' : 'profile'}
-      onNavigate={(key) => navigate(key === 'security' ? '/change-password' : '/')}
+      selected={page}
+      permissions={user.roles.includes('admin') ? user.permissions : []}
+      mustChangePassword={user.mustChangePassword}
+      onNavigate={(key) => navigate(pagePath(key))}
       loggingOut={loggingOut}
       onLogout={() => {
         setLoggingOut(true);
@@ -144,17 +185,35 @@ function Protected({ password = false }: { password?: boolean }) {
           .catch((e) => setError(e.message))
           .finally(() => setLoggingOut(false));
       }}
-      actions={!password && <Button onClick={() => void auth.refresh()}>刷新个人信息</Button>}
+      actions={
+        page === 'profile' && <Button onClick={() => void auth.refresh()}>刷新个人信息</Button>
+      }
     >
       {error && (
         <Alert showIcon role="alert" type="error" title={error} className="identity-alert" />
       )}
-      {password ? (
+      {!allowed ? (
+        <Alert type="warning" title="没有访问权限" description="请从导航进入有权访问的页面。" />
+      ) : page === 'users' ? (
+        <UsersPage user={user} refreshUser={auth.refresh} />
+      ) : page === 'classes' || page === 'courses' ? (
+        <OrganizationsPage key={page} kind={page} />
+      ) : page === 'assignments' ? (
+        <AssignmentsPage />
+      ) : page === 'audit' ? (
+        <AuditPage />
+      ) : page === 'workspace' ? (
+        <WorkspacePage user={user} />
+      ) : password ? (
         <Card className="password-card" title="设置新密码">
           <Alert
             type="info"
             showIcon
-            title="修改成功后需要重新登录"
+            title={
+              user.mustChangePassword
+                ? '首次登录或密码被重置，请先修改密码'
+                : '修改成功后需要重新登录'
+            }
             description="当前账号在所有设备上的登录会话都将失效。"
             className="identity-alert"
           />
@@ -167,9 +226,11 @@ function Protected({ password = false }: { password?: boolean }) {
               navigate('/login', { replace: true });
             }}
           />
-          <div className="identity-actions">
-            <Link to="/">返回个人信息</Link>
-          </div>
+          {!user.mustChangePassword && (
+            <div className="identity-actions">
+              <Link to="/">返回个人信息</Link>
+            </div>
+          )}
         </Card>
       ) : (
         <>
@@ -255,7 +316,13 @@ function Business() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Protected />} />
-        <Route path="/change-password" element={<Protected password />} />
+        <Route path="/change-password" element={<Protected page="security" />} />
+        {(['workspace', 'users', 'classes', 'courses', 'assignments', 'audit'] as const).map(
+          (page) => (
+            <Route key={page} path={'/' + page} element={<Protected page={page} />} />
+          ),
+        )}
+        <Route path="/classes/:id" element={<Protected page="classes" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>

@@ -28,7 +28,19 @@ function management(req: FastifyRequest, token: string): boolean {
 @Controller()
 export class Routes {
   constructor(private readonly runtime: Runtime) {}
-  @Get(['/login', '/change-password', '/status']) page(@Res() res: FastifyReply) {
+  @Get([
+    '/login',
+    '/change-password',
+    '/status',
+    '/workspace',
+    '/users',
+    '/classes',
+    '/classes/:id',
+    '/courses',
+    '/assignments',
+    '/audit',
+  ])
+  page(@Res() res: FastifyReply) {
     return res
       .type('text/html')
       .send(readFileSync(path.join(this.runtime.db.config.api.webDir, 'index.html')));

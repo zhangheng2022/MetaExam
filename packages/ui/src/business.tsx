@@ -6,9 +6,28 @@ import {
   MenuOutlined,
   SafetyOutlined,
   UserOutlined,
+  TeamOutlined,
+  ReadOutlined,
+  ApartmentOutlined,
+  AuditOutlined,
+  HomeOutlined,
 } from '@ant-design/icons';
 
 export { Card, Skeleton, Statistic, Tag, Space } from 'antd';
+export {
+  Table,
+  Form,
+  Input,
+  Select,
+  Modal,
+  Switch,
+  Pagination,
+  Empty,
+  Drawer,
+  Tabs,
+  message,
+} from 'antd';
+export type { TableColumnsType } from 'antd';
 
 export function ProductBrand() {
   return (
@@ -36,7 +55,9 @@ interface BusinessShellProps extends PropsWithChildren {
   title: string;
   description: string;
   displayName: string;
-  selected: 'profile' | 'security';
+  selected: string;
+  permissions?: string[];
+  mustChangePassword?: boolean;
   onNavigate: (key: string) => void;
   onLogout: () => void;
   loggingOut: boolean;
@@ -53,6 +74,8 @@ export function BusinessShell({
   loggingOut,
   actions,
   children,
+  permissions = [],
+  mustChangePassword = false,
 }: BusinessShellProps) {
   const [open, setOpen] = useState(false);
   const navigation = (
@@ -65,7 +88,25 @@ export function BusinessShell({
           onNavigate(key);
         }}
         items={[
-          { key: 'profile', icon: <UserOutlined />, label: '个人信息' },
+          ...(!mustChangePassword
+            ? [
+                { key: 'workspace', icon: <HomeOutlined />, label: '工作台' },
+                ...(permissions.includes('users.manage')
+                  ? [{ key: 'users', icon: <TeamOutlined />, label: '账号管理' }]
+                  : []),
+                ...(permissions.includes('organizations.manage')
+                  ? [
+                      { key: 'classes', icon: <ApartmentOutlined />, label: '班级管理' },
+                      { key: 'courses', icon: <ReadOutlined />, label: '课程管理' },
+                      { key: 'assignments', icon: <BookOutlined />, label: '授课安排' },
+                    ]
+                  : []),
+                ...(permissions.includes('audit.read')
+                  ? [{ key: 'audit', icon: <AuditOutlined />, label: '操作日志' }]
+                  : []),
+                { key: 'profile', icon: <UserOutlined />, label: '个人信息' },
+              ]
+            : []),
           { key: 'security', icon: <SafetyOutlined />, label: '账号安全' },
         ]}
       />
@@ -93,7 +134,7 @@ export function BusinessShell({
               aria-label="打开导航"
               onClick={() => setOpen(true)}
             />
-            <Breadcrumb items={[{ title: '账号中心' }, { title }]} />
+            <Breadcrumb items={[{ title: 'MetaExam' }, { title }]} />
           </div>
           <div className="business-user">
             <Avatar size="small" icon={<UserOutlined />} />
@@ -123,7 +164,7 @@ export function BusinessShell({
             {children}
           </main>
         </Layout.Content>
-        <Layout.Footer className="business-footer">MetaExam · 账号中心</Layout.Footer>
+        <Layout.Footer className="business-footer">MetaExam · 本地考试管理</Layout.Footer>
       </Layout>
       <Drawer
         title="MetaExam 导航"
