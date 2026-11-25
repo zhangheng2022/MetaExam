@@ -62,6 +62,8 @@ Web 与 Electron 已统一使用 Ant Design 6.7.2、@ant-design/icons 6.3.4 和�
 
 ## 待验收及当前限制
 
+开发启动补充验证：`dev` 已接入 Electron 自动启动，`dev:web` 保留仅后台与浏览器模式。独立端口运行的 `test:dev --startup-only` 已验证窗口启动、真实 IPC/default blue，以及窗口退出后 API、Worker、Vite 仍运行；结果见 artifacts/dev-startup-results.json。Electron 当前使用启动时构建的页面，桌面热更新未包含在此改动中。
+
 - [ ] 独立 Windows 11 x64 净机断公网安装，包括包内 VC++ 运行库。
 - [ ] 虚拟服务账户权限、数据库初始化、三项服务注册及自动恢复。
 - [ ] 重启后自启、数据库就绪、原数据/授权保留。

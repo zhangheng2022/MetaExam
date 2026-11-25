@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "node tools/dev.mjs",
+    "dev:web": "node tools/dev.mjs --web-only",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",

@@ -52,7 +52,12 @@ const pass = (label) => {
 try {
   child = spawn(process.execPath, [pnpm, 'dev'], {
     cwd: root,
-    env: { ...process.env, METAEXAM_CONFIG: conf, METAEXAM_WEB_PORT: '5180' },
+    env: {
+      ...process.env,
+      METAEXAM_CONFIG: conf,
+      METAEXAM_WEB_PORT: '5180',
+      METAEXAM_DESKTOP_SMOKE: '1',
+    },
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
   });
@@ -68,90 +73,113 @@ try {
   await until(async () => (await fetch(url + '/health/ready')).ok, 'initial backend build');
   await until(async () => (await fetch(web + '/api/v1/system/status')).ok, 'Vite proxy');
   pass('one dev command starts backend watch, API, Worker and Vite');
-  change(
-    'apps/api/src/app.ts',
-    "return { status: 'alive', version: APP_VERSION };",
-    "return { status: 'alive', version: APP_VERSION, devProbe: 'reload-ok' };",
+  await until(
+    async () => logs.includes('DESKTOP_STATUS_READY'),
+    'Electron launches and reads status through IPC',
   );
   await until(
-    async () => (await (await fetch(url + '/health/live')).json()).devProbe === 'reload-ok',
-    'API reload',
+    async () => logs.includes('node tools/dev.mjs --desktop exited with code 0'),
+    'Electron closes normally',
   );
-  pass('API source change automatically compiles and restarts');
-  const workerMarker = 'worker_dev_' + randomUUID().replaceAll('-', '');
-  change('apps/worker/src/main.ts', "event: 'worker_started'", "event: '" + workerMarker + "'");
-  await until(async () => logs.includes('"event":"' + workerMarker + '"'), 'Worker reload');
-  pass('Worker source change automatically compiles and restarts');
-  change('packages/db/src/index.ts', "APP_VERSION = '0.1.0'", "APP_VERSION = '0.1.1'");
+  assert.equal((await fetch(url + '/health/ready')).status, 200);
+  assert.equal((await fetch(web)).status, 200);
   await until(
-    async () => (await (await fetch(url + '/health/live')).json()).version === '0.1.1',
-    'shared database package propagation',
+    async () => (await (await fetch(url + '/api/v1/system/status')).json()).worker === 'online',
+    'Worker stays online after closing Electron',
   );
-  pass('shared backend implementation rebuilds dependent services');
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: 'Bearer ' + config.api.managementToken,
-  };
-  const businessKey = 'dev-' + randomUUID();
-  const submit = () =>
-    fetch(url + '/api/v1/diagnostics/jobs', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ businessKey, message: 'x'.repeat(501) }),
-    });
-  assert.equal((await submit()).status, 400);
-  change(
-    'packages/contracts/src/index.ts',
-    'message: z.string().min(1).max(500)',
-    'message: z.string().min(1).max(501)',
-  );
-  await until(async () => (await submit()).status === 202, 'shared contract propagation');
-  const job = await (await submit()).json();
-  await until(
-    async () =>
-      (await (await fetch(url + '/api/v1/diagnostics/jobs/' + job.id, { headers })).json())
-        .status === 'completed',
-    'worker after contract rebuild',
-  );
-  pass('shared contract changes reach API validation and Worker task execution');
-  browser = await chromium.launch({ channel: 'msedge', headless: true });
-  const page = await browser.newPage();
-  await page.goto(web);
-  await page.getByRole('heading', { name: '运行概览', exact: true }).waitFor();
-  const marker = randomUUID();
-  await page.evaluate((value) => {
-    window.__hmrProbe = value;
-  }, marker);
-  change(
-    'packages/ui/src/index.tsx',
-    '<Title level={1}>运行概览</Title>',
-    '<Title level={1}>运行概览（热更新验证）</Title>',
-  );
-  await page
-    .getByRole('heading', { name: '运行概览（热更新验证）', exact: true })
-    .waitFor({ timeout: 30000 });
-  assert.equal(await page.evaluate(() => window.__hmrProbe), marker);
-  pass('shared React UI uses Vite HMR without full page reload');
-  const apiFile = 'apps/api/src/app.ts';
-  change(
-    apiFile,
-    "devProbe: 'reload-ok'",
-    "devProbe: 'reload-ok', invalidProbe: (true as never).invalid",
-  );
-  await until(async () => logs.includes('TS2339'), 'TypeScript error reported');
-  const apiPath = path.join(root, apiFile);
-  writeFileSync(apiPath, saved.get(apiPath));
-  written.set(apiPath, saved.get(apiPath));
-  await until(
-    async () =>
-      (await fetch(url + '/health/ready')).ok &&
-      (await (await fetch(url + '/health/live')).json()).devProbe === undefined,
-    'automatic recovery',
-  );
-  pass('compilation errors are visible and corrected source restarts automatically');
+  pass('dev automatically opens Electron with working IPC and default blue theme');
+  pass('closing Electron leaves API, Worker and Vite running');
+  if (!process.argv.includes('--startup-only')) {
+    change(
+      'apps/api/src/app.ts',
+      "return { status: 'alive', version: APP_VERSION };",
+      "return { status: 'alive', version: APP_VERSION, devProbe: 'reload-ok' };",
+    );
+    await until(
+      async () => (await (await fetch(url + '/health/live')).json()).devProbe === 'reload-ok',
+      'API reload',
+    );
+    pass('API source change automatically compiles and restarts');
+    const workerMarker = 'worker_dev_' + randomUUID().replaceAll('-', '');
+    change('apps/worker/src/main.ts', "event: 'worker_started'", "event: '" + workerMarker + "'");
+    await until(async () => logs.includes('"event":"' + workerMarker + '"'), 'Worker reload');
+    pass('Worker source change automatically compiles and restarts');
+    change('packages/db/src/index.ts', "APP_VERSION = '0.1.0'", "APP_VERSION = '0.1.1'");
+    await until(
+      async () => (await (await fetch(url + '/health/live')).json()).version === '0.1.1',
+      'shared database package propagation',
+    );
+    pass('shared backend implementation rebuilds dependent services');
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + config.api.managementToken,
+    };
+    const businessKey = 'dev-' + randomUUID();
+    const submit = () =>
+      fetch(url + '/api/v1/diagnostics/jobs', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ businessKey, message: 'x'.repeat(501) }),
+      });
+    assert.equal((await submit()).status, 400);
+    change(
+      'packages/contracts/src/index.ts',
+      'message: z.string().min(1).max(500)',
+      'message: z.string().min(1).max(501)',
+    );
+    await until(async () => (await submit()).status === 202, 'shared contract propagation');
+    const job = await (await submit()).json();
+    await until(
+      async () =>
+        (await (await fetch(url + '/api/v1/diagnostics/jobs/' + job.id, { headers })).json())
+          .status === 'completed',
+      'worker after contract rebuild',
+    );
+    pass('shared contract changes reach API validation and Worker task execution');
+    browser = await chromium.launch({ channel: 'msedge', headless: true });
+    const page = await browser.newPage();
+    await page.goto(web);
+    await page.getByRole('heading', { name: '运行概览', exact: true }).waitFor();
+    const marker = randomUUID();
+    await page.evaluate((value) => {
+      window.__hmrProbe = value;
+    }, marker);
+    change(
+      'packages/ui/src/index.tsx',
+      '<Title level={1}>运行概览</Title>',
+      '<Title level={1}>运行概览（热更新验证）</Title>',
+    );
+    await page
+      .getByRole('heading', { name: '运行概览（热更新验证）', exact: true })
+      .waitFor({ timeout: 30000 });
+    assert.equal(await page.evaluate(() => window.__hmrProbe), marker);
+    pass('shared React UI uses Vite HMR without full page reload');
+    const apiFile = 'apps/api/src/app.ts';
+    change(
+      apiFile,
+      "devProbe: 'reload-ok'",
+      "devProbe: 'reload-ok', invalidProbe: (true as never).invalid",
+    );
+    await until(async () => logs.includes('TS2339'), 'TypeScript error reported');
+    const apiPath = path.join(root, apiFile);
+    writeFileSync(apiPath, saved.get(apiPath));
+    written.set(apiPath, saved.get(apiPath));
+    await until(
+      async () =>
+        (await fetch(url + '/health/ready')).ok &&
+        (await (await fetch(url + '/health/live')).json()).devProbe === undefined,
+      'automatic recovery',
+    );
+    pass('compilation errors are visible and corrected source restarts automatically');
+  }
   mkdirSync(path.join(root, 'artifacts'), { recursive: true });
   writeFileSync(
-    path.join(root, 'artifacts/dev-watch-results.json'),
+    path.join(
+      root,
+      process.argv.includes('--startup-only')
+        ? 'artifacts/dev-startup-results.json'
+        : 'artifacts/dev-watch-results.json',
+    ),
     JSON.stringify({ timestamp: new Date().toISOString(), results }, null, 2),
   );
 } finally {

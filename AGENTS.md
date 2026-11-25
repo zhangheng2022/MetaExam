@@ -18,7 +18,7 @@
 
 在仓库根目录使用 `./tools/run.ps1 <命令>`，它使用项目 Node.js 24 和锁定 pnpm；不修改系统 PATH。常用命令：dev、build、typecheck、lint、format:check、test。
 
-- `dev` 启动 TypeScript 项目引用监听、API/Worker 自动重启和 Vite 热更新；不要另造启动器。
+- `dev` 启动 TypeScript 项目引用监听、API/Worker 自动重启、Vite 热更新及 Electron 窗口；`dev:web` 只启动后台和 Web。关闭 Electron 不停止后台；不要另造启动器。
 - Nest CLI 只辅助 API 代码生成；先 `nest generate ... --dry-run` 查看路径。不要在现有仓库执行 nest new，不把 Worker 改造成 Nest 应用，不覆盖统一构建链路。
 - 共享类型/校验放 contracts；纯授权规则放 domain；持久化放 db；界面放 ui。浏览器代码不能导入数据库或 Node.js 私有实现。
 - 使用项目 ESLint flat config、React Hooks recommended 规则与 Prettier。TypeScript 保持 strict 和既有项目引用。
@@ -39,6 +39,13 @@
 - test:dev 临时改写源码验证热更新，需独占执行，不与编辑、构建或其他测试并行。
 - `.local`、私钥、日志、浏览器会话和 artifacts 不提交；官方技能目录保留上游格式，不对其批量格式化。
 - 代码问题先遵循上级 AGENTS.md 使用 graphify 查询；代码变更后运行 `graphify update .`。
+
+## 代码提交
+
+- 开发工作及相关验证完成后，直接创建本地 Git 提交，无需再次询问是否提交。
+- 提交标题和正文使用中文，清楚说明本次修改的目的和内容。
+- 提交前检查差异，只纳入本次任务的代码、配置、文档和必要锁文件，不混入无关改动、运行数据或私钥。
+- 完成后告知提交号、验证结果及未完成的验收项。推送远程仓库按用户明确指令执行。
 
 <!-- prettier-ignore-start -->
 

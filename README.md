@@ -19,11 +19,11 @@ Web 与 Electron 共用 packages/ui 的 Ant Design 组件；MetaExamProvider 统
 
 访问 http://127.0.0.1:5173 。API 默认 3000，PostgreSQL 默认 55432，仅回环监听。端口被占用时启动失败，不自动杀进程或换端口。配置在首次 db:start 生成的 `.local/config.json`；复制到其他位置可用进程环境变量 `METAEXAM_CONFIG` 指定。设置示例见 [.env.example](.env.example)。
 
-日常开发只需运行 `./tools/run.ps1 dev`。TypeScript project references 按依赖顺序监听后端及共享包，编译成功后由 tsc-watch 自动重启 API 和 Worker；编译出错时暂停后台进程，修复后自动恢复。React 和共享 UI 源码通过 Vite 热更新，修改页面不重启后端。concurrently 统一管理开发进程；Ctrl+C 关闭 API、Worker 和 Vite，数据库单独停止：
+日常开发运行 `./tools/run.ps1 dev`（也可在 IDE 的 package.json 中运行 dev），会编译桌面端、启动 API/Worker/Vite，并在 API 启动后自动打开 Electron 管理窗口。只开发浏览器页面时运行 `dev:web`，不打开桌面窗口。TypeScript project references 按依赖顺序监听后端及共享包，编译成功后由 tsc-watch 自动重启 API 和 Worker；编译出错时暂停后台进程，修复后自动恢复。浏览器 React 和共享 UI 源码通过 Vite 热更新；Electron 当前加载启动时构建的本地页面，修改桌面代码后需要重新运行 dev。concurrently 统一管理开发进程；Ctrl+C 关闭本次启动的 API、Worker、Vite 和 Electron，数据库单独停止：
 
 ```powershell
 ./tools/run.ps1 db:stop
-# 另开终端启动桌面管理窗口，API/Worker 需已启动
+# 窗口关闭后需要重新打开时，另开终端执行（API/Worker 需已启动）
 $env:METAEXAM_CONFIG = (Resolve-Path .local/config.json).Path
 ./tools/run.ps1 --filter @metaexam/desktop start
 ```
@@ -54,6 +54,8 @@ AI 开发先读取 [AGENTS.md](AGENTS.md) 和 [官方工具与资料](docs/ai-de
 `tools` 只保留四个入口：bootstrap.ps1 准备锁定工具链与依赖，run.ps1 使用项目 Node/pnpm 执行命令，dev.mjs 将配置交给标准监听工具，postgres.mjs 管理项目数据库普通进程。业务逻辑放在应用与共享包，不在这些脚本中实现。
 
 `test:dev` 使用端口 3310/5180 验证 API、Worker、共享契约、数据库包、UI 热更新与编译错误恢复。它会临时修改源码并在结束时恢复、重新构建；请独占运行，期间不要编辑源码或同时执行其他构建/测试。UI 检查使用本机 Microsoft Edge。测试结果保存在忽略提交的 artifacts 目录。
+
+`./tools/run.ps1 test:dev --startup-only` 仅验证四个进程启动、Electron 实际 IPC 与主题、关闭窗口后后台继续运行，不执行源码改写探针。
 
 `GET /health/live` 仅判断进程；`GET /health/ready` 校验数据库连接及迁移校验和，失败 503；`GET /api/v1/system/status` 仅回环来源可访问，返回脱敏状态。诊断任务写入/读取与停机接口还需要配置中的管理令牌；本阶段没有匿名授权导入接口。开发 Vite 也仅回环监听，生产静态页面由 API 同源托管。
 
