@@ -2,6 +2,8 @@
 
 实现范围：V1→V3 迁移、账号和组织关系基础、Electron 首次管理员初始化、本地 Cookie 登录/个人信息/改密/退出。无默认账号或密码。账号/组织管理页面、忘记密码、题库和考试不在本批。
 
+当前状态：2026-11-25 用户已确认本机功能验收完成，截图显示管理员已登录个人信息页。确认记录见 [M1 交付记录](m1-status.md)。下方独立环境清单仍待验收。
+
 ## 开发启动与初始化
 
 ```powershell
@@ -19,6 +21,12 @@
 $env:METAEXAM_CONFIG = (Resolve-Path .local/config.json).Path
 $env:METAEXAM_WEB_PORT = '5173'
 ./tools/run.ps1 --filter @metaexam/desktop start
+```
+
+若 PowerShell 的执行策略禁止运行 `.ps1`，保留上面的环境变量，直接调用项目 Node.js 启动客户端，无需修改执行策略：
+
+```powershell
+& .\.tools\node\node.exe .\.tools\pnpm\node_modules\pnpm\bin\pnpm.cjs --filter @metaexam/desktop start
 ```
 
 填写用户名、姓名、密码和确认密码。客户端主进程自动生成/读取受限令牌；完成后关闭提升权限的客户端，后续普通权限启动即可。管理员创建一次后不能再次初始化；未激活授权不阻止此流程。
