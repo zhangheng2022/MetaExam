@@ -1,0 +1,40 @@
+{
+  "generatedAt": "2026-11-25T04:45:16.880Z",
+  "files": [
+    {
+      "file": ".tools/node-official.zip",
+      "url": "https://nodejs.org/dist/v24.22.3/node-v24.22.3-win-x64.zip",
+      "version": "24.22.3",
+      "verification": "Official SHASUMS256.txt verified",
+      "sha256": "e612af99f626ab415ea225af6bce5c971feb448cb5cae250bb1c3fa50c5f7d9f"
+    },
+    {
+      "file": ".tools/postgres.zip",
+      "url": "https://get.enterprisedb.com/postgresql/postgresql-18.7-1-windows-x64-binaries.zip",
+      "version": "18.7-1",
+      "verification": "HTTPS download; locally pinned SHA256",
+      "sha256": "ead0bbc27fb678fa24dcf86b738981323042abd073c744103bf7f3aed23f9a33"
+    },
+    {
+      "file": ".tools/innosetup.exe",
+      "url": "https://github.com/jrsoftware/issrc/releases/download/is-6_7_4/innosetup-6.7.4.exe",
+      "version": "6.7.4",
+      "verification": "Authenticode publisher verified",
+      "sha256": "a549929319f9120716677c685535ca4671e4b937b5fdc87e2585f32d8eb30e8c"
+    },
+    {
+      "file": ".tools/WinSW.NET462.exe",
+      "url": "https://github.com/winsw/winsw/releases/download/v2.14.0/WinSW.NET462.exe",
+      "version": "2.14.0",
+      "verification": "HTTPS GitHub release; locally pinned SHA256",
+      "sha256": "5099b87c7b2d8ec6441adc477aa9d82aa3cee132b6dd69f95682212ac3b61654"
+    },
+    {
+      "file": ".tools/vc_redist.x64.exe",
+      "url": "https://aka.ms/vs/17/release/vc_redist.x64.exe",
+      "version": "downloaded build pinned by SHA256",
+      "verification": "Microsoft Authenticode publisher verified",
+      "sha256": "cc0ff0eb1dc3f5188ae6300faef32bf5beeba4bdd6e8e445a9184072096b713b"
+    }
+  ]
+}

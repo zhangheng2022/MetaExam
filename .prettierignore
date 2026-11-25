@@ -1,0 +1,10 @@
+node_modules
+.tools
+.local
+artifacts
+work
+graphify-out
+pnpm-lock.yaml
+**/dist
+**/renderer-dist
+*.docx

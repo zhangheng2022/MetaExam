@@ -1,0 +1,100 @@
+# MetaExam
+
+第一阶段工程：Node.js 24、NestJS + Fastify、React、Electron、PostgreSQL 18。Windows x64 开发与内部离线安装验证。M0 仍等待独立测试环境的安装、服务与重启验收。
+
+## 开发启动
+
+在 PowerShell 中进入本目录。项目运行时位于 `.tools`，不会替换系统 Node.js 16，也不修改全局 PATH。
+
+```powershell
+# 首次联网准备；已有工具时可跳过
+./tools/bootstrap.ps1 -Proxy http://127.0.0.1:7897
+./tools/prepare-vendor.ps1 -Proxy http://127.0.0.1:7897
+./tools/run.ps1 install --frozen-lockfile
+./tools/run.ps1 build
+./tools/run.ps1 db:start
+./tools/run.ps1 db:migrate
+./tools/run.ps1 dev
+```
+
+访问 http://127.0.0.1:5173 。API 默认 3000，PostgreSQL 默认 55432，仅回环监听。端口被占用时启动失败，不自动杀进程或换端口。配置在首次 db:start 生成的 `.local/config.json`；复制到其他位置可用进程环境变量 `METAEXAM_CONFIG` 指定。设置示例见 [.env.example](.env.example)。后端修改后重新 build、重启 dev；React 支持 Vite 热更新。Ctrl+C 关闭 dev 的 API、Worker 和 Vite；数据库单独停止：
+
+```powershell
+./tools/run.ps1 db:stop
+# 另开终端启动桌面管理窗口，API/Worker 需已启动
+$env:METAEXAM_CONFIG = (Resolve-Path .local/config.json).Path
+./tools/run.ps1 --filter @metaexam/desktop start
+```
+
+关闭 Electron 不停止独立 API/Worker。开发环境无 Windows 服务注册。
+
+## 工程与命令
+
+| 目录               | 职责                                                    |
+| ------------------ | ------------------------------------------------------- |
+| apps/api           | NestJS 模块、Fastify HTTP/HTTPS、健康检查、生产静态资源 |
+| apps/web           | React + Vite 状态页面                                   |
+| apps/worker        | 独立数据库任务消费者、维护 CLI                          |
+| apps/desktop       | 沙箱 Electron、受限 preload IPC、复用 React 状态页      |
+| packages/contracts | 严格授权文件 schema、接口类型                           |
+| packages/domain    | 完全本地 Ed25519 验签与授权规则                         |
+| packages/db        | Drizzle + pg、显式迁移、设备绑定、授权持久化、任务租约  |
+| packages/ui        | Web 与 Electron 共用界面                                |
+| installer          | Inno Setup、WinSW、数据库与服务初始化脚本               |
+| tools              | 项目工具链、普通进程开发、打包、供应方测试签发工具      |
+| tests              | 授权单元与真实 PostgreSQL 集成测试                      |
+
+统一命令均通过 `./tools/run.ps1 <command>` 使用：dev、build、typecheck、lint、format:check、test、test:integration、test:ui、db:migrate、package:win。
+
+`GET /health/live` 仅判断进程；`GET /health/ready` 校验数据库连接及迁移校验和，失败 503；`GET /api/v1/system/status` 仅回环来源可访问，返回脱敏状态。诊断任务写入/读取与停机接口还需要配置中的管理令牌；本阶段没有匿名授权导入接口。开发 Vite 也仅回环监听，生产静态页面由 API 同源托管。
+
+## 数据与任务
+
+项目数据库普通进程数据在 `.local/postgres`；安装版在 `%ProgramData%\MetaExam\postgres\data`，程序在 Program Files。授权、序号、任务均落 PostgreSQL。版本迁移用事务、咨询锁及校验和，重复执行安全，不在 API 启动时自动迁移。任务领取用 `FOR UPDATE SKIP LOCKED`、租约 token 和重试上限；过期租约可重领。本阶段任务只有幂等 diagnostic.echo，后续有外部副作用的任务仍需单独的业务幂等设计。
+
+安装版数据库使用独立低权限 Windows 虚拟服务账户，应用数据库角色只有所需表的 DML 权限，初始化角色与应用角色分离。数据库口令用 Windows DPAPI LocalMachine 加密并通过文件 ACL 限制读取。管理员始终可控制本机数据；本地验签不承诺抵御管理员整体回滚磁盘或修改程序。
+
+## 本地授权
+
+授权格式为 JSON：`{protected, payload, signature}`，三部分均为无填充规范 base64url。签名原文固定为 ASCII `MetaExam-License-v1.<protected>.<payload>`。protected 中固定 typ、alg=Ed25519 和可信 kid；payload 字段见 [协议实现](packages/contracts/src/index.ts)。
+
+校验签名、产品、schema、安装 UUID、Windows 设备指纹、应用版本范围、序号、时间区间和权益。到期边界为排他，最大时间回拨容忍 5 分钟。高水位保存在数据库和独立数据文件；相同序号仅同一文件可重复导入。失败导入不覆盖已有授权；重启后重新验签。验签路径无网络访问、远程公钥或在线时间依赖。
+
+Windows 指纹优先 SMBIOS UUID + 主板序列，缺失或占位字段时回退 MachineGuid；请求会包含 fingerprintMode。原始硬件标识不导出。安装实例 ID 参与哈希，同机重新初始化是新的授权实例。
+
+```powershell
+./tools/run.ps1 license:request .local/request.mreq
+./tools/run.ps1 license:verify .local/issued.mlic
+./tools/run.ps1 license:import .local/issued.mlic
+./tools/run.ps1 license:status
+```
+
+供应方测试签发工具单独运行，客户包不含它：
+
+```powershell
+# 只生成一次；临时测试私钥仅在开发机 .local/provider，切勿分发
+./.tools/node/node.exe tools/provider-test.mjs keygen .local/provider
+# 测试客户的申请文件经离线介质送到供应方；每次更新递增序号
+$env:LICENSE_SEQUENCE = '1'
+./.tools/node/node.exe tools/provider-test.mjs sign .local/provider request.mreq issued.mlic
+```
+
+测试公钥在打包时固化进客户文件；更换测试密钥后必须重新打包。集成测试另用进程内临时密钥，且会更新开发数据库测试授权，不作为正式授权。
+
+新开考的有效授权/权益/容量判断，以及有效入场后中途到期可继续作答的纯规则已定义在 domain/attempt-policy。本阶段只固定规则契约并测试，实际名额分配、可信入场记录、用户所有权和考试会话在后续阶段开发。
+
+开发数据库经过集成测试后使用另一组进程内临时测试公钥，并已有更高授权序号。若在开发数据库演练供应方签发，需先将配置的 trustFile 指向 .local/provider/public-keys.json，并使用高于数据库历史最高值的 LICENSE_SEQUENCE；不要降低或清空高水位。全新安装的首份测试授权可从 1 开始。
+
+## 离线打包与维护
+
+```powershell
+./tools/run.ps1 package:win
+```
+
+产物为 `artifacts/MetaExam-Setup-0.1.0-win-x64-internal.exe` 及 SHA256。打包前核验工具链锁文件；Electron 由 electron-builder 输出目录，后端生产代码与生产依赖由 esbuild 封装，Inno Setup 统一生成 EXE。包内含独立 Node、React、Electron、PostgreSQL、WinSW、VC++ 运行库；安装后不运行 npm、不下载依赖。内部包未做正式 Authenticode 发布签名。
+
+仅在独立 Windows 11 x64 测试机运行安装器。可选本机 HTTP 或局域网 HTTPS；生产 LAN 必须导入真实可用证书，客户端信任其 CA。HTTPS 证书需覆盖 127.0.0.1 及访问用 LAN IP/域名；程序不跳过 TLS 验证。详细步骤见 [独立环境验收清单](docs/phase1-acceptance.md)。
+
+安装版维护命令：管理员终端设置 `METAEXAM_CONFIG=C:\ProgramData\MetaExam\config.json`，然后使用 `C:\Program Files\MetaExam\runtime\node.exe --use-system-ca C:\Program Files\MetaExam\server\cli.cjs license-request <输出路径>` 等同名命令。含空格路径需 PowerShell 的 `&` 与引号。
+
+已有数据库禁止重新 initdb；本阶段拒绝覆盖安装及原地升级。卸载删除应用服务和应用文件、保留 ProgramData 数据。保留数据的恢复/重装须先备份并人工维护，不提供一键恢复承诺。独立验收未通过前不得用于正式考试。当前结果见 [阶段状态](docs/phase1-status.md)。

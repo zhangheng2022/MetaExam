@@ -1,0 +1,19 @@
+{
+  "name": "@metaexam/worker",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/main.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@metaexam/contracts": "workspace:*",
+    "@metaexam/domain": "workspace:*",
+    "@metaexam/db": "workspace:*"
+  },
+  "files": [
+    "dist"
+  ]
+}

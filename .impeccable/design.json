@@ -1,0 +1,332 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-25T04:59:48.712991+00:00",
+  "title": "Design System: MetaExam",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "neutral",
+        "displayName": "ink",
+        "tonalRamp": [
+          "oklch(15.00% 0.02712 238.05)",
+          "oklch(26.43% 0.02712 238.05)",
+          "oklch(37.86% 0.02712 238.05)",
+          "oklch(49.29% 0.02712 238.05)",
+          "oklch(60.71% 0.02712 238.05)",
+          "oklch(72.14% 0.02712 238.05)",
+          "oklch(83.57% 0.02712 238.05)",
+          "oklch(95.00% 0.02712 238.05)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "muted",
+        "tonalRamp": [
+          "oklch(15.00% 0.02541 239.86)",
+          "oklch(26.43% 0.02541 239.86)",
+          "oklch(37.86% 0.02541 239.86)",
+          "oklch(49.29% 0.02541 239.86)",
+          "oklch(60.71% 0.02541 239.86)",
+          "oklch(72.14% 0.02541 239.86)",
+          "oklch(83.57% 0.02541 239.86)",
+          "oklch(95.00% 0.02541 239.86)"
+        ]
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "background",
+        "tonalRamp": [
+          "oklch(15.00% 0.00253 228.78)",
+          "oklch(26.43% 0.00253 228.78)",
+          "oklch(37.86% 0.00253 228.78)",
+          "oklch(49.29% 0.00253 228.78)",
+          "oklch(60.71% 0.00253 228.78)",
+          "oklch(72.14% 0.00253 228.78)",
+          "oklch(83.57% 0.00253 228.78)",
+          "oklch(95.00% 0.00253 228.78)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "surface",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 89.88)",
+          "oklch(26.43% 0.00000 89.88)",
+          "oklch(37.86% 0.00000 89.88)",
+          "oklch(49.29% 0.00000 89.88)",
+          "oklch(60.71% 0.00000 89.88)",
+          "oklch(72.14% 0.00000 89.88)",
+          "oklch(83.57% 0.00000 89.88)",
+          "oklch(95.00% 0.00000 89.88)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "line",
+        "tonalRamp": [
+          "oklch(15.00% 0.00860 225.09)",
+          "oklch(26.43% 0.00860 225.09)",
+          "oklch(37.86% 0.00860 225.09)",
+          "oklch(49.29% 0.00860 225.09)",
+          "oklch(60.71% 0.00860 225.09)",
+          "oklch(72.14% 0.00860 225.09)",
+          "oklch(83.57% 0.00860 225.09)",
+          "oklch(95.00% 0.00860 225.09)"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "accent",
+        "tonalRamp": [
+          "oklch(15.00% 0.08106 176.54)",
+          "oklch(26.43% 0.08106 176.54)",
+          "oklch(37.86% 0.08106 176.54)",
+          "oklch(49.29% 0.08106 176.54)",
+          "oklch(60.71% 0.08106 176.54)",
+          "oklch(72.14% 0.08106 176.54)",
+          "oklch(83.57% 0.08106 176.54)",
+          "oklch(95.00% 0.08106 176.54)"
+        ]
+      },
+      "navigation": {
+        "role": "neutral",
+        "displayName": "navigation",
+        "tonalRamp": [
+          "oklch(15.00% 0.03802 237.95)",
+          "oklch(26.43% 0.03802 237.95)",
+          "oklch(37.86% 0.03802 237.95)",
+          "oklch(49.29% 0.03802 237.95)",
+          "oklch(60.71% 0.03802 237.95)",
+          "oklch(72.14% 0.03802 237.95)",
+          "oklch(83.57% 0.03802 237.95)",
+          "oklch(95.00% 0.03802 237.95)"
+        ]
+      },
+      "navigation-current": {
+        "role": "neutral",
+        "displayName": "navigation-current",
+        "tonalRamp": [
+          "oklch(15.00% 0.04130 228.31)",
+          "oklch(26.43% 0.04130 228.31)",
+          "oklch(37.86% 0.04130 228.31)",
+          "oklch(49.29% 0.04130 228.31)",
+          "oklch(60.71% 0.04130 228.31)",
+          "oklch(72.14% 0.04130 228.31)",
+          "oklch(83.57% 0.04130 228.31)",
+          "oklch(95.00% 0.04130 228.31)"
+        ]
+      },
+      "navigation-text": {
+        "role": "neutral",
+        "displayName": "navigation-text",
+        "tonalRamp": [
+          "oklch(15.00% 0.00794 216.62)",
+          "oklch(26.43% 0.00794 216.62)",
+          "oklch(37.86% 0.00794 216.62)",
+          "oklch(49.29% 0.00794 216.62)",
+          "oklch(60.71% 0.00794 216.62)",
+          "oklch(72.14% 0.00794 216.62)",
+          "oklch(83.57% 0.00794 216.62)",
+          "oklch(95.00% 0.00794 216.62)"
+        ]
+      },
+      "good-background": {
+        "role": "semantic",
+        "displayName": "good-background",
+        "tonalRamp": [
+          "oklch(15.00% 0.01622 172.64)",
+          "oklch(26.43% 0.01622 172.64)",
+          "oklch(37.86% 0.01622 172.64)",
+          "oklch(49.29% 0.01622 172.64)",
+          "oklch(60.71% 0.01622 172.64)",
+          "oklch(72.14% 0.01622 172.64)",
+          "oklch(83.57% 0.01622 172.64)",
+          "oklch(95.00% 0.01622 172.64)"
+        ]
+      },
+      "good-text": {
+        "role": "semantic",
+        "displayName": "good-text",
+        "tonalRamp": [
+          "oklch(15.00% 0.07789 170.19)",
+          "oklch(26.43% 0.07789 170.19)",
+          "oklch(37.86% 0.07789 170.19)",
+          "oklch(49.29% 0.07789 170.19)",
+          "oklch(60.71% 0.07789 170.19)",
+          "oklch(72.14% 0.07789 170.19)",
+          "oklch(83.57% 0.07789 170.19)",
+          "oklch(95.00% 0.07789 170.19)"
+        ]
+      },
+      "warning-background": {
+        "role": "semantic",
+        "displayName": "warning-background",
+        "tonalRamp": [
+          "oklch(15.00% 0.02848 84.59)",
+          "oklch(26.43% 0.02848 84.59)",
+          "oklch(37.86% 0.02848 84.59)",
+          "oklch(49.29% 0.02848 84.59)",
+          "oklch(60.71% 0.02848 84.59)",
+          "oklch(72.14% 0.02848 84.59)",
+          "oklch(83.57% 0.02848 84.59)",
+          "oklch(95.00% 0.02848 84.59)"
+        ]
+      },
+      "warning-text": {
+        "role": "semantic",
+        "displayName": "warning-text",
+        "tonalRamp": [
+          "oklch(15.00% 0.09351 74.92)",
+          "oklch(26.43% 0.09351 74.92)",
+          "oklch(37.86% 0.09351 74.92)",
+          "oklch(49.29% 0.09351 74.92)",
+          "oklch(60.71% 0.09351 74.92)",
+          "oklch(72.14% 0.09351 74.92)",
+          "oklch(83.57% 0.09351 74.92)",
+          "oklch(95.00% 0.09351 74.92)"
+        ]
+      },
+      "error-background": {
+        "role": "semantic",
+        "displayName": "error-background",
+        "tonalRamp": [
+          "oklch(15.00% 0.00852 44.89)",
+          "oklch(26.43% 0.00852 44.89)",
+          "oklch(37.86% 0.00852 44.89)",
+          "oklch(49.29% 0.00852 44.89)",
+          "oklch(60.71% 0.00852 44.89)",
+          "oklch(72.14% 0.00852 44.89)",
+          "oklch(83.57% 0.00852 44.89)",
+          "oklch(95.00% 0.00852 44.89)"
+        ]
+      },
+      "error-text": {
+        "role": "semantic",
+        "displayName": "error-text",
+        "tonalRamp": [
+          "oklch(15.00% 0.08885 37.49)",
+          "oklch(26.43% 0.08885 37.49)",
+          "oklch(37.86% 0.08885 37.49)",
+          "oklch(49.29% 0.08885 37.49)",
+          "oklch(60.71% 0.08885 37.49)",
+          "oklch(72.14% 0.08885 37.49)",
+          "oklch(83.57% 0.08885 37.49)",
+          "oklch(95.00% 0.08885 37.49)"
+        ]
+      }
+    },
+    "shadows": [],
+    "motion": [],
+    "breakpoints": [
+      {
+        "name": "compact",
+        "value": "850px"
+      },
+      {
+        "name": "mobile",
+        "value": "600px"
+      }
+    ],
+    "evidence": {
+      "stylesheet": "packages/ui/src/styles.css",
+      "component": "packages/ui/src/index.tsx",
+      "screenshots": [
+        ".impeccable/review/desktop.png",
+        ".impeccable/review/mobile.png",
+        ".impeccable/review/initial-error.png"
+      ]
+    },
+    "tonalRampNote": "仅为面板合成的色阶预览，不是已实现的产品色值；原始 token 以 DESIGN.md 为准。",
+    "directionEvidence": {
+      "formSeed": null,
+      "qualityBar": null,
+      "approvedComp": null
+    }
+  },
+  "components": [
+    {
+      "name": "检查按钮",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "请求期间禁用；悬停与键盘焦点沿用实现。",
+      "html": "<button class=\"ds-button\">重新检查</button>",
+      "css": ".ds-button{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;background:#fff;color:var(--ink,#202f39);border:1px solid #aebec5;border-radius:6px;padding:10px 18px;font-size:16px;font-weight:600;min-height:44px;cursor:pointer}.ds-button:hover{background:#edf4f2;border-color:var(--accent,#176b5b)}.ds-button:focus-visible{outline:3px solid #188b78;outline-offset:4px}.ds-button:disabled{cursor:wait;color:#596870;background:#edf0f2}"
+    },
+    {
+      "name": "当前导航",
+      "kind": "nav",
+      "refersTo": "navigation-current",
+      "description": "静态当前项；移动端由顶部品牌承担识别。",
+      "html": "<nav class=\"ds-navigation\" aria-label=\"主导航\"><span class=\"ds-current\" aria-current=\"page\">运行概览</span></nav>",
+      "css": ".ds-navigation{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;background:#182e3c;color:#ecf3f5;padding:26px}.ds-current{display:block;background:#294653;border-radius:6px;padding:12px 14px;font-size:14px}"
+    },
+    {
+      "name": "运行正常",
+      "kind": "chip",
+      "refersTo": "status-good",
+      "description": "只作状态展示，文字与颜色同时表达。",
+      "html": "<span class=\"ds-status-good\">运行正常</span>",
+      "css": ".ds-status-good{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;display:inline-block;background:#e4f2ed;color:#125d49;font-size:12px;font-weight:600;padding:6px 10px;border-radius:4px}"
+    },
+    {
+      "name": "需要检查",
+      "kind": "chip",
+      "refersTo": "status-warning",
+      "description": "只作状态展示，文字与颜色同时表达。",
+      "html": "<span class=\"ds-status-warning\">需要检查</span>",
+      "css": ".ds-status-warning{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;display:inline-block;background:#faf0dc;color:#77500a;font-size:12px;font-weight:600;padding:6px 10px;border-radius:4px}"
+    },
+    {
+      "name": "服务面板",
+      "kind": "card",
+      "refersTo": "service-panel",
+      "description": "名称、说明与右侧状态，细线分隔服务行。",
+      "html": "<section class=\"ds-panel\"><h2>系统服务</h2><div class=\"ds-row\"><div><h3>本地数据库</h3><p>保存系统配置和业务数据</p></div><strong>已连接</strong></div></section>",
+      "css": ".ds-panel{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;background:#fff;color:var(--ink,#202f39);border:1px solid var(--line,#dce3e6);border-radius:10px;padding:26px 30px}.ds-panel h2{font-size:18px;font-weight:650;margin:0 0 17px}.ds-row{display:flex;justify-content:space-between;align-items:center;gap:24px;border-top:1px solid var(--line,#dce3e6);padding:22px 0 0}.ds-row h3{font-size:15px;font-weight:600;margin:0 0 5px}.ds-row p{font-size:13px;line-height:1.7;color:var(--muted,#566570);margin:0}.ds-row strong{font-size:14px;font-weight:550;white-space:nowrap}"
+    },
+    {
+      "name": "连接错误提示",
+      "kind": "custom",
+      "refersTo": "error-notice",
+      "description": "有历史结果时补充过时提示；首次失败不能推断授权结论。",
+      "html": "<div class=\"ds-notice\" role=\"alert\">暂时无法连接考试服务。请检查服务是否启动，然后重试。<span>以下为上次检查结果，可能已过时。</span></div>",
+      "css": ".ds-notice{font-family:\"Segoe UI\",\"Microsoft YaHei\",sans-serif;padding:16px 20px;border:1px solid #d0a89d;border-radius:6px;color:#783c2a;background:#fff8f5;font-size:14px;line-height:1.7}.ds-notice span{display:block}"
+    }
+  ],
+  "narrative": {
+    "overview": "延续现有运维界面基线：墨蓝导航、浅灰底、白色服务面板与克制的状态色，优先帮助本机维护人员读懂真实状态。网页与 Electron 复用同一组件和数据契约；字体与内联 SVG 标识无需联网加载。\n\n本文从 `packages/ui/src/styles.css`、`packages/ui/src/index.tsx` 及本轮桌面、移动端、首次连接失败截图提取。未保存用户选定的 Creative North Star、FORM seed 或 QUALITY BAR，亦无批准的视觉稿；不补造这些承诺。",
+    "keyCharacteristics": [
+      "状态文字明确，色彩辅助判断。",
+      "服务列表集中呈现，授权说明保持独立。",
+      "平面分层、细分隔线与适度圆角。",
+      "采用离线系统字体，不依赖栅格素材。"
+    ],
+    "rules": [
+      {
+        "name": "文字伴随状态",
+        "body": "状态必须同时给出可读文字；成功、待检查和连接中断不能只靠颜色区分。",
+        "section": "colors"
+      },
+      {
+        "name": "未知状态",
+        "body": "首次请求结束但失败时，考试服务显示“连接失败”，数据库、后台任务与授权显示“无法获取”，页脚显示“尚未获取检查结果”；不能把未知状态写成“未激活”或持续检查中。",
+        "section": "components"
+      },
+      {
+        "name": "旧结果标识",
+        "body": "已有成功结果后刷新失败，保留上次数据及其时间，同时显示连接中断与“以下为上次检查结果，可能已过时。”；不能把缓存结果呈现为新鲜结果。",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "**Do** 用明确的文字区分加载、成功、异常、未知和过期结果。",
+      "**Do** 保留离线字体、键盘焦点与移动端可读的服务行结构。",
+      "**Do** 从真实返回值生成授权信息与检查时间。"
+    ],
+    "donts": [
+      "**Don't** 把首次连接失败表示为确定的授权或数据库结论。",
+      "**Don't** 将当前技术验证界面写成正式考试功能已经开放。",
+      "**Don't** 将缺失的视觉方向稿、FORM seed 或 QUALITY BAR 记录为已批准。"
+    ]
+  }
+}

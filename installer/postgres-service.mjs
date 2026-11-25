@@ -1,0 +1,113 @@
+import { spawn, execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+const app = process.env.METAEXAM_INSTALL_ROOT,
+  data = process.env.METAEXAM_DATA_ROOT;
+if (!app || !data) throw new Error('SERVICE_CONFIGURATION_REQUIRED');
+const require = createRequire(path.join(app, 'server/db.cjs'));
+const { createDatabase, migrate, ensureInstance, loadConfig } = require(
+  path.join(app, 'server/db.cjs'),
+);
+const config = loadConfig(),
+  pgData = path.join(data, 'postgres/data'),
+  bin = path.join(app, 'postgres/bin');
+function decrypt(file) {
+  const script =
+    'Add-Type -AssemblyName System.Security; $b=[Convert]::FromBase64String([Console]::In.ReadToEnd()); [Console]::Write([Text.Encoding]::UTF8.GetString([Security.Cryptography.ProtectedData]::Unprotect($b,$null,[Security.Cryptography.DataProtectionScope]::LocalMachine)))';
+  return execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+    input: readFileSync(file, 'utf8'),
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+}
+const ownerPassword = decrypt(path.join(data, 'secrets/owner.dpapi'));
+const fresh = !existsSync(path.join(pgData, 'PG_VERSION'));
+if (fresh) {
+  if (existsSync(pgData))
+    throw new Error('Refusing to initialize a nonempty or partial database directory');
+  const file = path.join(data, 'postgres/init-pass.txt');
+  writeFileSync(file, ownerPassword, { mode: 0o600 });
+  try {
+    execFileSync(
+      path.join(bin, 'initdb.exe'),
+      [
+        '-D',
+        pgData,
+        '-U',
+        'metaexam_owner',
+        '--encoding=UTF8',
+        '--locale=C',
+        '--auth=scram-sha-256',
+        '--pwfile=' + file,
+      ],
+      { stdio: 'inherit', windowsHide: true },
+    );
+  } finally {
+    unlinkSync(file);
+  }
+}
+const child = spawn(
+  path.join(bin, 'postgres.exe'),
+  ['-D', pgData, '-h', '127.0.0.1', '-p', String(config.database.port)],
+  { stdio: 'inherit', windowsHide: true },
+);
+child.on('exit', (code) => process.exit(code ?? 1));
+const db = createDatabase({
+  ...config,
+  database: {
+    ...config.database,
+    database: 'postgres',
+    user: 'metaexam_owner',
+    password: ownerPassword,
+  },
+});
+try {
+  let connected = false;
+  for (let i = 0; i < 60; i++) {
+    try {
+      await db.pool.query('SELECT 1');
+      connected = true;
+      break;
+    } catch {
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
+  if (!connected) throw new Error('PostgreSQL did not become ready');
+  if (fresh) {
+    // Password is a generated hex string; no user-supplied SQL identifiers are accepted.
+    if (!/^[a-f0-9]{64}$/.test(config.database.password))
+      throw new Error('Unexpected generated credential');
+    await db.pool.query(
+      "CREATE ROLE metaexam_app LOGIN PASSWORD '" + config.database.password + "'",
+    );
+    await db.pool.query('CREATE DATABASE metaexam OWNER metaexam_owner');
+  }
+  await db.pool.end();
+  const owner = createDatabase({
+    ...config,
+    database: { ...config.database, user: 'metaexam_owner', password: ownerPassword },
+  });
+  try {
+    if (fresh) {
+      await migrate(owner);
+      await ensureInstance(owner);
+      await owner.pool.query(
+        'GRANT CONNECT ON DATABASE metaexam TO metaexam_app; GRANT USAGE ON SCHEMA public TO metaexam_app; GRANT SELECT ON schema_migrations TO metaexam_app; GRANT SELECT,INSERT,UPDATE,DELETE ON instance_info,license_state,license_history,jobs,worker_heartbeat TO metaexam_app',
+      );
+    }
+    const check = await owner.pool.query(
+      'SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1',
+    );
+    if (check.rows[0]?.version !== 1) throw new Error('Explicit schema migration required');
+    writeFileSync(
+      path.join(data, 'runtime/database-ready.json'),
+      JSON.stringify({ readyAt: new Date().toISOString() }),
+    );
+  } finally {
+    await owner.pool.end();
+  }
+} catch {
+  child.kill();
+  throw new Error('DATABASE_BOOTSTRAP_FAILED: see service log');
+}

@@ -1,0 +1,15 @@
+.tools/
+.local/
+node_modules/
+**/dist/
+**/renderer-dist/
+artifacts/
+work/
+.env
+*.log
+*.key
+*.p12
+*.pfx
+**/*private*.pem
+.impeccable/review/
+graphify-out/

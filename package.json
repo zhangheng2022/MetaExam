@@ -1,0 +1,46 @@
+{
+  "name": "metaexam",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.24.0",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "node tools/dev.mjs",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "tsx --test tests/*.test.ts",
+    "test:integration": "tsx tests/integration.ts",
+    "test:ui": "node tools/ui-check.mjs",
+    "test:package": "node tools/package-smoke.mjs",
+    "test:db-restart": "node tools/db-restart-check.mjs",
+    "db:migrate": "node apps/worker/dist/cli.js migrate",
+    "db:start": "node tools/postgres.mjs start",
+    "db:stop": "node tools/postgres.mjs stop",
+    "license:request": "node apps/worker/dist/cli.js license-request",
+    "license:verify": "node apps/worker/dist/cli.js license-verify",
+    "license:import": "node apps/worker/dist/cli.js license-import",
+    "license:status": "node apps/worker/dist/cli.js license-status",
+    "package:win": "node tools/package-win.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.5",
+    "@types/react-dom": "19.2.3",
+    "electron-builder": "26.18.0",
+    "electron-builder-squirrel-windows": "26.18.0",
+    "esbuild": "0.28.2",
+    "eslint": "10.15.0",
+    "globals": "16.5.0",
+    "playwright": "1.65.1",
+    "prettier": "3.6.2",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.74.0"
+  }
+}

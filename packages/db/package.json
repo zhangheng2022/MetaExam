@@ -1,0 +1,23 @@
+{
+  "name": "@metaexam/db",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@metaexam/contracts": "workspace:*",
+    "@metaexam/domain": "workspace:*",
+    "pg": "8.16.3",
+    "drizzle-orm": "0.45.4"
+  },
+  "devDependencies": {
+    "@types/pg": "8.15.6"
+  },
+  "files": [
+    "dist"
+  ]
+}

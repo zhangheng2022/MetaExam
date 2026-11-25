@@ -1,0 +1,64 @@
+import { z } from 'zod';
+
+export const licenseHeaderSchema = z
+  .object({
+    typ: z.literal('MetaExam-License-v1'),
+    alg: z.literal('Ed25519'),
+    kid: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+  })
+  .strict();
+export const licensePayloadSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    product: z.literal('MetaExam'),
+    licenseId: z.string().min(1).max(128),
+    customerId: z.string().min(1).max(128),
+    installationId: z.string().uuid(),
+    fingerprintVersion: z.literal(1),
+    deviceHash: z.string().regex(/^[a-f0-9]{64}$/),
+    sequence: z.number().int().positive().safe(),
+    issuedAt: z.string().datetime(),
+    notBefore: z.string().datetime(),
+    expiresAt: z.string().datetime().nullable(),
+    maxConcurrentAttempts: z.number().int().min(1).max(100000),
+    features: z
+      .array(z.string().regex(/^[a-z][a-z0-9.]{1,63}$/))
+      .min(1)
+      .max(100)
+      .refine((v) => new Set(v).size === v.length),
+    minAppVersion: z.string().regex(/^\d+\.\d+\.\d+$/),
+    maxAppMajor: z.number().int().nonnegative(),
+  })
+  .strict();
+export type LicensePayload = z.infer<typeof licensePayloadSchema>;
+export type LicenseState =
+  | 'unactivated'
+  | 'valid'
+  | 'expired'
+  | 'not_yet_valid'
+  | 'invalid'
+  | 'clock_anomaly';
+export interface LicenseSummary {
+  state: LicenseState;
+  expiresAt: string | null;
+  maxConcurrentAttempts: number | null;
+  features: string[];
+  errorCode?: string;
+}
+export interface SystemStatus {
+  product: 'MetaExam';
+  version: string;
+  initialized: boolean;
+  database: 'ready' | 'unavailable';
+  schemaVersion: number;
+  worker: 'online' | 'offline';
+  checkedAt: string;
+  license: LicenseSummary;
+  stage: 'phase1';
+}
+export const jobRequestSchema = z
+  .object({
+    businessKey: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/),
+    message: z.string().min(1).max(500),
+  })
+  .strict();
