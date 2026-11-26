@@ -11,5 +11,10 @@ contextBridge.exposeInMainWorld(
     previewLicenseImport: () => ipcRenderer.invoke('license:preview'),
     confirmLicenseImport: (id: string) => ipcRenderer.invoke('license:confirm', id),
     cancelLicenseImport: (id: string) => ipcRenderer.invoke('license:cancel', id),
+    createBackup: () => ipcRenderer.invoke('backup:create'),
+    previewRestore: () => ipcRenderer.invoke('backup:preview'),
+    confirmRestore: (id: string) => ipcRenderer.invoke('backup:confirm', id),
+    cancelRestore: (id: string) => ipcRenderer.invoke('backup:cancel', id),
+    recoverRestore: () => ipcRenderer.invoke('backup:recover'),
   }),
 );

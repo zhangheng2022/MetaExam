@@ -112,3 +112,4 @@ export * from './management';
 export * from './questions';
 export * from './imports';
 export * from './papers';
+export * from './backup';

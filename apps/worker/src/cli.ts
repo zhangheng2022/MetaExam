@@ -15,8 +15,22 @@ import {
 } from '@metaexam/db';
 import { LicenseError } from '@metaexam/domain';
 import { readLicenseMaintenanceInput, runLicenseMaintenance } from './license-maintenance';
+import { backupErrorCodes, runBackupMaintenance } from './backup-maintenance';
 async function main() {
   const [command, file] = process.argv.slice(2);
+  if (command === 'backup-desktop') {
+    try {
+      console.log(JSON.stringify(await runBackupMaintenance()));
+    } catch (error) {
+      console.error(
+        error instanceof Error && backupErrorCodes.includes(error.message)
+          ? error.message
+          : 'BACKUP_FAILED',
+      );
+      process.exitCode = 1;
+    }
+    return;
+  }
   if (command === 'license-desktop') {
     try {
       requireAdministrator();

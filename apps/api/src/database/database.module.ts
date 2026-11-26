@@ -6,7 +6,7 @@ export class Runtime {
   draining = false;
   constructor(readonly db: Database) {}
   async onModuleDestroy() {
-    await this.db.pool.end();
+    if (!this.db.pool.ended) await this.db.pool.end();
   }
 }
 @Module({})

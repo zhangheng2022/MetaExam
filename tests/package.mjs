@@ -1,5 +1,13 @@
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdtempSync, cpSync, writeFileSync, rmSync, mkdirSync, existsSync } from 'node:fs';
+import {
+  mkdtempSync,
+  cpSync,
+  writeFileSync,
+  rmSync,
+  mkdirSync,
+  existsSync,
+  readdirSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -596,6 +604,17 @@ try {
       }),
     (error) => error.stderr.trim() === 'ADMINISTRATOR_REQUIRED',
   );
+  assert.throws(
+    () =>
+      execFileSync(node, ['server/cli.cjs', 'backup-desktop'], {
+        cwd: isolated,
+        env,
+        encoding: 'utf8',
+        windowsHide: true,
+        input: '{"operation":"recover"}',
+      }),
+    (error) => error.stderr.trim() === 'ADMINISTRATOR_REQUIRED',
+  );
   env.METAEXAM_DESKTOP_SMOKE = '1';
   const manager = start(path.join(payload, 'manager/MetaExam.Manager.exe'), []);
   await new Promise((resolve, reject) => {
@@ -615,6 +634,64 @@ try {
     windowsHide: true,
   }).trim();
   assert.ok(pgVersion.includes('18.'));
+  // Exercise the shipped backup engine and shipped pg_dump/pg_restore without elevation.
+  const maintenance = await isolatedDatabase();
+  const packed = createRequire(path.join(isolated, 'server/db.cjs'))('./db.cjs');
+  try {
+    await packed.migrate(maintenance.db);
+    await packed.ensureInstance(maintenance.db);
+    await maintenance.db.pool.query(
+      "INSERT INTO courses(id,code,name) VALUES($1,'package-backup','备份时数据')",
+      [randomUUID()],
+    );
+    await maintenance.db.pool.end();
+    const destination = path.join(isolated, 'backups');
+    mkdirSync(destination);
+    const backup = new packed.BackupService(maintenance.config, {
+      bin: path.join(payload, 'postgres/bin'),
+      key: randomBytes(32),
+      runtimeRole: maintenance.config.database.user,
+      secureDirectory: async () => {},
+    });
+    const info = await backup.create(destination);
+    const folder = path.join(destination, 'MetaExam-' + info.id + '.mbackup');
+    assert.deepEqual(await backup.preview(folder), info);
+    const changed = packed.createDatabase(maintenance.config);
+    try {
+      await changed.pool.query("UPDATE courses SET name='备份后数据'");
+    } finally {
+      await changed.pool.end();
+    }
+    await backup.restore(folder, info.id);
+    const restored = packed.createDatabase(maintenance.config);
+    try {
+      assert.equal(
+        (await restored.pool.query('SELECT name FROM courses')).rows[0].name,
+        '备份时数据',
+      );
+    } finally {
+      await restored.pool.end();
+    }
+  } finally {
+    const cleanup = packed.createDatabase({
+      ...maintenance.config,
+      home: config.home,
+      database: { ...maintenance.config.database, database: 'postgres' },
+    });
+    try {
+      for (const entry of readdirSync(maintenance.config.home)) {
+        const match = /^restore-([a-f0-9-]{36})$/.exec(entry);
+        if (!match) continue;
+        const suffix = match[1].replaceAll('-', '');
+        assert.match(suffix, /^[a-f0-9]{32}$/);
+        for (const prefix of ['metaexam_old_', 'metaexam_restore_'])
+          await cleanup.pool.query('DROP DATABASE IF EXISTS ' + prefix + suffix + ' WITH (FORCE)');
+      }
+    } finally {
+      await cleanup.pool.end();
+      await maintenance.close();
+    }
+  }
   mkdirSync(path.join(root, 'artifacts'), { recursive: true });
   writeFileSync(
     path.join(root, 'artifacts/package-smoke-results.json'),
@@ -637,6 +714,8 @@ try {
           'bundled Worker completes API task',
           'bundled CLI validates persisted license',
           'bundled desktop license CLI rejects ordinary privileges',
+          'bundled backup maintenance CLI rejects ordinary privileges',
+          'bundled backup engine and PostgreSQL tools restore isolated data after authenticated preview',
           'packaged Electron IPC returns database ready',
           'closing packaged Electron leaves API/Worker alive',
           'packaged PostgreSQL binary version',

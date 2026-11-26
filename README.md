@@ -122,4 +122,8 @@ $env:LICENSE_SEQUENCE = '1'
 
 安装版维护命令：管理员终端设置 `METAEXAM_CONFIG=C:\ProgramData\MetaExam\config.json`，然后使用 `C:\Program Files\MetaExam\runtime\node.exe --use-system-ca C:\Program Files\MetaExam\server\cli.cjs license-request <输出路径>` 等同名命令。含空格路径需 PowerShell 的 `&` 与引号。
 
-已有数据库禁止重新 initdb；安装器拒绝覆盖安装；当前有序迁移升级至 V10，维护命令和备份前置步骤见 [M2 阅卷与成绩说明](docs/m2-grading.md)。卸载删除应用服务和应用文件、保留 ProgramData 数据。保留数据的恢复/重装须先备份并人工维护，不提供一键恢复承诺。当前仍为内部测试包，完整考试业务及正式发布尚未交付；后续变更按影响范围回归。
+已有数据库禁止重新 initdb；安装器拒绝覆盖安装；当前有序迁移升级至 V10，维护命令见 [M2 阅卷与成绩说明](docs/m2-grading.md)。卸载删除应用服务和应用文件、保留 ProgramData 数据。同机业务数据恢复见下文；保留数据的重新安装仍需人工维护，不提供净机或跨机恢复入口。当前仍为内部测试包，完整考试业务及正式发布尚未交付；后续变更按影响范围回归。
+
+## 本地备份与恢复
+
+本地管理器支持同机离线备份与恢复。先停止 API／Worker，保留 PostgreSQL；以管理员身份运行管理器，在“备份与恢复”中操作。范围、恢复后果、异常回退和独立环境清单见 [M3 第二批](docs/m3-backup.md)。回归命令：`./tools/run.ps1 test:backup`。

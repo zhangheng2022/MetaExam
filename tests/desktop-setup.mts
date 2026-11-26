@@ -28,12 +28,17 @@ try {
   );
   assert.deepEqual(exposed.sort(), [
     'cancelLicenseImport',
+    'cancelRestore',
     'confirmLicenseImport',
+    'confirmRestore',
     'copyBusinessAddress',
     'createAdministrator',
+    'createBackup',
     'exportLicenseRequest',
     'openBusiness',
     'previewLicenseImport',
+    'previewRestore',
+    'recoverRestore',
     'setupStatus',
     'status',
   ]);

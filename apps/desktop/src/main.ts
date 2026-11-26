@@ -13,6 +13,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import { createLicenseOperations } from './license-maintenance';
+import { createBackupOperations } from './backup-maintenance';
 function endpoint() {
   const configPath =
     process.env.METAEXAM_CONFIG ??
@@ -63,6 +64,29 @@ async function main() {
     return r.json();
   };
   const licenses = createLicenseOperations(window);
+  const backups = createBackupOperations(window);
+  window.webContents.on('did-start-navigation', () => backups.clear());
+  window.on('closed', () => backups.clear());
+  ipcMain.handle('backup:create', (event) => {
+    validateSender(event);
+    return backups.create();
+  });
+  ipcMain.handle('backup:preview', (event) => {
+    validateSender(event);
+    return backups.preview();
+  });
+  ipcMain.handle('backup:confirm', (event, id: unknown) => {
+    validateSender(event);
+    return backups.confirm(id);
+  });
+  ipcMain.handle('backup:cancel', (event, id: unknown) => {
+    validateSender(event);
+    backups.cancel(id);
+  });
+  ipcMain.handle('backup:recover', (event) => {
+    validateSender(event);
+    return backups.recover();
+  });
   window.webContents.on('did-start-navigation', () => licenses.clear());
   window.on('closed', () => licenses.clear());
   ipcMain.handle('license:request', (event) => {

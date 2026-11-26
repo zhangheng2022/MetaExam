@@ -17,11 +17,13 @@ import type {
   SetupStatus,
   SystemStatus,
   LicenseManagerBridge,
+  BackupBridge,
 } from '@metaexam/contracts';
 import { IdentityForm } from './identity';
 import { LicenseActions } from './license-actions';
+import { BackupActions } from './backup-actions';
 
-export interface LocalManagerBridge extends LicenseManagerBridge {
+export interface LocalManagerBridge extends LicenseManagerBridge, BackupBridge {
   status: () => Promise<SystemStatus>;
   setupStatus: () => Promise<SetupStatus>;
   createAdministrator: (input: AdministratorInput) => Promise<{ ok: boolean; code?: string }>;
@@ -378,6 +380,7 @@ export function LocalManager({ bridge }: { bridge: LocalManagerBridge }) {
         {checked && !needsSetup && !created && (
           <Collapse
             items={[
+              { key: 'backup', label: '备份与恢复', children: <BackupActions bridge={bridge} /> },
               {
                 key: 'details',
                 label: '运行详情',

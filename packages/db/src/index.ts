@@ -1,4 +1,5 @@
 import { Pool, type PoolClient } from 'pg';
+import { enterRuntime } from './maintenance-gate';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { randomUUID } from 'node:crypto';
 import { readFileSync, existsSync, mkdirSync, writeFileSync, renameSync } from 'node:fs';
@@ -24,14 +25,17 @@ export * from './exams';
 export * from './attempts';
 export * from './grading';
 export * from './reports';
+export { BackupService, ordinaryPath } from './backup';
 import { processImportJob } from './imports';
 export function createDatabase(config = loadConfig()) {
-  const pool = new Pool({
+  const options = {
     ...config.database,
     max: 10,
     connectionTimeoutMillis: 2500,
-    idleTimeoutMillis: 10000,
-  });
+    idleTimeoutMillis: 0,
+    onConnect: (client: import('pg').Client) => enterRuntime(client, config.home),
+  };
+  const pool = new Pool(options);
   pool.on('error', () => console.error(JSON.stringify({ event: 'database_pool_error' })));
   return { pool, orm: drizzle(pool), config };
 }

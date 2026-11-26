@@ -25,7 +25,7 @@ export async function isolatedDatabase() {
     db,
     config,
     async close() {
-      await db.pool.end();
+      if (!db.pool.ended) await db.pool.end();
       if (!/^metaexam_test_[a-f0-9]{32}$/.test(name)) throw new Error('Unsafe test database');
       await owner.pool.query('DROP DATABASE ' + name + ' WITH (FORCE)');
       await owner.pool.end();
