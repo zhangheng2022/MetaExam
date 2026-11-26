@@ -603,3 +603,113 @@ body {
   display: block;
   margin-bottom: 8px;
 }
+
+.local-manager {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.local-manager-header,
+.local-manager-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--manager-gap);
+  padding: var(--manager-gap) var(--manager-padding);
+}
+.local-manager-header {
+  background: var(--mx-surface);
+  border-bottom: 1px solid var(--mx-border);
+}
+.local-manager-brand,
+.local-manager-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--manager-small-gap);
+}
+.local-manager-brand svg {
+  width: 32px;
+  height: 32px;
+  fill: none;
+  stroke: var(--mx-primary);
+  stroke-width: 2.5;
+}
+.local-manager-brand h1 {
+  font-size: var(--manager-heading);
+  margin: 0;
+}
+.local-manager-main {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--manager-padding);
+  display: flex;
+  flex-direction: column;
+  gap: var(--manager-gap);
+  flex: 1;
+}
+.local-manager-summary,
+.local-manager-service {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--manager-gap);
+}
+.local-manager-summary {
+  min-height: 40px;
+}
+.local-manager-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--manager-gap);
+}
+.local-manager h2 {
+  font-size: var(--manager-card-heading);
+  margin: 0;
+}
+.local-manager-service {
+  padding: var(--manager-gap) 0;
+  border-bottom: 1px solid var(--mx-border);
+}
+.local-manager-service:first-child {
+  padding-top: 0;
+}
+.local-manager-service:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.local-manager-license-help,
+.local-manager-actions {
+  margin-top: var(--manager-gap);
+  margin-bottom: 0;
+}
+.local-manager-setup {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+}
+.local-manager-footer {
+  border-top: 1px solid var(--mx-border);
+}
+@media (max-width: 640px) {
+  .local-manager-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .local-manager-header,
+  .local-manager-main,
+  .local-manager-footer {
+    padding: var(--manager-gap);
+  }
+  .local-manager-brand h1 {
+    font-size: var(--manager-card-heading);
+  }
+  .local-manager-summary {
+    align-items: flex-start;
+  }
+  .local-manager .ant-alert {
+    flex-wrap: wrap;
+  }
+}

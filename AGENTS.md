@@ -45,6 +45,7 @@
 
 - 按改动选择已有检查；源码/配置修改运行 typecheck、lint、format:check 和相关测试。
 - UI 改动运行 test:ui；数据库/API/Worker 改动运行 test:integration；打包链路改动运行 package:win 和 test:package。
+- 本地管理器改动另运行 test:desktop，覆盖真实 Electron 普通权限拒绝、状态切换、受限 IPC 和窗口布局。模拟初始化成功与内容缩放不能代替独立环境的提升权限 ACL、实际 Windows DPI 验收；实现记录见 docs/local-manager.md。
 - test:dev 临时改写源码验证热更新，需独占执行，不与编辑、构建或其他测试并行。
 - `.local`、私钥、日志、浏览器会话和 artifacts 不提交；官方技能目录保留上游格式，不对其批量格式化。
 - 代码问题先遵循上级 AGENTS.md 使用 graphify 查询；代码变更后运行 `graphify update .`。

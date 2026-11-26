@@ -27,6 +27,7 @@ try {
     Object.keys((window as unknown as { metaexam: object }).metaexam),
   );
   assert.deepEqual(exposed.sort(), [
+    'copyBusinessAddress',
     'createAdministrator',
     'openBusiness',
     'setupStatus',

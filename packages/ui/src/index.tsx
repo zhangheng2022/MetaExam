@@ -294,3 +294,4 @@ function StatusOverview({ loadStatus, desktop = false }: DashboardProps) {
 }
 export * from './identity';
 export * from './business';
+export * from './local-manager';

@@ -17,6 +17,7 @@
     "test": "tsx --test tests/*.test.ts",
     "test:integration": "tsx tests/integration.ts",
     "test:ui": "node tests/ui.mjs",
+    "test:desktop": "tsx tests/desktop-setup.mts && node tests/desktop-manager.mjs",
     "test:package": "node tests/package.mjs",
     "test:db-restart": "node tests/database-restart.mjs",
     "db:migrate": "node apps/worker/dist/cli.js migrate",

@@ -36,6 +36,8 @@ $env:METAEXAM_CONFIG = (Resolve-Path .local/config.json).Path
 
 关闭 Electron 不停止独立 API/Worker。开发环境无 Windows 服务注册。
 
+本地管理器首次进入管理员设置，完成后默认显示服务与授权概览；点击“打开考试系统”进入浏览器。运行详情中可复制本机登录地址。修改管理器后运行 `./tools/run.ps1 test:desktop`，实现与验收范围见 [本地管理器改版记录](docs/local-manager.md)。
+
 ## 工程与命令
 
 AI 开发先读取 [AGENTS.md](AGENTS.md) 和 [官方工具与资料](docs/ai-development.md)。项目只接入官方发布或官方明确推荐的技能与 CLI，版本随依赖锁文件固定。

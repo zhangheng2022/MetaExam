@@ -1,4 +1,12 @@
-import { app, BrowserWindow, ipcMain, net, shell, type IpcMainInvokeEvent } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  clipboard,
+  ipcMain,
+  net,
+  shell,
+  type IpcMainInvokeEvent,
+} from 'electron';
 import path from 'node:path';
 import { readFileSync, existsSync, unlinkSync } from 'node:fs';
 import { execFile } from 'node:child_process';
@@ -20,8 +28,8 @@ async function main() {
   await app.whenReady();
   const file = path.resolve(__dirname, '../renderer-dist/index.html');
   const window = new BrowserWindow({
-    width: 1160,
-    height: 850,
+    width: 1000,
+    height: 720,
     minWidth: 380,
     minHeight: 600,
     show: false,
@@ -140,14 +148,21 @@ async function main() {
       return { ok: false, code };
     }
   });
-  ipcMain.handle('business:open', async (event) => {
-    validateSender(event);
+  const businessAddress = () => {
     const webPort = Number(process.env.METAEXAM_WEB_PORT);
     const business =
       !app.isPackaged && Number.isInteger(webPort) && webPort > 0 && webPort < 65536
         ? 'http://127.0.0.1:' + webPort
         : endpoint();
-    await shell.openExternal(business + '/login');
+    return business + '/login';
+  };
+  ipcMain.handle('business:open', async (event) => {
+    validateSender(event);
+    await shell.openExternal(businessAddress());
+  });
+  ipcMain.handle('business:copy-address', (event) => {
+    validateSender(event);
+    clipboard.writeText(businessAddress());
   });
   await window.loadFile(file);
   window.show();
@@ -159,7 +174,16 @@ async function main() {
     if (status.product !== 'MetaExam' || status.database !== 'ready')
       throw new Error('DESKTOP_STATUS_FAILED');
     const primaryColor = await window.webContents.executeJavaScript(
-      "getComputedStyle(document.querySelector('.ant-btn-primary')).backgroundColor",
+      `new Promise((resolve, reject) => {
+        const deadline = Date.now() + 10000;
+        const check = () => {
+          const button = document.querySelector('.ant-btn-primary');
+          if (button) resolve(getComputedStyle(button).backgroundColor);
+          else if (Date.now() >= deadline) reject(new Error('DESKTOP_RENDER_TIMEOUT'));
+          else setTimeout(check, 50);
+        };
+        check();
+      })`,
     );
     if (primaryColor !== 'rgb(22, 119, 255)') throw new Error('DESKTOP_THEME_FAILED');
     console.log('DESKTOP_STATUS_READY');

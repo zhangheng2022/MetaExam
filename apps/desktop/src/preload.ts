@@ -6,5 +6,6 @@ contextBridge.exposeInMainWorld(
     setupStatus: () => ipcRenderer.invoke('setup:status'),
     createAdministrator: (input: unknown) => ipcRenderer.invoke('setup:create', input),
     openBusiness: () => ipcRenderer.invoke('business:open'),
+    copyBusinessAddress: () => ipcRenderer.invoke('business:copy-address'),
   }),
 );
