@@ -82,10 +82,11 @@ export async function attemptFixture() {
         knowledgePoints: [],
         images: content.type === 'essay' ? [{ id: imageId, alt: '作答示意图' }] : [],
       });
+    const instructions = '请逐题作答。\n简答题须写明计算过程。<b>按纯文本显示</b>';
     const r = await t.request(
       '/papers',
       'POST',
-      { name: '五题型作答卷', courseId: t.courseId },
+      { name: '五题型作答卷', courseId: t.courseId, instructions },
       t.people.teacher!.cookie,
     );
     const paperId = r.json().id;
@@ -139,7 +140,9 @@ export async function attemptFixture() {
     }
     return {
       ...t,
+      input,
       examId,
+      instructions,
       open,
       second: { id: second, cookie: secondCookie },
       a,

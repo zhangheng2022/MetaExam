@@ -1,5 +1,5 @@
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdtempSync, cpSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, cpSync, writeFileSync, rmSync, mkdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -12,6 +12,7 @@ const { licenseRequest, importLicense, BootstrapRepository, digestToken } = crea
 )('../packages/db/dist/index.js');
 const root = path.resolve(import.meta.dirname, '..'),
   payload = path.join(root, 'artifacts/payload');
+assert.ok(existsSync(path.join(payload, 'maintenance/data-directory.ps1')));
 const isolated = mkdtempSync(path.join(tmpdir(), 'MetaExam-smoke-')),
   children = [];
 const fixture = await isolatedDatabase();
@@ -425,6 +426,9 @@ try {
   assert.equal(admission.status, 200, await admission.clone().text());
   const attemptId = (await admission.json()).id;
   const attemptPath = '/api/v1/attempts/' + attemptId;
+  const attemptDetail = await fetch(url + attemptPath, { headers: { cookie: freshStudentCookie } });
+  assert.equal(attemptDetail.status, 200);
+  assert.equal((await attemptDetail.json()).instructions, '普通进程回归');
   const attemptQuestion = await (
     await fetch(url + attemptPath + '/questions/1', { headers: { cookie: freshStudentCookie } })
   ).json();

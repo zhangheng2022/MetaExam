@@ -142,6 +142,14 @@ export function AttemptPage() {
               </Tag>
             }
           >
+            {meta.instructions && (
+              <section aria-label="作答说明">
+                <Typography.Title level={5}>作答说明</Typography.Title>
+                <Typography.Paragraph className="question-text">
+                  {meta.instructions}
+                </Typography.Paragraph>
+              </section>
+            )}
             <Typography.Paragraph>
               截止时间（北京）：{dateText(meta.deadlineAt)} · 已保存填写 {meta.answeredCount} /{' '}
               {meta.items.length} 题

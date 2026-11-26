@@ -17,7 +17,12 @@ import {
   publicationLicenseError,
   LicenseError,
 } from '@metaexam/domain';
-import { transaction, verifyPublicationLicense, type Database } from './index';
+import {
+  transaction,
+  verifyPublicationLicense,
+  prepareLicenseDevice,
+  type Database,
+} from './index';
 import { IdentityError, audit, type AuditContext } from './identity';
 type Actor = { id: string; admin: boolean };
 const scope = `( $2::boolean OR (e.owner_id=$1 AND co.enabled AND NOT EXISTS(SELECT 1 FROM exam_classes ec LEFT JOIN classes cl ON cl.id=ec.class_id WHERE ec.exam_id=e.id AND (NOT cl.enabled OR NOT EXISTS(SELECT 1 FROM teaching_assignments t WHERE t.teacher_id=$1 AND t.course_id=e.course_id AND t.class_id=ec.class_id)))))`;
@@ -251,7 +256,9 @@ export class ExamRepository {
       };
     });
   }
-  publish(actor: string, id: string, revision: number, ctx: AuditContext) {
+  async publish(actor: string, id: string, revision: number, ctx: AuditContext) {
+    const preview = await this.detail(actor, id);
+    const device = preview.status === 'draft' ? await prepareLicenseDevice(this.db) : undefined;
     return this.run(actor, true, async (c, a) => {
       const e = await this.get(c, a, id);
       if (e.status === 'published') return { id };
@@ -276,7 +283,7 @@ export class ExamRepository {
         throw new IdentityError('EXAM_ROSTER_STALE', 409);
       let license;
       try {
-        license = await verifyPublicationLicense(this.db, c);
+        license = await verifyPublicationLicense(this.db, c, device);
       } catch (error) {
         if (error instanceof LicenseError) throw new IdentityError('EXAM_LICENSE_INVALID', 409);
         throw error;

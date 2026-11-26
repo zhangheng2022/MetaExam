@@ -90,6 +90,7 @@ try {
   assert.equal((await req(base, 'GET', undefined, loser.cookie)).statusCode, 404);
   assert.equal((await req(base + '/questions/1', 'GET', undefined, loser.cookie)).statusCode, 404);
   const detail = (await req(base)).json();
+  assert.equal(detail.instructions, t.instructions);
   assert.equal((await req(base + '/images/' + t.imageId)).headers['content-type'], 'image/png');
   assert.equal(
     (await req(base + '/images/' + t.imageId, 'GET', undefined, loser.cookie)).statusCode,

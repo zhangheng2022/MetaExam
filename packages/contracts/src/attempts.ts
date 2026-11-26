@@ -37,6 +37,7 @@ export interface AttemptSummary {
   id: string;
   examId: string;
   name: string;
+  instructions: string;
   status: 'active' | 'submitted';
   startedAt: string;
   deadlineAt: string;

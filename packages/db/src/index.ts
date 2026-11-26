@@ -1,9 +1,10 @@
 import { Pool, type PoolClient } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { readFileSync, existsSync, mkdirSync, writeFileSync, renameSync } from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { fingerprint } from './fingerprint';
+export { fingerprint } from './fingerprint';
 import { verifyLicense, LicenseError } from '@metaexam/domain';
 import type { LicenseSummary } from '@metaexam/contracts';
 import { instanceInfo } from './schema';
@@ -93,37 +94,11 @@ export async function readiness(db: Database): Promise<boolean> {
     return false;
   }
 }
-export function fingerprint(installationId: string): { hash: string; mode: string } {
-  if (process.platform !== 'win32') throw new Error('WINDOWS_REQUIRED_FOR_DEVICE_BINDING');
-  const script =
-    "$ErrorActionPreference='Stop'; $a=''; $b=''; try {$a=(Get-CimInstance Win32_ComputerSystemProduct).UUID} catch {}; try {$b=(Get-CimInstance Win32_BaseBoard).SerialNumber} catch {}; @{uuid=$a;board=$b;guid=(Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Cryptography').MachineGuid}|ConvertTo-Json -Compress";
-  const v = JSON.parse(
-    execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
-      encoding: 'utf8',
-      windowsHide: true,
-      timeout: 15000,
-    }),
-  ) as Record<string, string>;
-  const clean = (s?: string) => (s ?? '').trim().toUpperCase();
-  const valid = (s: string) =>
-    s.length > 3 && !/DEFAULT|UNKNOWN|TO BE FILLED|NOT SPECIFIED|^0+(-0+)*$|^F+(-F+)*$/.test(s);
-  const a = clean(v.uuid),
-    b = clean(v.board),
-    g = clean(v.guid);
-  const mode = valid(a) && valid(b) ? 'smbios' : 'machine-guid';
-  if (mode === 'machine-guid' && !valid(g)) throw new Error('NO_STABLE_DEVICE_ID');
-  return {
-    mode,
-    hash: createHash('sha256')
-      .update(JSON.stringify([1, installationId, mode, mode === 'smbios' ? [a, b] : [g]]))
-      .digest('hex'),
-  };
-}
 export async function ensureInstance(db: Database) {
   const rows = await db.orm.select().from(instanceInfo);
   if (rows[0]) return rows[0];
   const id = randomUUID(),
-    fp = fingerprint(id);
+    fp = await fingerprint(id);
   await db.pool.query('INSERT INTO instance_info VALUES(1,$1,$2,$3) ON CONFLICT(id) DO NOTHING', [
     id,
     fp.hash,
@@ -133,7 +108,7 @@ export async function ensureInstance(db: Database) {
 }
 export async function licenseRequest(db: Database) {
   const inst = await ensureInstance(db),
-    actual = fingerprint(inst.installationId);
+    actual = await fingerprint(inst.installationId);
   return {
     schemaVersion: 1,
     product: 'MetaExam',
@@ -182,25 +157,38 @@ function saveWatermark(config: RuntimeConfig, sequence: number) {
   writeFileSync(tmp, JSON.stringify(v), { mode: 0o600 });
   renameSync(tmp, file);
 }
-async function context(db: Database, state: State, client?: PoolClient) {
-  const inst = client
-    ? (
-        await client.query<{ installationId: string }>(
-          'SELECT installation_id AS "installationId" FROM instance_info WHERE id=1',
-        )
-      ).rows[0]
-    : await ensureInstance(db);
-  if (!inst) throw new LicenseError('WRONG_INSTANCE');
-  const fp = fingerprint(inst.installationId),
-    wm = watermark(db.config);
+export interface LicenseDevice {
+  installationId: string;
+  deviceHash: string;
+}
+// Call before opening a business transaction: no pool connection or lock is
+// held while Windows reads hardware. This is identity evidence, not a license grant.
+export async function prepareLicenseDevice(db: Database): Promise<LicenseDevice> {
+  const inst = await ensureInstance(db);
   return {
     installationId: inst.installationId,
-    deviceHash: fp.hash,
+    deviceHash: (await fingerprint(inst.installationId)).hash,
+  };
+}
+function context(db: Database, state: State, device: LicenseDevice) {
+  const wm = watermark(db.config);
+  return {
+    ...device,
     appVersion: APP_VERSION,
     highestSequence: Math.max(Number(state.highest_sequence), wm.sequence),
     currentDigest: state.digest,
     lastTrustedAt: new Date(Math.max(state.last_trusted_at.getTime(), Date.parse(wm.time))),
   };
+}
+async function checkedContext(db: Database, c: PoolClient, state: State, device?: LicenseDevice) {
+  const inst = (
+    await c.query<{ installation_id: string }>(
+      'SELECT installation_id FROM instance_info WHERE id=1',
+    )
+  ).rows[0];
+  if (!device || !inst || inst.installation_id !== device.installationId)
+    throw new LicenseError('WRONG_INSTANCE');
+  return context(db, state, device);
 }
 async function persistWatermark(db: Database) {
   // Serialize cross-process read/replace against imports and other readers.
@@ -211,15 +199,20 @@ async function persistWatermark(db: Database) {
   });
 }
 export async function checkLicenseFile(db: Database, raw: string) {
+  const device = await prepareLicenseDevice(db);
   const s = (await db.pool.query<State>('SELECT * FROM license_state WHERE id=1')).rows[0]!;
-  return verifyLicense(raw, publicKeys(db.config), await context(db, s));
+  return verifyLicense(raw, publicKeys(db.config), context(db, s, device));
 }
 export async function importLicense(db: Database, raw: string) {
   // Collect machine information before taking the short-lived state lock.
-  await ensureInstance(db);
+  const device = await prepareLicenseDevice(db);
   const imported = await transaction(db, async (c) => {
     const s = (await c.query<State>('SELECT * FROM license_state WHERE id=1 FOR UPDATE')).rows[0]!;
-    const verified = verifyLicense(raw, publicKeys(db.config), await context(db, s));
+    const verified = verifyLicense(
+      raw,
+      publicKeys(db.config),
+      await checkedContext(db, c, s, device),
+    );
     if (s.digest === verified.digest) return verified;
     await c.query('INSERT INTO license_history(id,sequence,digest,raw) VALUES($1,$2,$3,$4)', [
       randomUUID(),
@@ -238,10 +231,18 @@ export async function importLicense(db: Database, raw: string) {
 }
 // Publication keeps this lock until the surrounding exam transaction commits.
 // Do not replace with licenseStatus: status catches failures and uses another connection.
-export async function verifyPublicationLicense(db: Database, c: PoolClient) {
+export async function verifyPublicationLicense(
+  db: Database,
+  c: PoolClient,
+  device: LicenseDevice | undefined,
+) {
   const s = (await c.query<State>('SELECT * FROM license_state WHERE id=1 FOR UPDATE')).rows[0];
   if (!s?.raw) throw new LicenseError('BAD_FORMAT');
-  const verified = verifyLicense(s.raw, publicKeys(db.config), await context(db, s, c));
+  const verified = verifyLicense(
+    s.raw,
+    publicKeys(db.config),
+    await checkedContext(db, c, s, device),
+  );
   await c.query(
     'UPDATE license_state SET last_trusted_at=GREATEST(last_trusted_at,now()) WHERE id=1',
   );
@@ -258,7 +259,8 @@ export async function licenseStatus(db: Database): Promise<LicenseSummary> {
   try {
     const s = (await db.pool.query<State>('SELECT * FROM license_state WHERE id=1')).rows[0];
     if (!s?.raw) return empty;
-    const v = verifyLicense(s.raw, publicKeys(db.config), await context(db, s));
+    const device = await prepareLicenseDevice(db);
+    const v = verifyLicense(s.raw, publicKeys(db.config), context(db, s, device));
     await db.pool.query(
       'UPDATE license_state SET last_trusted_at=GREATEST(last_trusted_at,now()) WHERE id=1',
     );

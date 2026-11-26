@@ -26,12 +26,16 @@ if (!appDir || !dataDir || !['install', 'uninstall'].includes(action))
 const app = path.resolve(appDir),
   data = path.resolve(dataDir),
   services = ['MetaExam.Postgres', 'MetaExam.Api', 'MetaExam.Worker'];
+let dataSecured = false;
 process.on('uncaughtException', (error) => {
-  mkdirSync(path.join(data, 'logs'), { recursive: true });
-  appendFileSync(
-    path.join(data, 'logs/setup.log'),
-    new Date().toISOString() + ' ' + error.message + '\n',
-  );
+  // Preflight errors must not follow a rejected directory/junction to write logs.
+  if (dataSecured) {
+    mkdirSync(path.join(data, 'logs'), { recursive: true });
+    appendFileSync(
+      path.join(data, 'logs/setup.log'),
+      new Date().toISOString() + ' ' + error.message + '\n',
+    );
+  } else console.error(error.message);
   process.exit(1);
 });
 const run = (exe, args) =>
@@ -110,9 +114,17 @@ if (certFile) {
     throw new Error('Certificate must include 127.0.0.1 SAN for local management');
   createPublicKey(key);
 }
-mkdirSync(data, { recursive: true });
-const baseGrants = ['/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F', '*S-1-5-32-544:(OI)(CI)F'];
-run('icacls.exe', [data, ...baseGrants]);
+run('powershell.exe', [
+  '-NoProfile',
+  '-NonInteractive',
+  '-ExecutionPolicy',
+  'Bypass',
+  '-File',
+  path.join(app, 'maintenance/data-directory.ps1'),
+  '-DataPath',
+  data,
+]);
+dataSecured = true;
 for (const sub of [
   'runtime',
   'postgres',

@@ -15,7 +15,12 @@ import {
   validCandidateAnswer,
   isAnswered,
 } from '@metaexam/domain';
-import { transaction, verifyPublicationLicense, type Database } from './index';
+import {
+  transaction,
+  verifyPublicationLicense,
+  prepareLicenseDevice,
+  type Database,
+} from './index';
 import { IdentityError, audit, type AuditContext } from './identity';
 import { readStoredFile } from './files';
 type Attempt = {
@@ -24,6 +29,7 @@ type Attempt = {
   user_id: string;
   paper_version_id: string;
   name: string;
+  instructions: string;
   status: 'active' | 'submitted';
   started_at: Date;
   deadline_at: Date;
@@ -68,7 +74,7 @@ export class AttemptRepository {
     await this.student(c, actor);
     let r = (
       await c.query<Attempt>(
-        'SELECT a.*,e.name FROM exam_attempts a JOIN exams e ON e.id=a.exam_id WHERE a.id=$1 AND a.user_id=$2 FOR UPDATE OF a',
+        'SELECT a.*,e.name,p.instructions FROM exam_attempts a JOIN exams e ON e.id=a.exam_id JOIN paper_versions p ON p.id=a.paper_version_id WHERE a.id=$1 AND a.user_id=$2 FOR UPDATE OF a',
         [id, actor],
       )
     ).rows[0];
@@ -95,7 +101,13 @@ export class AttemptRepository {
       throw new IdentityError('ATTEMPT_GRANT_INVALID', 409);
     return r;
   }
-  start(actor: string, examId: string, ctx: AuditContext) {
+  async start(actor: string, examId: string, ctx: AuditContext) {
+    const prior = await this.db.pool.query(
+      'SELECT 1 FROM exam_attempts WHERE exam_id=$1 AND user_id=$2',
+      [examId, actor],
+    );
+    // A retry of an existing admission must not depend on hardware or a current license.
+    const device = prior.rowCount ? undefined : await prepareLicenseDevice(this.db);
     return transaction(this.db, async (c) => {
       await c.query('SELECT pg_advisory_xact_lock(6401204)');
       await c.query('SELECT pg_advisory_xact_lock(6401205)');
@@ -129,7 +141,7 @@ export class AttemptRepository {
         throw new IdentityError('ATTEMPT_OTHER_ACTIVE', 409);
       let license;
       try {
-        license = await verifyPublicationLicense(this.db, c);
+        license = await verifyPublicationLicense(this.db, c, device);
       } catch (error) {
         if (error instanceof LicenseError) throw new IdentityError('EXAM_LICENSE_INVALID', 409);
         throw error;
@@ -211,6 +223,7 @@ export class AttemptRepository {
         id: a.id,
         examId: a.exam_id,
         name: a.name,
+        instructions: a.instructions,
         status: a.status,
         startedAt: a.started_at.toISOString(),
         deadlineAt: a.deadline_at.toISOString(),

@@ -26,12 +26,16 @@ try {
     await page.getByRole('button', { name: '进入考试', exact: true }).click();
     await page.getByRole('dialog').getByRole('button', { name: '进入考试', exact: true }).click();
     await page.getByText('你的答案', { exact: true }).waitFor();
+    const instructions = page.getByRole('region', { name: '作答说明', exact: true });
+    assert.ok((await instructions.innerText()).includes(t.instructions));
+    assert.equal(await instructions.locator('b').count(), 0);
     const id = new URL(page.url()).pathname.split('/').at(-1)!;
     await page.getByRole('radio', { name: '错误', exact: true }).check();
     await page.getByText(/已保存 ·/).waitFor();
     await page.reload();
     await page.getByRole('radio', { name: '错误', exact: true }).waitFor();
     assert.equal(await page.getByRole('radio', { name: '错误', exact: true }).isChecked(), true);
+    assert.ok((await instructions.innerText()).includes(t.instructions));
     await page.getByRole('button', { name: '下一题', exact: true }).click();
     await page.getByRole('radio', { name: '选项甲', exact: true }).check();
     await page.getByText(/已保存 ·/).waitFor();
@@ -111,6 +115,7 @@ try {
           passed: true,
           checks: [
             'admission',
+            'frozen instructions: plaintext + refresh',
             'five question types',
             'autosave+refresh',
             'safe image',

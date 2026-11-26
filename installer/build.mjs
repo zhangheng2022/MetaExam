@@ -273,7 +273,7 @@ for (const dir of ['bin', 'lib', 'share'])
   });
 for (const name of ['server_license.txt', 'commandlinetools_3rd_party_licenses.txt'])
   copyFileSync(path.join(root, '.tools/pgsql', name), path.join(payload, 'licenses', name));
-for (const name of ['setup.mjs', 'postgres-service.mjs'])
+for (const name of ['setup.mjs', 'postgres-service.mjs', 'data-directory.ps1'])
   copyFileSync(path.join(root, 'installer', name), path.join(payload, 'maintenance', name));
 for (const name of ['WinSW.NET462.exe', 'vc_redist.x64.exe'])
   copyFileSync(path.join(root, '.tools', name), path.join(payload, 'vendor', name));
