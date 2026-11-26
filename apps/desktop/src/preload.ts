@@ -16,5 +16,7 @@ contextBridge.exposeInMainWorld(
     confirmRestore: (id: string) => ipcRenderer.invoke('backup:confirm', id),
     cancelRestore: (id: string) => ipcRenderer.invoke('backup:cancel', id),
     recoverRestore: () => ipcRenderer.invoke('backup:recover'),
+    checkDiagnostics: () => ipcRenderer.invoke('diagnostics:check'),
+    exportDiagnostics: () => ipcRenderer.invoke('diagnostics:export'),
   }),
 );

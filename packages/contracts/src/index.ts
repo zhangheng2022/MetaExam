@@ -113,3 +113,4 @@ export * from './questions';
 export * from './imports';
 export * from './papers';
 export * from './backup';
+export * from './diagnostics';

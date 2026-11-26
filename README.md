@@ -129,3 +129,5 @@ $env:LICENSE_SEQUENCE = '1'
 本地管理器支持同机离线备份与恢复。先停止 API／Worker，保留 PostgreSQL；以管理员身份运行管理器，在“备份与恢复”中操作。范围、恢复后果、异常回退和独立环境清单见 [M3 第二批](docs/m3-backup.md)。回归命令：`./tools/run.ps1 test:backup`。
 
 0.1.1 离线升级及内部包验证结果见 [M3 第三批验证记录](docs/m3-upgrade-status.md)；安装环境回归尚待完成。
+
+当前源码的本地管理器增加“故障诊断”，支持服务断连时导出脱敏 JSON 报告。操作与范围见 [M3 第四批](docs/m3-diagnostics.md)，验证命令 `./tools/run.ps1 test:diagnostics`。本批未重建 EXE，上一批 0.1.1 原包保持不变。

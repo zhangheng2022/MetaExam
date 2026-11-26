@@ -14,6 +14,7 @@ import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import { createLicenseOperations } from './license-maintenance';
 import { createBackupOperations } from './backup-maintenance';
+import { createDiagnosticOperations } from './diagnostic-maintenance';
 function endpoint() {
   const configPath =
     process.env.METAEXAM_CONFIG ??
@@ -65,6 +66,17 @@ async function main() {
   };
   const licenses = createLicenseOperations(window);
   const backups = createBackupOperations(window);
+  const diagnostics = createDiagnosticOperations(window, endpoint);
+  ipcMain.handle('diagnostics:check', (event, ...args: unknown[]) => {
+    validateSender(event);
+    if (args.length) throw new Error('INVALID_IPC_ARGUMENTS');
+    return diagnostics.check();
+  });
+  ipcMain.handle('diagnostics:export', (event, ...args: unknown[]) => {
+    validateSender(event);
+    if (args.length) throw new Error('INVALID_IPC_ARGUMENTS');
+    return diagnostics.export();
+  });
   window.webContents.on('did-start-navigation', () => backups.clear());
   window.on('closed', () => backups.clear());
   ipcMain.handle('backup:create', (event) => {

@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { createApp } from '../apps/api/dist/app.js';
 import { migrate } from '../packages/db/dist/index.js';
 import { isolatedDatabase } from './database-fixture.mts';
+import type { DiagnosticBridge } from '@metaexam/contracts';
 const t = await isolatedDatabase(),
   home = mkdtempSync(path.join(tmpdir(), 'MetaExam-desktop-test-'));
 let api, desktop;
@@ -29,11 +30,13 @@ try {
   assert.deepEqual(exposed.sort(), [
     'cancelLicenseImport',
     'cancelRestore',
+    'checkDiagnostics',
     'confirmLicenseImport',
     'confirmRestore',
     'copyBusinessAddress',
     'createAdministrator',
     'createBackup',
+    'exportDiagnostics',
     'exportLicenseRequest',
     'openBusiness',
     'previewLicenseImport',
@@ -42,6 +45,17 @@ try {
     'setupStatus',
     'status',
   ]);
+  const diagnostic = await page.evaluate(() =>
+    (window as unknown as { metaexam: DiagnosticBridge }).metaexam.checkDiagnostics(),
+  );
+  assert.equal(diagnostic.status, 'success');
+  if (diagnostic.status === 'success') {
+    assert.equal(diagnostic.value.checks.live.state, 'ok');
+    assert.equal(diagnostic.value.checks.ready.state, 'ok');
+    assert.equal(diagnostic.value.checks.system.state, 'ok');
+    assert.equal(diagnostic.value.system.adminInitialized, false);
+    assert.equal(diagnostic.value.system.license, 'unactivated');
+  }
   const licenseDenied = await page.evaluate(async () => {
     const bridge = (
       window as unknown as {
