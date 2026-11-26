@@ -10,6 +10,8 @@ Web 与 Electron 共用 packages/ui 的 Ant Design 组件；MetaExamProvider 统
 
 ## 开发启动
 
+`./tools/run.ps1 test:web-dev` 使用隔离数据库及独立 Vite 服务，验证冷缓存登录、题库路由刷新、题目保存和试卷／考试懒加载。共享 contracts 为浏览器导出 TypeScript 源码，为 Node 保留 CommonJS 编译入口；修改包导出后需重启 Vite 以更新模块解析。背景见 [Vite 共享包规则](https://vite.dev/guide/dep-pre-bundling.html#monorepos-and-linked-dependencies) 与 [条件导出](https://vite.dev/config/shared-options.html#resolve-conditions)。
+
 在 PowerShell 中进入本目录。项目运行时位于 `.tools`，不会替换系统 Node.js 16，也不修改全局 PATH。
 
 ```powershell

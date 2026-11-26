@@ -28,6 +28,7 @@
 - `dev` 启动 TypeScript 项目引用监听、API/Worker 自动重启、Vite 热更新及 Electron 窗口；`dev:web` 只启动后台和 Web。关闭 Electron 不停止后台；不要另造启动器。
 - Nest CLI 只辅助 API 代码生成；先 `nest generate ... --dry-run` 查看路径。不要在现有仓库执行 nest new，不把 Worker 改造成 Nest 应用，不覆盖统一构建链路。
 - 共享类型/校验放 contracts；纯授权规则放 domain；持久化放 db；界面放 ui。浏览器代码不能导入数据库或 Node.js 私有实现。
+- contracts 的 `browser` 导出指向 ESM TypeScript 源码，Node 默认入口仍为 dist/CommonJS。修改共享包入口或前端运行时 schema 引用后执行 `test:web-dev`，验证真实 Vite 冷缓存登录、懒加载业务页和表单；生产构建测试不能替代开发模式验证。
 - 使用项目 ESLint flat config、React Hooks recommended 规则与 Prettier。TypeScript 保持 strict 和既有项目引用。
 
 ## 业务与运行约束
