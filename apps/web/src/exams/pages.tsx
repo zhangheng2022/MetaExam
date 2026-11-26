@@ -84,7 +84,7 @@ export function MyExamsPage() {
         type="info"
         showIcon
         title="请确认考试时间"
-        description="到开考时间后可入场，关闭页面仍继续计时；已有作答可继续或查看回执。仅已保存的答案会在截止时收卷。"
+        description="开考后可入场，关闭页面仍继续计时，到期自动提交已保存答案。"
         className="identity-alert"
       />
       <DataTable
@@ -503,7 +503,7 @@ function Detail({ id }: { id: string }) {
                     className="identity-alert"
                     type="info"
                     title="发布前请核对试卷、时间和名单"
-                    description="名单人数不等于同时答题名额。未激活仍可编辑草稿；发布需要有效本地考试授权。"
+                    description="发布需要有效考试授权；名单人数可以超过同时作答人数上限。"
                   />
                   <Space wrap>
                     <Button onClick={() => setPanel('edit')} disabled={busy}>
@@ -529,7 +529,7 @@ function Detail({ id }: { id: string }) {
                   description={
                     exam.status === 'cancelled'
                       ? exam.cancellationReason
-                      : `发布时授权同时答题上限 ${exam.publicationCapacity} 人；${exam.licenseExpiresAt ? '授权到期：' + dateText(exam.licenseExpiresAt) : '授权无固定到期时间'}。学生实际入场时重新校验有效授权并占用答题名额。`
+                      : `发布时授权同时答题上限 ${exam.publicationCapacity} 人；${exam.licenseExpiresAt ? '授权到期：' + dateText(exam.licenseExpiresAt) : '授权无固定到期时间'}。入场时以当前授权为准。`
                   }
                   action={
                     exam.phase === 'scheduled' ? (
@@ -587,7 +587,7 @@ function Detail({ id }: { id: string }) {
                   className="identity-alert"
                   type="warning"
                   title="取消后不能恢复"
-                  description="只能取消未开考的考试。考生仍能查看取消状态和原因；需要重新安排时创建新考试。"
+                  description="仅限未开考的考试。取消原因将告知考生。"
                 />
                 <Form.Item
                   name="reason"

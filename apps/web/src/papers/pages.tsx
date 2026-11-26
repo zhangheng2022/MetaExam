@@ -102,12 +102,7 @@ function List() {
             navigate('/papers/' + r.id);
           }}
         >
-          <Alert
-            type="info"
-            title="试卷按课程管理"
-            description="教师仅能维护本人的试卷，管理员可管理全部试卷。创建后课程固定。"
-            className="identity-alert"
-          />
+          <Alert type="info" title="创建后不能更换课程" className="identity-alert" />
           <Form.Item
             name="name"
             label="试卷名称"
@@ -511,11 +506,6 @@ function Workspace({ paper, reload }: { paper: PaperDetail; reload: () => void }
               : []),
           ]}
         />
-        {paper.frozenVersionId && (
-          <Typography.Paragraph type="secondary" className="question-history">
-            冻结版本：{paper.frozenVersionId}
-          </Typography.Paragraph>
-        )}
       </Card>
       {panel === 'manual' && (
         <ManualPicker paper={paper} done={done} close={() => setPanel(undefined)} />
@@ -545,7 +535,7 @@ function Workspace({ paper, reload }: { paper: PaperDetail; reload: () => void }
           <Alert
             type="info"
             title="保留冻结版本中的题目、顺序和分值"
-            description="新草稿属于当前操作人。不会自动替换为题库最新版；已归档题目须移除或替换后才能再次冻结。"
+            description="沿用原题目版本；已归档题目须移除或替换后才能冻结。"
           />
         </Editor>
       )}

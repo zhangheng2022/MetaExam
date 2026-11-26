@@ -84,9 +84,7 @@ function ContentEditor({
         <>
           <Typography.Paragraph type="secondary">
             填写 2～8 个不同选项。
-            {value.type === 'single'
-              ? '选择一个正确答案。'
-              : '至少选择两个正确答案，后续评分按全对得分。'}
+            {value.type === 'single' ? '选择一个正确答案。' : '至少选择两个正确答案，全对得分。'}
           </Typography.Paragraph>
           {value.options.map((o, i) => (
             <div key={o.id} className="question-option">
@@ -280,12 +278,7 @@ export function QuestionEditor({
       }}
     >
       <Form.Item name="stem" label="题干" rules={[{ required: true, message: '请填写题干' }]}>
-        <Input.TextArea
-          rows={4}
-          maxLength={8000}
-          showCount
-          placeholder="输入题目正文；本批支持纯文本"
-        />
+        <Input.TextArea rows={4} maxLength={8000} showCount placeholder="输入题目正文" />
       </Form.Item>
       <Form.Item name="content">
         <ContentEditor value={initial.content} />

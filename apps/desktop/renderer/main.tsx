@@ -25,7 +25,7 @@ const loadStatus = () => window.metaexam.status();
 const messages: Record<string, string> = {
   ADMINISTRATOR_REQUIRED: '请关闭客户端，右键选择“以管理员身份运行”后重试。',
   ALREADY_INITIALIZED: '管理员已由另一个窗口创建，请重新检查。',
-  SETUP_TOKEN_INVALID: '初始化令牌已失效，请重新打开客户端后重试。',
+  SETUP_TOKEN_INVALID: '初始化已过期，请重新打开客户端。',
   DATABASE_UNAVAILABLE: '数据库暂时不可用，请检查服务后重试。',
   RATE_LIMITED: '系统繁忙，请稍后重试。',
 };
@@ -51,7 +51,7 @@ function Manager() {
           {status && !status.adminInitialized && !error && (
             <>
               <Typography.Paragraph>
-                首次设置需要以 Windows 管理员身份运行客户端。创建后可使用普通权限运行。
+                首次设置请以管理员身份运行；完成后可正常启动。
               </Typography.Paragraph>
               <IdentityForm
                 mode="setup"
@@ -62,7 +62,7 @@ function Manager() {
                   if (!result.ok)
                     throw new Error(
                       messages[result.code ?? ''] ??
-                        '初始化失败，请确认管理员权限、后台服务及令牌文件权限后重试。',
+                        '初始化失败，请检查管理员权限和服务状态后重试。',
                     );
                   setStatus({ database: 'ready', adminInitialized: true });
                 }}
@@ -71,9 +71,6 @@ function Manager() {
           )}
           {status?.adminInitialized && (
             <>
-              <Typography.Paragraph>
-                账号已就绪，请在浏览器中登录。关闭此窗口不会停止后台服务。
-              </Typography.Paragraph>
               <Button
                 type="primary"
                 onClick={() =>

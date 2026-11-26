@@ -58,7 +58,6 @@ export function LoginSurface({ children }: PropsWithChildren) {
 
 interface BusinessShellProps extends PropsWithChildren {
   title: string;
-  description: string;
   displayName: string;
   selected: string;
   permissions?: string[];
@@ -71,7 +70,6 @@ interface BusinessShellProps extends PropsWithChildren {
 
 export function BusinessShell({
   title,
-  description,
   displayName,
   selected,
   onNavigate,
@@ -174,7 +172,6 @@ export function BusinessShell({
             <header className="business-page-heading">
               <div>
                 <Typography.Title level={1}>{title}</Typography.Title>
-                <Typography.Paragraph type="secondary">{description}</Typography.Paragraph>
               </div>
               {actions}
             </header>

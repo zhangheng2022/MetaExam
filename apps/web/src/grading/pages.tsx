@@ -136,7 +136,7 @@ export function GradingPage() {
             showIcon
             type="info"
             title="客观题全对得分，简答题人工评分"
-            description="后台自动计算单选、多选、判断与填空；多选和填空整题全对得分，不设部分分。简答评分步长为 0.5 分。仅考试结束且全部已交卷答卷评完后可发布。"
+            description="多选、填空不设部分分；简答按 0.5 分计分。考试结束且全部交卷评完后可发布。"
           />
           {info.value.publishedAt ? (
             <Typography.Paragraph>
@@ -441,7 +441,7 @@ export function ResultPage() {
               type="warning"
               showIcon
               title="缺考"
-              description="本场考试没有你的入场记录，不按零分答卷计算。"
+              description="本场考试未入场，不计为零分。"
             />
           ) : (
             <>

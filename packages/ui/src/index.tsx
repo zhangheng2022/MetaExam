@@ -115,13 +115,11 @@ function StatusOverview({ loadStatus, desktop = false }: DashboardProps) {
   const serviceRows = [
     {
       name: '考试服务',
-      description: '为局域网浏览器提供访问',
       value: error ? '连接失败' : status ? '已连接' : '检查中',
       ok: !!status && !error,
     },
     {
       name: '本地数据库',
-      description: '保存系统配置和业务数据',
       value:
         status?.database === 'ready'
           ? '已连接'
@@ -134,7 +132,6 @@ function StatusOverview({ loadStatus, desktop = false }: DashboardProps) {
     },
     {
       name: '后台任务',
-      description: '独立处理任务，不依赖管理窗口',
       value:
         status?.worker === 'online'
           ? '运行中'
@@ -176,17 +173,11 @@ function StatusOverview({ loadStatus, desktop = false }: DashboardProps) {
             ]}
           />
         </nav>
-        <p className="metaexam-sidebar-note">
-          数据留在本地
-          <br />
-          授权离线验证
-        </p>
       </aside>
       <main className="metaexam-content">
         <header className="metaexam-header">
           <div>
             <Title level={1}>运行概览</Title>
-            <Paragraph type="secondary">检查服务状态，做好考试前的准备。</Paragraph>
           </div>
           <Button
             type="primary"
@@ -226,7 +217,6 @@ function StatusOverview({ loadStatus, desktop = false }: DashboardProps) {
               <div className="metaexam-service-row" key={row.name}>
                 <div>
                   <Title level={3}>{row.name}</Title>
-                  <Text type="secondary">{row.description}</Text>
                 </div>
                 <Tag color={status && !error ? (row.ok ? 'success' : 'warning') : 'default'}>
                   {row.value}
@@ -240,7 +230,6 @@ function StatusOverview({ loadStatus, desktop = false }: DashboardProps) {
             <Title level={2} id="license-heading">
               软件授权
             </Title>
-            <Paragraph type="secondary">在部署电脑上验证授权文件，无需连接互联网。</Paragraph>
           </div>
           <div>
             <Descriptions
@@ -276,7 +265,7 @@ function StatusOverview({ loadStatus, desktop = false }: DashboardProps) {
                   : []),
               ]}
             />
-            {status?.license.state !== 'valid' && (
+            {((status && status.license.state !== 'valid') || unavailable) && (
               <Paragraph type="secondary" className="metaexam-license-help">
                 {unavailable
                   ? '恢复服务连接后重新检查授权状态。'
@@ -285,24 +274,7 @@ function StatusOverview({ loadStatus, desktop = false }: DashboardProps) {
             )}
           </div>
         </section>
-        <section className="metaexam-stage" aria-labelledby="stage-heading">
-          <Alert
-            type="info"
-            showIcon
-            role="note"
-            title={
-              <Title level={2} id="stage-heading">
-                技术验证阶段
-              </Title>
-            }
-            description={
-              <>
-                <div>当前版本用于验证服务运行、数据库连接和本地授权，尚未开放正式考试。</div>
-                {desktop && <div>关闭此窗口不会停止后台考试服务。</div>}
-              </>
-            }
-          />
-        </section>
+        {desktop && <Paragraph type="secondary">关闭窗口后，考试服务仍会运行。</Paragraph>}
         <footer className="metaexam-footer">
           <Text type="secondary">
             {desktop ? '桌面管理程序' : '本机运行状态'} ·{' '}

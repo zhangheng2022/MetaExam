@@ -34,22 +34,22 @@ const GradingPage = lazy(() => import('./grading/pages').then((m) => ({ default:
 const ResultPage = lazy(() => import('./grading/pages').then((m) => ({ default: m.ResultPage })));
 const ReportPage = lazy(() => import('./reports/page').then((m) => ({ default: m.ReportPage })));
 const pages = {
-  report: ['成绩统计与导出', '分析已发布成绩，按筛选导出 Excel。'],
-  grading: ['阅卷与成绩', '核对客观题得分、评阅简答题，确认后发布成绩。'],
-  result: ['我的成绩', '查看教师已发布的本人得分与评语。'],
-  exams: ['考试管理', '安排考试时间、确认考生名单并发布冻结试卷。'],
-  'my-exams': ['我的考试', '查看本人考试安排与取消通知。'],
-  attempts: ['考试作答', '答案保存在本地考试服务器，请留意保存状态与截止时间。'],
-  papers: ['试卷管理', '选择课程题目，调整分值，冻结可复用的试卷版本。'],
-  'question-banks': ['题库管理', '维护课程题目，保留每次修订的版本。'],
-  profile: ['个人信息', '查看账号资料与角色，管理你的登录安全。'],
-  security: ['修改密码', '更新登录密码，保护你的账号安全。'],
-  workspace: ['工作台', '查看与你相关的教学安排和系统信息。'],
-  users: ['账号管理', '维护教师、学生和管理员账号。'],
-  classes: ['班级管理', '维护班级资料与学生归属。'],
-  courses: ['课程管理', '维护课程资料及授课关联。'],
-  assignments: ['授课安排', '将教师、课程与班级关联起来。'],
-  audit: ['操作日志', '查询操作结果与变更记录，时间以北京时间显示。'],
+  report: '成绩统计与导出',
+  grading: '阅卷与成绩',
+  result: '我的成绩',
+  exams: '考试管理',
+  'my-exams': '我的考试',
+  attempts: '考试作答',
+  papers: '试卷管理',
+  'question-banks': '题库管理',
+  profile: '个人信息',
+  security: '修改密码',
+  workspace: '工作台',
+  users: '账号管理',
+  classes: '班级管理',
+  courses: '课程管理',
+  assignments: '授课安排',
+  audit: '操作日志',
 } as const;
 type Page = keyof typeof pages;
 const pagePath = (key: string) =>
@@ -93,7 +93,6 @@ function Login() {
   return (
     <LoginSurface>
       <IdentityPanel title="登录 MetaExam">
-        <Typography.Paragraph>使用管理员为你创建的账号登录。</Typography.Paragraph>
         {!!auth.notice && <Alert type="success" title={auth.notice} className="identity-alert" />}
         {auth.expired && !auth.notice && (
           <Alert type="info" title="登录已过期，请重新登录。" className="identity-alert" />
@@ -201,8 +200,7 @@ function Protected({ page = 'profile' }: { page?: Page }) {
         user.roles.includes('admin')));
   return (
     <BusinessShell
-      title={pages[page][0]}
-      description={pages[page][1]}
+      title={pages[page]}
       displayName={user.displayName}
       selected={
         page === 'attempts' || page === 'result'
@@ -287,7 +285,7 @@ function Protected({ page = 'profile' }: { page?: Page }) {
                 ? '首次登录或密码被重置，请先修改密码'
                 : '修改成功后需要重新登录'
             }
-            description="当前账号在所有设备上的登录会话都将失效。"
+            description="所有设备都需要重新登录。"
             className="identity-alert"
           />
           <IdentityForm
@@ -333,9 +331,7 @@ function Protected({ page = 'profile' }: { page?: Page }) {
             </Card>
             <Card title="账号安全" className="security-card">
               <Typography.Title level={3}>登录密码</Typography.Title>
-              <Typography.Paragraph type="secondary">
-                使用仅用于此账号的密码。如果密码已泄露，请及时修改。
-              </Typography.Paragraph>
+              <Typography.Paragraph type="secondary">建议使用独立密码。</Typography.Paragraph>
               <Link to="/change-password">修改密码</Link>
             </Card>
           </div>
@@ -373,7 +369,7 @@ function Protected({ page = 'profile' }: { page?: Page }) {
                 </div>
               ) : (
                 <Typography.Paragraph type="secondary" className="overview-description">
-                  查看当前系统中的账号、班级与课程数量。统计由本地数据库提供。
+                  点击“查看管理概览”获取统计。
                 </Typography.Paragraph>
               )}
             </Card>

@@ -149,7 +149,7 @@ export function ImportManager({
         type="info"
         showIcon
         title="先预检，后确认入库"
-        description="每次最多 500 行、文件 2 MiB，仅导入文字题目。有错误时须修正并重新上传；图片可在题目入库后添加。后台任务在关闭窗口后继续运行，可从导入记录恢复查看。"
+        description="每次最多 500 行、2 MiB，仅支持文字题目。图片可在导入后添加；关闭窗口不影响处理，可从导入记录查看进度。"
         className="identity-alert"
       />
       {(error || readError) && (
@@ -246,7 +246,7 @@ export function ImportManager({
                     ? '存在错误，请修正 Excel 后重新上传'
                     : '预检完成，请核对题目再确认'
                 }
-                description="重复按题型、题干、选项和答案判断；确认时会再次检查，不覆盖任何已有题目。预检有效期为上传后 24 小时。"
+                description="不会覆盖已有题目。请在上传后 24 小时内确认。"
               />
               <Space wrap>
                 <Select
@@ -282,14 +282,14 @@ export function ImportManager({
               type="success"
               showIcon
               title={`导入完成：新增 ${report.summary.imported} 题，跳过 ${report.summary.skipped} 题`}
-              description="题目已保存，可关闭窗口后查看题库。"
+              description="题目已保存至题库。"
             />
           )}
           {['pending', 'processing', 'queued'].includes(report.summary.status) && (
             <Alert
               type="info"
               title="后台正在处理，请稍候"
-              description="若长时间没有变化，请确认 Worker 正在运行。"
+              description="长时间未完成时，请联系管理员检查后台任务。"
             />
           )}
           <Table<ImportRow>

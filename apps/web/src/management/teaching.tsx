@@ -111,9 +111,6 @@ export function AssignmentsPage() {
           <Form.Item name="teacherId" label="教师" rules={[{ required: true }]}>
             <RemotePicker endpoint="/admin/users?role=teacher" />
           </Form.Item>
-          <Typography.Paragraph type="secondary">
-            保存前请核对三个选择。相同的授课关系不会重复添加。
-          </Typography.Paragraph>
         </Editor>
       )}
     </Card>

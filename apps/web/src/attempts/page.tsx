@@ -110,7 +110,7 @@ export function AttemptPage() {
           type="error"
           showIcon
           title={error}
-          description="连接异常时，当前状态可能已过时。未保存的输入仅保留在此页面，请勿关闭或刷新浏览器。"
+          description="未保存的答案仍在当前页面，请勿关闭或刷新，恢复连接后重试。"
           action={<Button onClick={() => void reload()}>重试</Button>}
         />
       )}
@@ -122,7 +122,7 @@ export function AttemptPage() {
             type="success"
             showIcon
             title={meta.submitReason === 'timeout' ? '已到截止时间，系统已收卷' : '交卷成功'}
-            description="已保存答案已封存，不能再次作答。成绩以教师发布结果为准。"
+            description="答案已提交，不能修改。成绩发布后可查看。"
           />
           <Typography.Paragraph className="question-history">
             {meta.name} · 已填写 {meta.answeredCount} / {meta.items.length} 题
@@ -157,8 +157,8 @@ export function AttemptPage() {
             <Alert
               className="identity-alert"
               type="info"
-              title="输入后自动保存，也可点击保存答案"
-              description="仅显示“已保存”才表示已写入服务器。断线时请保持页面打开并重试；关闭页面仍继续计时，截止后按服务器已保存答案收卷。"
+              title="答案自动保存"
+              description="请确认显示“已保存”。关闭页面仍继续计时，到期自动提交已保存答案；断线时请勿关闭页面。"
             />
             <Space wrap className="attempt-navigation">
               {meta.items.map((i) => (

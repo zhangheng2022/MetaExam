@@ -61,13 +61,6 @@ body {
 .metaexam-sidebar nav {
   margin-top: 58px;
 }
-.metaexam-sidebar-note {
-  margin-top: auto;
-  padding: 48px 4px 0;
-  color: #bfd0d8;
-  font-size: 13px;
-  line-height: 1.9;
-}
 .metaexam-content {
   width: 100%;
   min-width: 0;
@@ -138,10 +131,6 @@ body {
 .metaexam-license-help {
   margin-top: 10px;
 }
-.metaexam-stage h2.ant-typography {
-  font-size: 15px;
-  margin: 0;
-}
 .metaexam-footer {
   display: flex;
   justify-content: space-between;
@@ -182,8 +171,7 @@ body {
   .metaexam-brand small {
     font-size: 11px;
   }
-  .metaexam-sidebar nav,
-  .metaexam-sidebar-note {
+  .metaexam-sidebar nav {
     display: none;
   }
   .metaexam-content {

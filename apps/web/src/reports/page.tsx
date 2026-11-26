@@ -208,7 +208,7 @@ export function ReportPage() {
           </Button>
         </Form>
         <Typography.Paragraph type="secondary" className="question-history">
-          合格比例仅用于本次统计，不修改成绩或设置正式及格线。名单筛选只影响下方名单与导出名单，全场统计不随名单筛选变化。
+          合格比例仅用于本次统计，不修改成绩。名单筛选适用于导出，不影响全场统计。
         </Typography.Paragraph>
       </Card>
       {!report ? (
@@ -234,7 +234,7 @@ export function ReportPage() {
               type="info"
               showIcon
               title="缺考不参与分数统计"
-              description="均分、中位数、合格率和得分分布只统计有已交卷答卷的考生，实考零分参与；无人实考时显示 —。"
+              description="实考零分参与统计；无人实考时显示 —。"
             />
             <div className="overview-statistics report-statistics">
               <Statistic title="平均分" value={number(report.statistics.average)} />
