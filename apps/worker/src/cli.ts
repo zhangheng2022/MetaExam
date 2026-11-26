@@ -14,8 +14,37 @@ import {
   grantRuntimeAccess,
 } from '@metaexam/db';
 import { LicenseError } from '@metaexam/domain';
+import { readLicenseMaintenanceInput, runLicenseMaintenance } from './license-maintenance';
 async function main() {
   const [command, file] = process.argv.slice(2);
+  if (command === 'license-desktop') {
+    try {
+      requireAdministrator();
+      const input = await readLicenseMaintenanceInput();
+      const db = createDatabase(loadConfig());
+      try {
+        console.log(JSON.stringify(await runLicenseMaintenance(db, input)));
+      } finally {
+        await db.pool.end();
+      }
+    } catch (error) {
+      const safe = [
+        'ADMINISTRATOR_REQUIRED',
+        'BAD_FORMAT',
+        'LICENSE_CHANGED',
+        'IMPORT_RESULT_UNKNOWN',
+      ];
+      console.error(
+        error instanceof LicenseError
+          ? error.code
+          : error instanceof Error && safe.includes(error.message)
+            ? error.message
+            : 'MAINTENANCE_FAILED',
+      );
+      process.exitCode = 1;
+    }
+    return;
+  }
   if (command === 'stop-api') {
     const c = loadConfig(),
       protocol = c.api.tlsCert ? 'https' : 'http';

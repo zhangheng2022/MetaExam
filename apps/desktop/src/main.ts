@@ -12,6 +12,7 @@ import { readFileSync, existsSync, unlinkSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
+import { createLicenseOperations } from './license-maintenance';
 function endpoint() {
   const configPath =
     process.env.METAEXAM_CONFIG ??
@@ -61,6 +62,25 @@ async function main() {
     }
     return r.json();
   };
+  const licenses = createLicenseOperations(window);
+  window.webContents.on('did-start-navigation', () => licenses.clear());
+  window.on('closed', () => licenses.clear());
+  ipcMain.handle('license:request', (event) => {
+    validateSender(event);
+    return licenses.exportRequest();
+  });
+  ipcMain.handle('license:preview', (event) => {
+    validateSender(event);
+    return licenses.preview();
+  });
+  ipcMain.handle('license:confirm', (event, id: unknown) => {
+    validateSender(event);
+    return licenses.confirm(id);
+  });
+  ipcMain.handle('license:cancel', (event, id: unknown) => {
+    validateSender(event);
+    licenses.cancel(id);
+  });
   ipcMain.handle('system:status', async (event) => {
     validateSender(event);
     return request('/api/v1/system/status');

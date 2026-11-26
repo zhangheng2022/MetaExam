@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fingerprint } from './fingerprint';
 export { fingerprint } from './fingerprint';
 import { verifyLicense, LicenseError } from '@metaexam/domain';
-import type { LicenseSummary } from '@metaexam/contracts';
+import type { LicenseSummary, LicenseDetails, LicensePayload } from '@metaexam/contracts';
 import { instanceInfo } from './schema';
 import { loadConfig, type RuntimeConfig } from './config';
 export { loadConfig, type RuntimeConfig };
@@ -203,11 +203,50 @@ export async function checkLicenseFile(db: Database, raw: string) {
   const s = (await db.pool.query<State>('SELECT * FROM license_state WHERE id=1')).rows[0]!;
   return verifyLicense(raw, publicKeys(db.config), context(db, s, device));
 }
-export async function importLicense(db: Database, raw: string) {
+export function licenseDetails(payload: LicensePayload): LicenseDetails {
+  const { licenseId, sequence, notBefore, expiresAt, maxConcurrentAttempts, features } = payload;
+  return { licenseId, sequence, notBefore, expiresAt, maxConcurrentAttempts, features };
+}
+export async function previewLicenseImport(db: Database, raw: string) {
+  const device = await prepareLicenseDevice(db);
+  return transaction(db, async (c) => {
+    const s = (await c.query<State>('SELECT * FROM license_state WHERE id=1 FOR UPDATE')).rows[0]!;
+    const ctx = await checkedContext(db, c, s, device);
+    const keys = publicKeys(db.config);
+    const candidate = licenseDetails(verifyLicense(raw, keys, ctx).payload);
+    let current: LicenseSummary = {
+      state: 'unactivated',
+      expiresAt: null,
+      maxConcurrentAttempts: null,
+      features: [],
+    };
+    if (s.raw) {
+      try {
+        const payload = verifyLicense(s.raw, keys, ctx).payload;
+        current = {
+          state: 'valid',
+          expiresAt: payload.expiresAt,
+          maxConcurrentAttempts: payload.maxConcurrentAttempts,
+          features: payload.features,
+        };
+      } catch (error) {
+        current.state =
+          error instanceof LicenseError && error.code === 'EXPIRED' ? 'expired' : 'invalid';
+      }
+    }
+    return { candidate, current, expectedDigest: s.digest };
+  });
+}
+export async function importLicense(
+  db: Database,
+  raw: string,
+  preview?: { expectedDigest: string | null },
+) {
   // Collect machine information before taking the short-lived state lock.
   const device = await prepareLicenseDevice(db);
   const imported = await transaction(db, async (c) => {
     const s = (await c.query<State>('SELECT * FROM license_state WHERE id=1 FOR UPDATE')).rows[0]!;
+    if (preview && s.digest !== preview.expectedDigest) throw new Error('LICENSE_CHANGED');
     const verified = verifyLicense(
       raw,
       publicKeys(db.config),

@@ -7,5 +7,9 @@ contextBridge.exposeInMainWorld(
     createAdministrator: (input: unknown) => ipcRenderer.invoke('setup:create', input),
     openBusiness: () => ipcRenderer.invoke('business:open'),
     copyBusinessAddress: () => ipcRenderer.invoke('business:copy-address'),
+    exportLicenseRequest: () => ipcRenderer.invoke('license:request'),
+    previewLicenseImport: () => ipcRenderer.invoke('license:preview'),
+    confirmLicenseImport: (id: string) => ipcRenderer.invoke('license:confirm', id),
+    cancelLicenseImport: (id: string) => ipcRenderer.invoke('license:cancel', id),
   }),
 );

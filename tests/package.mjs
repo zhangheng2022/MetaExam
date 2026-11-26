@@ -586,6 +586,16 @@ try {
     }),
   );
   assert.equal(status.state, 'valid');
+  assert.throws(
+    () =>
+      execFileSync(node, ['server/cli.cjs', 'license-desktop'], {
+        cwd: isolated,
+        env,
+        encoding: 'utf8',
+        windowsHide: true,
+      }),
+    (error) => error.stderr.trim() === 'ADMINISTRATOR_REQUIRED',
+  );
   env.METAEXAM_DESKTOP_SMOKE = '1';
   const manager = start(path.join(payload, 'manager/MetaExam.Manager.exe'), []);
   await new Promise((resolve, reject) => {
@@ -626,6 +636,7 @@ try {
           'bundled published statistics and restricted Excel export through packaged worker thread',
           'bundled Worker completes API task',
           'bundled CLI validates persisted license',
+          'bundled desktop license CLI rejects ordinary privileges',
           'packaged Electron IPC returns database ready',
           'closing packaged Electron leaves API/Worker alive',
           'packaged PostgreSQL binary version',

@@ -12,10 +12,16 @@ import {
   theme,
 } from 'antd';
 import { CopyOutlined, ExportOutlined, ReloadOutlined } from '@ant-design/icons';
-import type { AdministratorInput, SetupStatus, SystemStatus } from '@metaexam/contracts';
+import type {
+  AdministratorInput,
+  SetupStatus,
+  SystemStatus,
+  LicenseManagerBridge,
+} from '@metaexam/contracts';
 import { IdentityForm } from './identity';
+import { LicenseActions } from './license-actions';
 
-export interface LocalManagerBridge {
+export interface LocalManagerBridge extends LicenseManagerBridge {
   status: () => Promise<SystemStatus>;
   setupStatus: () => Promise<SetupStatus>;
   createAdministrator: (input: AdministratorInput) => Promise<{ ok: boolean; code?: string }>;
@@ -53,6 +59,7 @@ export function LocalManager({ bridge }: { bridge: LocalManagerBridge }) {
   const [opening, setOpening] = useState(false);
   const [copyState, setCopyState] = useState<'idle' | 'busy' | 'done'>('idle');
   const pending = useRef(false);
+  const pendingCompletion = useRef<Promise<void>>(Promise.resolve());
   const submitting = useRef(false);
   const generation = useRef(0);
   const [saving, setSaving] = useState(false);
@@ -63,6 +70,10 @@ export function LocalManager({ bridge }: { bridge: LocalManagerBridge }) {
   const refresh = useCallback(async () => {
     if (pending.current || submitting.current) return;
     pending.current = true;
+    let complete!: () => void;
+    pendingCompletion.current = new Promise<void>((resolve) => {
+      complete = resolve;
+    });
     const request = ++generation.current;
     setBusy(true);
     try {
@@ -84,6 +95,7 @@ export function LocalManager({ bridge }: { bridge: LocalManagerBridge }) {
       setChecked(true);
     } finally {
       pending.current = false;
+      complete();
       if (request === generation.current) setBusy(false);
     }
   }, [bridge]);
@@ -349,9 +361,17 @@ export function LocalManager({ bridge }: { bridge: LocalManagerBridge }) {
               />
               {status && !serviceError && status.license.state !== 'valid' && (
                 <Typography.Paragraph type="secondary" className="local-manager-license-help">
-                  请由本机维护人员导入有效授权文件。
+                  请导入有效授权文件。
                 </Typography.Paragraph>
               )}
+              <LicenseActions
+                bridge={bridge}
+                onImported={async () => {
+                  // Do not let a poll started before import overwrite the new license.
+                  await pendingCompletion.current;
+                  await refresh();
+                }}
+              />
             </Card>
           </div>
         )}

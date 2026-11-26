@@ -686,6 +686,10 @@ body {
   margin-top: var(--manager-gap);
   margin-bottom: 0;
 }
+.license-notice {
+  margin-top: 16px;
+  overflow-wrap: anywhere;
+}
 .local-manager-setup {
   width: 100%;
   max-width: 520px;

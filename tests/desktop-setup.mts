@@ -27,12 +27,31 @@ try {
     Object.keys((window as unknown as { metaexam: object }).metaexam),
   );
   assert.deepEqual(exposed.sort(), [
+    'cancelLicenseImport',
+    'confirmLicenseImport',
     'copyBusinessAddress',
     'createAdministrator',
+    'exportLicenseRequest',
     'openBusiness',
+    'previewLicenseImport',
     'setupStatus',
     'status',
   ]);
+  const licenseDenied = await page.evaluate(async () => {
+    const bridge = (
+      window as unknown as {
+        metaexam: {
+          exportLicenseRequest(): Promise<{ status: string; code: string }>;
+          previewLicenseImport(): Promise<{ status: string; code: string }>;
+        };
+      }
+    ).metaexam;
+    return [await bridge.exportLicenseRequest(), await bridge.previewLicenseImport()];
+  });
+  assert.deepEqual(
+    licenseDenied,
+    Array(2).fill({ status: 'error', code: 'ADMINISTRATOR_REQUIRED' }),
+  );
   await page.getByLabel('用户名', { exact: true }).fill('desktop_admin');
   await page.getByLabel('姓名', { exact: true }).fill('桌面管理员');
   await page.getByLabel('密码', { exact: true }).fill('desktop password phrase');

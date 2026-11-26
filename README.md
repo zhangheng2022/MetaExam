@@ -75,6 +75,8 @@ AI 开发先读取 [AGENTS.md](AGENTS.md) 和 [官方工具与资料](docs/ai-de
 
 ## 本地授权
 
+本地管理器已支持授权文件操作：以 Windows 管理员身份启动 → 在“软件授权”卡片导出 `.mreq` 申请 → 将供应方签发的 `.mlic` 文件导入 → 核对期限、同时作答人数和功能变更 → 确认导入。整个验签过程不需要联网，取消或无效文件不会覆盖原授权。文件预览有效期 10 分钟，确认时再次校验。操作及验收详见 [本地授权维护](docs/m3-license-manager.md)，回归命令为 `./tools/run.ps1 test:license-manager`。
+
 授权格式为 JSON：`{protected, payload, signature}`，三部分均为无填充规范 base64url。签名原文固定为 ASCII `MetaExam-License-v1.<protected>.<payload>`。protected 中固定 typ、alg=Ed25519 和可信 kid；payload 字段见 [协议实现](packages/contracts/src/index.ts)。
 
 校验签名、产品、schema、安装 UUID、Windows 设备指纹、应用版本范围、序号、时间区间和权益。到期边界为排他，最大时间回拨容忍 5 分钟。高水位保存在数据库和独立数据文件；相同序号仅同一文件可重复导入。失败导入不覆盖已有授权；重启后重新验签。验签路径无网络访问、远程公钥或在线时间依赖。
