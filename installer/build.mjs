@@ -10,6 +10,10 @@ import {
   rmSync,
   statSync,
   realpathSync,
+  constants,
+  openSync,
+  closeSync,
+  unlinkSync,
 } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -20,6 +24,24 @@ const root = path.resolve(import.meta.dirname, '..'),
   artifacts = path.join(root, 'artifacts'),
   payload = path.join(artifacts, 'payload');
 const pnpm = path.join(root, '.tools/pnpm/node_modules/pnpm/bin/pnpm.cjs');
+const version = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version;
+if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('RELEASE_VERSION_INVALID');
+const exe = path.join(artifacts, `MetaExam-Setup-${version}-win-x64-internal.exe`);
+if (existsSync(exe) || existsSync(exe + '.sha256'))
+  throw new Error('RELEASE_ALREADY_EXISTS: preserve the original package and use a new version');
+mkdirSync(artifacts, { recursive: true });
+const buildLock = path.join(artifacts, '.package-build.lock');
+const handle = openSync(buildLock, 'wx');
+writeFileSync(handle, JSON.stringify({ pid: process.pid, version }));
+closeSync(handle);
+process.once('exit', () => {
+  try {
+    const owner = JSON.parse(readFileSync(buildLock, 'utf8'));
+    if (owner.pid === process.pid && owner.version === version) unlinkSync(buildLock);
+  } catch {
+    /* A crashed build's lock is retained for explicit inspection. */
+  }
+});
 function run(args) {
   execFileSync(process.execPath, [pnpm, ...args], {
     cwd: root,
@@ -309,6 +331,10 @@ if (existsSync(path.join(root, 'docs/phase1-acceptance.md')))
   copyFileSync(path.join(root, 'docs/phase1-acceptance.md'), path.join(payload, 'ACCEPTANCE.md'));
 copyFileSync(path.join(root, 'docs/m1-acceptance.md'), path.join(payload, 'M1-ACCEPTANCE.md'));
 copyFileSync(path.join(root, 'docs/m3-upgrade.md'), path.join(payload, 'maintenance/UPGRADE.md'));
+copyFileSync(
+  path.join(root, 'docs/m3-diagnostics.md'),
+  path.join(payload, 'maintenance/DIAGNOSTICS.md'),
+);
 const all = [];
 function walk(dir) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -318,7 +344,6 @@ function walk(dir) {
   }
 }
 walk(payload);
-const version = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version;
 const databaseModule = createRequire(import.meta.url)('../packages/db/dist/index.js');
 if (databaseModule.APP_VERSION !== version) throw new Error('RELEASE_VERSION_MISMATCH');
 const release = {
@@ -383,14 +408,17 @@ writeFileSync(
     2,
   ),
 );
+const staging = path.join(artifacts, 'package-staging');
+safeReset(staging);
 execFileSync(
   path.join(root, '.tools/inno/ISCC.exe'),
-  ['/Qp', '/DMyAppVersion=' + version, path.join(root, 'installer/MetaExam.iss')],
+  ['/Qp', '/O' + staging, '/DMyAppVersion=' + version, path.join(root, 'installer/MetaExam.iss')],
   { cwd: root, stdio: 'inherit', windowsHide: true },
 );
-const exe = path.join(artifacts, `MetaExam-Setup-${version}-win-x64-internal.exe`);
+copyFileSync(path.join(staging, path.basename(exe)), exe, constants.COPYFILE_EXCL);
 writeFileSync(
   exe + '.sha256',
   createHash('sha256').update(readFileSync(exe)).digest('hex') + '  ' + path.basename(exe) + '\n',
+  { flag: 'wx' },
 );
 console.log('INTERNAL_PACKAGE_READY ' + exe);

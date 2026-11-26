@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-#define MyAppVersion "0.1.1"
+#define MyAppVersion "0.1.2"
 #endif
 [Setup]
 AppId={{5F3FDD48-CFEC-4F32-A343-50D44B341446}
@@ -32,6 +32,7 @@ Type: files; Name: "{app}\maintenance\upgrade.mjs"
 Type: files; Name: "{app}\maintenance\upgrade-engine.mjs"
 Type: files; Name: "{app}\maintenance\upgrade-windows.mjs"
 Type: files; Name: "{app}\maintenance\UPGRADE.md"
+Type: files; Name: "{app}\maintenance\DIAGNOSTICS.md"
 [Code]
 var
   NetworkPage: TInputQueryWizardPage;

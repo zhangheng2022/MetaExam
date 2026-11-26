@@ -7,12 +7,13 @@ import {
   mkdirSync,
   existsSync,
   readdirSync,
+  readFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
-import { randomUUID, randomBytes, generateKeyPairSync, sign } from 'node:crypto';
+import { randomUUID, randomBytes, generateKeyPairSync, sign, createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { isolatedDatabase } from './database-fixture.mts';
 const { licenseRequest, importLicense, BootstrapRepository, digestToken } = createRequire(
@@ -21,6 +22,26 @@ const { licenseRequest, importLicense, BootstrapRepository, digestToken } = crea
 const root = path.resolve(import.meta.dirname, '..'),
   payload = path.join(root, 'artifacts/payload');
 assert.ok(existsSync(path.join(payload, 'maintenance/data-directory.ps1')));
+const releaseVersion = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version;
+const releaseExe = path.join(
+  root,
+  'artifacts',
+  `MetaExam-Setup-${releaseVersion}-win-x64-internal.exe`,
+);
+const digest = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
+const originalExeHash = digest(releaseExe),
+  originalManifestHash = digest(path.join(payload, 'release.json'));
+assert.throws(
+  () =>
+    execFileSync(process.execPath, ['installer/build.mjs'], {
+      cwd: root,
+      windowsHide: true,
+      stdio: 'pipe',
+    }),
+  (error) => error.stderr.toString().includes('RELEASE_ALREADY_EXISTS'),
+);
+assert.equal(digest(releaseExe), originalExeHash);
+assert.equal(digest(path.join(payload, 'release.json')), originalManifestHash);
 const isolated = mkdtempSync(path.join(tmpdir(), 'MetaExam-smoke-')),
   children = [];
 const fixture = await isolatedDatabase();
@@ -719,6 +740,7 @@ try {
           'packaged Electron IPC returns database ready',
           'closing packaged Electron leaves API/Worker alive',
           'packaged PostgreSQL binary version',
+          'duplicate release build refused without changing EXE or payload manifest',
         ],
         postgres: pgVersion,
       },

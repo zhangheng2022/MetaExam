@@ -1,6 +1,6 @@
 {
   "name": "metaexam",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "packageManager": "pnpm@10.24.0",
   "engines": {
@@ -22,7 +22,7 @@
     "test:backup": "tsx tests/backup.mts && tsx tests/backup-active.mts && node tests/backup-ui.mjs",
     "test:upgrade": "tsx tests/upgrade.mts && node tests/upgrade-package.mjs",
     "test:diagnostics": "tsx --test tests/diagnostics.test.ts && node tests/diagnostics-ui.mjs",
-    "test:package": "node tests/package.mjs",
+    "test:package": "node tests/package.mjs && node tests/diagnostics-ui.mjs --packaged",
     "test:db-restart": "node tests/database-restart.mjs",
     "db:migrate": "node apps/worker/dist/cli.js migrate",
     "db:start": "node tools/postgres.mjs start",

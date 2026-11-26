@@ -2,7 +2,7 @@
 
 ## 支持范围
 
-0.1.1 内部测试 EXE 支持从 M3 第二批、已具备 `BackupService` 的 0.1.0 安装版升级。更早的同版本包不支持直接升级。程序和 ProgramData 数据必须位于同一卷；本批不迁移目录，不升级 Node.js、PostgreSQL 或 WinSW，不提供自动降级。V1～V10 SQL 及校验和保持不变，本次没有新增迁移。
+当前 0.1.2 内部测试 EXE 支持从 M3 第二批、已具备 `BackupService` 的 0.1.0，以及原 0.1.1 安装版升级。更早的 0.1.0 包不支持直接升级。程序和 ProgramData 数据必须位于同一卷；本批不迁移目录，不升级 Node.js、PostgreSQL 或 WinSW，不提供自动降级。V1～V10 SQL 及校验和保持不变，本次没有新增迁移。原 0.1.1 交付验证记录保留在 m3-upgrade-status.md。
 
 升级由 Inno Setup 提取临时完整载荷，再调用固定维护入口完成。已有安装不走首次安装、initdb、凭据生成或证书导入。仅替换 server、web、manager、maintenance、licenses；原 Node.js／PostgreSQL 文件逐项核对 SHA-256，服务路径、虚拟身份及 WinSW 二进制必须匹配本安装。保留配置、端口、HTTPS、DPAPI 凭据、授权公钥、安装实例、业务库和附件。
 
@@ -12,10 +12,10 @@
 
 1. 安排没有进行中考试的维护窗口，记录当前版本、管理员登录、授权、题目图片、课程和成绩。完整保存现有安装和数据；保证程序与数据磁盘都有足够空间。
 2. 关闭本地管理器。保持 PostgreSQL 服务运行；升级器检查服务归属，通过原 API 维护入口排空入场请求，再停止 API 和 Worker。存在进行中考试或有效答题时拒绝升级。
-3. 在独立 Windows 11 x64 测试机以管理员身份运行 `MetaExam-Setup-0.1.1-win-x64-internal.exe`，选择原程序目录。安装器检测安装记录并跳过网络／证书配置页，不重新初始化数据库。
+3. 在独立 Windows 11 x64 测试机以管理员身份运行 `MetaExam-Setup-0.1.2-win-x64-internal.exe`，选择原程序目录。安装器检测安装记录并跳过网络／证书配置页，不重新初始化数据库。
 4. 升级器先调用旧版工具创建并校验完整数据库及历史附件备份，再保存旧程序，替换应用，使用维护身份执行有序迁移并恢复运行角色 DML 权限。
 5. API、Worker 重启后先进入升级检查状态。健康接口可访问，业务接口返回 `503 UPGRADE_IN_PROGRESS`，Worker 只更新心跳。版本、迁移与心跳全部通过且成功记录已写入，才恢复业务。
-6. 检查 `ProgramData\MetaExam\installation.json` 版本为 0.1.1；无 `upgrade-pending.json` 或 runtime 下的 `maintenance.json`；登录、授权、历史图片和成绩可用，再重启测试机验证自启。
+6. 检查 `ProgramData\MetaExam\installation.json` 版本为 0.1.2；无 `upgrade-pending.json` 或 runtime 下的 `maintenance.json`；登录、授权、历史图片和成绩可用，再重启测试机验证自启。
 
 正常开发继续使用 `tools/run.ps1 dev`；不能拿安装版升级器覆盖源码工作区。
 
@@ -37,12 +37,12 @@
 
 `test:upgrade` 使用独立数据库，不清空开发账号。流程测试对程序切换、迁移前、启动前、收尾阶段注入中断，验证保持维护状态及同包继续；覆盖包篡改、运行时不匹配、备份失败、启动失败和错误续包。程序包测试使用真实 0.1.0／0.1.1 后端、pg_dump 和普通进程验证升级及启动失败续升级，验证 API／Worker 门禁、任务恢复和业务／授权／配置保留。服务操作、提升权限和 ACL 使用测试适配器，不能代表安装环境验收。
 
-先保存上一批 0.1.0 payload 到 `artifacts/upgrade-baseline`，再运行 `package:win` 生成新包，然后执行 `test:upgrade`。也可设置 `METAEXAM_UPGRADE_BASELINE` 指向可信的 M3 第二批原 payload；缺少基线时测试明确失败。需要重建基线时使用上一批提交 4219053 的独立 checkout 和项目锁定工具链。不要用新版包改写版本号伪造基线。测试直接调用维护协调器，未实际运行 Inno 安装向导。
+默认 `test:upgrade` 使用 `artifacts/upgrade-baseline` 中原 M3 第二批 0.1.0 payload；设置 `METAEXAM_UPGRADE_BASELINE` 可选择另一个完整旧包。0.1.1 的原载荷保存在 `artifacts/upgrade-baseline-0.1.1`，须在构建新包前核验 release.json 全部摘要并完整复制。缺少、篡改或不比新包更旧的基线会明确失败。需要重建 0.1.0 基线时使用提交 4219053 的独立 checkout 和锁定工具链；不要用新版程序修改版本号伪造旧包。测试直接调用协调器和普通进程，未实际运行 Inno 安装向导。
 
 以下项目全部留待独立环境，不能因普通进程测试通过而勾选：
 
-- [ ] 断公网首次安装 0.1.1，三项服务、初始化和本地授权正常。
-- [ ] 原 M3 第二批 0.1.0 安装原地升级；服务身份、DML 权限及维护目录 ACL 正确。
+- [ ] 断公网首次安装 0.1.2，三项服务、初始化和本地授权正常。
+- [ ] 原 M3 第二批 0.1.0／原 0.1.1 安装分别原地升级；服务身份、DML 权限及维护目录 ACL 正确。
 - [ ] 非管理员不能读取备份／所有者凭据或执行升级；API／Worker 可读新程序。
 - [ ] 开着管理器、进行中考试、端口冲突、错误目录／运行时、空间不足均安全拒绝。
 - [ ] 文件切换、迁移、启动检查期间中止升级进程后，同一 EXE 能继续；保留 Inno 和升级日志。

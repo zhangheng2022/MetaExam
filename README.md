@@ -116,7 +116,9 @@ $env:LICENSE_SEQUENCE = '1'
 
 环境准备统一校验 toolchain.lock.json 中的下载哈希，失败时中止，不自动改写锁文件。`-SkipDependencies` 可用于只检查和准备工具链。打包实现位于 installer/build.mjs，日常仍通过 package:win 调用；electron-builder 复用 bootstrap 准备的本地 Electron，并核对其版本，不在打包时重复下载运行时。
 
-产物为 `artifacts/MetaExam-Setup-0.1.1-win-x64-internal.exe` 及 SHA256。打包前核验工具链锁文件；Electron 由 electron-builder 输出目录，后端生产代码与生产依赖由 esbuild 封装，Inno Setup 统一生成 EXE。包内含独立 Node、React、Electron、PostgreSQL、WinSW、VC++ 运行库；安装后不运行 npm、不下载依赖。内部包未做正式 Authenticode 发布签名。
+产物为 `artifacts/MetaExam-Setup-0.1.2-win-x64-internal.exe` 及 SHA256。打包前核验工具链锁文件；Electron 由 electron-builder 输出目录，后端生产代码与生产依赖由 esbuild 封装，Inno Setup 统一生成 EXE。包内含独立 Node、React、Electron、PostgreSQL、WinSW、VC++ 运行库；安装后不运行 npm、不下载依赖。内部包未做正式 Authenticode 发布签名。
+
+`package:win` 拒绝覆盖已有同版本 EXE 或 SHA256；修改交付内容需递增应用版本，保留旧包用于同 buildId 续升级。构建互斥锁位于 `artifacts/.package-build.lock`，正常退出自动清理；异常退出后须确认记录中的构建进程已结束再人工处理锁，不能在构建期间删除。编译先输出暂存目录，再排他创建最终 EXE；编译失败不覆盖已交付文件。
 
 仅在独立 Windows 11 x64 测试机运行安装器。可选本机 HTTP 或局域网 HTTPS；生产 LAN 必须导入真实可用证书，客户端信任其 CA。HTTPS 证书需覆盖 127.0.0.1 及访问用 LAN IP/域名；程序不跳过 TLS 验证。详细步骤见 [独立环境验收清单](docs/phase1-acceptance.md)。
 
@@ -130,4 +132,6 @@ $env:LICENSE_SEQUENCE = '1'
 
 0.1.1 离线升级及内部包验证结果见 [M3 第三批验证记录](docs/m3-upgrade-status.md)；安装环境回归尚待完成。
 
-当前源码的本地管理器增加“故障诊断”，支持服务断连时导出脱敏 JSON 报告。操作与范围见 [M3 第四批](docs/m3-diagnostics.md)，验证命令 `./tools/run.ps1 test:diagnostics`。本批未重建 EXE，上一批 0.1.1 原包保持不变。
+本地管理器的“故障诊断”已纳入 0.1.2，支持服务断连时导出脱敏 JSON 报告。操作与范围见 [M3 第四批](docs/m3-diagnostics.md)，验证命令 `./tools/run.ps1 test:diagnostics`；`test:package` 还会验证打包后的管理器。上一批 0.1.1 原包保持不变。
+
+当前安装包摘要、升级路径和独立环境清单见 [0.1.2 交付记录](docs/m3-release-012.md)。

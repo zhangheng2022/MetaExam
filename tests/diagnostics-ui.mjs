@@ -7,9 +7,11 @@ import path from 'node:path';
 import { _electron as electron } from 'playwright';
 
 const root = mkdtempSync(path.join(tmpdir(), 'MetaExam-diagnostic-ui-'));
+const packaged = process.argv.includes('--packaged');
+const version = JSON.parse(readFileSync(path.resolve('package.json'), 'utf8')).version;
 const home = path.join(root, 'runtime');
 mkdirSync(home);
-const output = path.resolve('artifacts/diagnostics');
+const output = path.resolve(packaged ? 'artifacts/diagnostics-packaged' : 'artifacts/diagnostics');
 mkdirSync(output, { recursive: true });
 let mode = 'ready',
   desktop;
@@ -18,14 +20,14 @@ const server = createServer((request, response) => {
   const live = request.url === '/health/live',
     ready = request.url === '/health/ready';
   const body = live
-    ? { status: 'alive', version: '0.1.1' }
+    ? { status: 'alive', version }
     : ready
       ? { status: mode, schemaVersion: mode === 'ready' ? 10 : 0 }
       : request.url === '/api/v1/setup/status'
         ? { database: mode, adminInitialized: true }
         : {
             product: 'MetaExam',
-            version: '0.1.1',
+            version,
             initialized: true,
             adminInitialized: true,
             database: mode,
@@ -62,8 +64,12 @@ async function cleanup() {
 }
 try {
   desktop = await electron.launch({
-    executablePath: path.resolve('apps/desktop/node_modules/electron/dist/electron.exe'),
-    args: ['apps/desktop', '--user-data-dir=' + path.join(root, 'profile')],
+    executablePath: path.resolve(
+      packaged
+        ? 'artifacts/payload/manager/MetaExam.Manager.exe'
+        : 'apps/desktop/node_modules/electron/dist/electron.exe',
+    ),
+    args: [...(packaged ? [] : ['apps/desktop']), '--user-data-dir=' + path.join(root, 'profile')],
     env: { ...process.env, METAEXAM_CONFIG: config, METAEXAM_DESKTOP_SMOKE: '' },
   });
   const page = await desktop.firstWindow();
@@ -90,6 +96,7 @@ try {
   await page.getByRole('button', { name: '导出诊断报告', exact: true }).click();
   await page.getByText('诊断报告已导出。', { exact: true }).waitFor();
   const report = JSON.parse(readFileSync(file, 'utf8'));
+  assert.equal(report.managerVersion, version);
   assert.equal(report.checks.live.state, 'ok');
   assert.equal(report.system.license, 'unactivated');
   assert.ok(!JSON.stringify(report).includes(secret));
@@ -103,7 +110,8 @@ try {
   writeFileSync(path.join(root, 'upgrade-pending.json'), secret);
   await new Promise((resolve) => server.close(resolve));
   await page.getByRole('button', { name: '检查诊断', exact: true }).click();
-  await page.getByText('存在待处理记录', { exact: true }).waitFor();
+  await page.getByText('无法连接', { exact: true }).first().waitFor();
+  if (!packaged) await page.getByText('存在待处理记录', { exact: true }).waitFor();
   assert.equal(await page.getByText('无法连接', { exact: true }).count(), 3);
   const offline = await page.evaluate(() => window.metaexam.checkDiagnostics());
   assert.equal(offline.value.system.license, 'unknown');
@@ -117,29 +125,36 @@ try {
   const savedOffline = JSON.parse(readFileSync(offlineFile, 'utf8'));
   assert.equal(savedOffline.checks.live.state, 'unreachable');
   assert.equal(savedOffline.system.license, 'unknown');
-  assert.equal(savedOffline.maintenance.upgrade, 'present');
+  if (!packaged) assert.equal(savedOffline.maintenance.upgrade, 'present');
   assert.ok(!JSON.stringify(savedOffline).includes(secret));
-  const denied = await desktop.evaluate(async ({ BrowserWindow }, preload) => {
-    const other = new BrowserWindow({
-      show: false,
-      webPreferences: { preload, sandbox: true, contextIsolation: true, nodeIntegration: false },
-    });
-    try {
-      await other.loadURL('data:text/html,<p>Untrusted</p>');
-      return await other.webContents.executeJavaScript(
-        "Promise.all([window.metaexam.checkDiagnostics(),window.metaexam.exportDiagnostics()].map(p=>p.then(()=> 'allowed',()=> 'denied')))",
-      );
-    } finally {
-      other.destroy();
-    }
-  }, path.resolve('apps/desktop/dist/preload.js'));
+  const denied = await desktop.evaluate(
+    async ({ BrowserWindow }, preload) => {
+      const other = new BrowserWindow({
+        show: false,
+        webPreferences: { preload, sandbox: true, contextIsolation: true, nodeIntegration: false },
+      });
+      try {
+        await other.loadURL('data:text/html,<p>Untrusted</p>');
+        return await other.webContents.executeJavaScript(
+          "Promise.all([window.metaexam.checkDiagnostics(),window.metaexam.exportDiagnostics()].map(p=>p.then(()=> 'allowed',()=> 'denied')))",
+        );
+      } finally {
+        other.destroy();
+      }
+    },
+    path.resolve(
+      packaged
+        ? 'artifacts/payload/manager/resources/app.asar/dist/preload.js'
+        : 'apps/desktop/dist/preload.js',
+    ),
+  );
   assert.deepEqual(denied, ['denied', 'denied']);
   await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(380, 720));
   await page.screenshot({ path: path.join(output, 'offline-narrow.png'), fullPage: true });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
   assert.deepEqual(errors, []);
   console.log(
-    'PASS real Electron diagnostic check/export/cancel/offline/503, redaction, overwrite refusal, foreign-frame denial and narrow layout',
+    `PASS ${packaged ? 'packaged' : 'development'} Electron diagnostic check/export/cancel/offline/503, redaction, overwrite refusal, foreign-frame denial and narrow layout`,
   );
 } finally {
   await desktop?.close();

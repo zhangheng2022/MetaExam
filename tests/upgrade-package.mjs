@@ -10,7 +10,7 @@ import net from 'node:net';
 import { setTimeout as delay } from 'node:timers/promises';
 import { licenseManagerFixture } from './license-manager-fixture.mts';
 import { upgrade } from '../installer/upgrade-engine.mjs';
-import { readRelease } from '../installer/release.mjs';
+import { readRelease, compareVersions } from '../installer/release.mjs';
 
 const source = path.resolve('artifacts/payload');
 const baseline = path.resolve(
@@ -18,15 +18,19 @@ const baseline = path.resolve(
 );
 assert.ok(
   existsSync(path.join(baseline, 'server/db.cjs')),
-  'Provide the M3 backup-capable 0.1.0 payload via METAEXAM_UPGRADE_BASELINE',
+  'Provide an original, older backup-capable payload via METAEXAM_UPGRADE_BASELINE',
 );
 const require = createRequire(import.meta.url);
 const old = require(path.join(baseline, 'server/db.cjs'));
 const next = require(path.join(source, 'server/db.cjs'));
-assert.equal(old.APP_VERSION, '0.1.0');
 assert.equal(typeof old.BackupService, 'function');
-assert.equal(next.APP_VERSION, '0.1.1');
 const release = await readRelease(source);
+assert.equal(next.APP_VERSION, release.version);
+assert.ok(compareVersions(old.APP_VERSION, release.version) < 0);
+if (existsSync(path.join(baseline, 'release.json'))) {
+  const prior = await readRelease(baseline);
+  assert.equal(prior.version, old.APP_VERSION);
+}
 const t = await licenseManagerFixture();
 const root = await mkdtemp(path.join(tmpdir(), 'MetaExam-upgrade-package-'));
 const app = path.join(root, 'app'),
@@ -88,7 +92,13 @@ try {
     savedKeys = await readFile(config.trustFile, 'utf8');
   await writeFile(
     path.join(data, 'installation.json'),
-    JSON.stringify({ product: 'MetaExam', app, data, phase: 'installed', version: '0.1.0' }),
+    JSON.stringify({
+      product: 'MetaExam',
+      app,
+      data,
+      phase: 'installed',
+      version: old.APP_VERSION,
+    }),
   );
   await t.db.pool.end();
   const seed = next.createDatabase(config);
@@ -111,7 +121,9 @@ try {
     }
   }
   start();
-  await wait(async () => (await (await fetch(url + '/health/live')).json()).version === '0.1.0');
+  await wait(
+    async () => (await (await fetch(url + '/health/live')).json()).version === old.APP_VERSION,
+  );
   await stop();
   const queued = next.createDatabase(config);
   const { id: job } = await next.enqueue(
@@ -154,7 +166,8 @@ try {
       start: async () => start(),
       healthy: async (_release, since) => {
         await wait(
-          async () => (await (await fetch(url + '/health/live')).json()).version === '0.1.1',
+          async () =>
+            (await (await fetch(url + '/health/live')).json()).version === release.version,
         );
         assert.equal((await fetch(url + '/health/ready')).status, 200);
         await wait(() => database.workerReady(since));
@@ -203,8 +216,11 @@ try {
   }
   assert.equal(await readFile(conf, 'utf8'), savedConfig);
   assert.equal(await readFile(config.trustFile, 'utf8'), savedKeys);
+  await assert.rejects(upgrade({ app, data, source }, platform()), /UPGRADE_NOT_NEWER/);
+  if (existsSync(path.join(baseline, 'release.json')))
+    await assert.rejects(upgrade({ app, data, source: baseline }, platform()), /UPGRADE_NOT_NEWER/);
   console.log(
-    'PASS real 0.1.0 → 0.1.1 payload upgrade, pg_dump backup, startup failure/resume, API/Worker maintenance gating, preserved course/license/config/keys',
+    `PASS real ${old.APP_VERSION} → ${release.version} payload upgrade, pg_dump backup, startup failure/resume, API/Worker maintenance gating, preserved course/license/config/keys`,
   );
 } finally {
   await stop();
