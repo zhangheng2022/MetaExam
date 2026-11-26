@@ -510,6 +510,31 @@ try {
   assert.equal(publishedResult.state, 'published');
   assert.equal(publishedResult.totalScore, scored.items[0].score);
   assert.equal(publishedResult.items[0].question, undefined);
+  const reportPath = '/api/v1/reports/exams/' + activeExam;
+  const publishedStats = await (await fetch(url + reportPath, { headers: { cookie } })).json();
+  assert.equal(publishedStats.statistics.presentCount, 1);
+  assert.equal(publishedStats.statistics.average, publishedResult.totalScore);
+  assert.equal(
+    (await fetch(url + reportPath, { headers: { cookie: freshStudentCookie } })).status,
+    403,
+  );
+  const resultExport = await post(reportPath + '/export', {}, cookie);
+  assert.equal(resultExport.status, 200, await resultExport.clone().text());
+  assert.equal(resultExport.headers.get('cache-control'), 'no-store');
+  const resultBook = new Excel.Workbook();
+  await resultBook.xlsx.load(Buffer.from(await resultExport.arrayBuffer()));
+  assert.deepEqual(
+    resultBook.worksheets.map((s) => s.name),
+    ['统计概览', '成绩名单', '逐题统计'],
+  );
+  assert.equal(resultBook.getWorksheet('成绩名单').rowCount, 2);
+  assert.equal(resultBook.getWorksheet('成绩名单').getCell('D2').value, publishedResult.totalScore);
+  assert.equal(
+    (await fetch(url + `/exams/${activeExam}/report`)).headers
+      .get('content-type')
+      .includes('text/html'),
+    true,
+  );
   assert.equal(
     (await fetch(url + `/exams/${activeExam}/grading`)).headers
       .get('content-type')
@@ -594,6 +619,7 @@ try {
           'bundled local-license publication, roster, student schedule redaction, forced-password boundary and cancellation',
           'bundled admission, sanitized questions and images, persistent answer, submission receipt and closed-write boundary',
           'bundled Worker objective grading, teacher review, hidden unpublished results, immutable publication and student score',
+          'bundled published statistics and restricted Excel export through packaged worker thread',
           'bundled Worker completes API task',
           'bundled CLI validates persisted license',
           'packaged Electron IPC returns database ready',

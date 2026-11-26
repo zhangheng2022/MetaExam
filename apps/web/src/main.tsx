@@ -32,7 +32,9 @@ const MyExamsPage = lazy(() => import('./exams/pages').then((m) => ({ default: m
 const AttemptPage = lazy(() => import('./attempts/page').then((m) => ({ default: m.AttemptPage })));
 const GradingPage = lazy(() => import('./grading/pages').then((m) => ({ default: m.GradingPage })));
 const ResultPage = lazy(() => import('./grading/pages').then((m) => ({ default: m.ResultPage })));
+const ReportPage = lazy(() => import('./reports/page').then((m) => ({ default: m.ReportPage })));
 const pages = {
+  report: ['成绩统计与导出', '分析已发布成绩，按筛选导出 Excel。'],
   grading: ['阅卷与成绩', '核对客观题得分、评阅简答题，确认后发布成绩。'],
   result: ['我的成绩', '查看教师已发布的本人得分与评语。'],
   exams: ['考试管理', '安排考试时间、确认考生名单并发布冻结试卷。'],
@@ -180,6 +182,7 @@ function Protected({ page = 'profile' }: { page?: Page }) {
       'my-exams': 'exams.self',
       attempts: 'exams.self',
       grading: 'exams.manage',
+      report: 'exams.manage',
       result: 'exams.self',
     } as Partial<Record<Page, string>>
   )[page];
@@ -192,7 +195,8 @@ function Protected({ page = 'profile' }: { page?: Page }) {
         ((page === 'question-banks' ||
           page === 'papers' ||
           page === 'exams' ||
-          page === 'grading') &&
+          page === 'grading' ||
+          page === 'report') &&
           user.roles.includes('teacher')) ||
         user.roles.includes('admin')));
   return (
@@ -201,7 +205,11 @@ function Protected({ page = 'profile' }: { page?: Page }) {
       description={pages[page][1]}
       displayName={user.displayName}
       selected={
-        page === 'attempts' || page === 'result' ? 'my-exams' : page === 'grading' ? 'exams' : page
+        page === 'attempts' || page === 'result'
+          ? 'my-exams'
+          : page === 'grading' || page === 'report'
+            ? 'exams'
+            : page
       }
       permissions={
         user.roles.includes('admin')
@@ -235,6 +243,10 @@ function Protected({ page = 'profile' }: { page?: Page }) {
       )}
       {!allowed ? (
         <Alert type="warning" title="没有访问权限" description="请从导航进入有权访问的页面。" />
+      ) : page === 'report' ? (
+        <Suspense fallback={<Skeleton paragraph={{ rows: 5 }} />}>
+          <ReportPage />
+        </Suspense>
       ) : page === 'grading' || page === 'result' ? (
         <Suspense fallback={<Skeleton paragraph={{ rows: 5 }} />}>
           {page === 'grading' ? <GradingPage /> : <ResultPage />}
@@ -400,6 +412,7 @@ function Business() {
         <Route path="/exams/:examId" element={<Protected page="exams" />} />
         <Route path="/attempts/:attemptId" element={<Protected page="attempts" />} />
         <Route path="/exams/:examId/grading" element={<Protected page="grading" />} />
+        <Route path="/exams/:examId/report" element={<Protected page="report" />} />
         <Route path="/my-exams/:examId/result" element={<Protected page="result" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

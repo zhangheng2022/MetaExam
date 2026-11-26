@@ -35,7 +35,7 @@ export async function removeStoredFile(db: Database, kind: 'imports' | 'images',
   await unlink(storedFile(db, kind, id)).catch(() => {});
 }
 export function processFile<T>(
-  kind: 'template' | 'image' | 'workbook',
+  kind: 'template' | 'image' | 'workbook' | 'results',
   data: Buffer = Buffer.alloc(0),
 ): Promise<T> {
   return new Promise((resolve, reject) => {

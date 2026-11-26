@@ -1,6 +1,6 @@
 # MetaExam
 
-M2 第六批已实现 Worker 客观题判分、教师逐题阅卷、简答评分、成绩确认发布及学生查看本人得分和评语。当前数据库版本 V10，见 [阅卷与成绩验收说明](docs/m2-grading.md)。沿用 [答题会话](docs/m2-attempts.md)、[考试发布与名单](docs/m2-exams.md)、[组卷与冻结](docs/m2-papers.md)、[Excel 导入与图片](docs/m2-imports.md) 和 [题库基础](docs/m2-questions.md)；成绩统计导出、复核改分和补考尚未交付。
+M2 第七批已实现已发布成绩的全场统计、逐题分析、名单筛选与 Excel 导出，验收见 [成绩统计与导出](docs/m2-reports.md)。数据库保持 V10，无新增迁移。沿用 [阅卷与成绩发布](docs/m2-grading.md)、[答题会话](docs/m2-attempts.md)、[考试发布与名单](docs/m2-exams.md)、[组卷与冻结](docs/m2-papers.md)、[Excel 导入与图片](docs/m2-imports.md) 和 [题库基础](docs/m2-questions.md)；跨考试分析、复核改分和补考尚未交付。
 
 M1 第二批已实现账号、班级、课程、授课安排、角色工作台及操作日志，沿用 Ant Design 默认蓝色。开发与验收步骤见 [M1 第二批交付说明](docs/m1-management.md)。首次登录或管理员重置密码后，用户须先修改密码。
 
@@ -53,7 +53,7 @@ AI 开发先读取 [AGENTS.md](AGENTS.md) 和 [官方工具与资料](docs/ai-de
 | tests              | 单元、集成、开发监听、页面、数据库重启及客户包验证      |
 | provider           | 供应方测试签发工具，不进入客户安装包                    |
 
-统一命令均通过 `./tools/run.ps1 <command>` 使用：dev、build、typecheck、lint、format:check、test、test:integration、test:ui、test:dev、test:db-restart、test:package、test:m1、test:management、test:questions、test:imports、test:papers、test:exams、test:attempts、test:grading、setup:token、db:migrate、package:win。
+统一命令均通过 `./tools/run.ps1 <command>` 使用：dev、build、typecheck、lint、format:check、test、test:integration、test:ui、test:dev、test:db-restart、test:package、test:m1、test:management、test:questions、test:imports、test:papers、test:exams、test:attempts、test:grading、test:reports、setup:token、db:migrate、package:win。
 
 `tools` 只保留四个入口：bootstrap.ps1 准备锁定工具链与依赖，run.ps1 使用项目 Node/pnpm 执行命令，dev.mjs 将配置交给标准监听工具，postgres.mjs 管理项目数据库普通进程。业务逻辑放在应用与共享包，不在这些脚本中实现。
 

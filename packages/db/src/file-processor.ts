@@ -1,6 +1,7 @@
 import { parentPort, workerData } from 'node:worker_threads';
 import { randomUUID } from 'node:crypto';
 import ExcelJS from 'exceljs';
+import { resultWorkbook } from './result-workbook';
 import sharp from 'sharp';
 import yauzl from 'yauzl';
 import { questionInputSchema, type ImportRow, type QuestionInput } from '@metaexam/contracts';
@@ -269,22 +270,26 @@ if (parentPort)
     try {
       const d = workerData as { kind: string; data: Uint8Array };
       const result =
-        d.kind === 'template'
-          ? await makeTemplate()
-          : d.kind === 'image'
-            ? await normalizeImage(Buffer.from(d.data))
-            : await parseWorkbook(Buffer.from(d.data));
+        d.kind === 'results'
+          ? await resultWorkbook(JSON.parse(Buffer.from(d.data).toString('utf8')))
+          : d.kind === 'template'
+            ? await makeTemplate()
+            : d.kind === 'image'
+              ? await normalizeImage(Buffer.from(d.data))
+              : await parseWorkbook(Buffer.from(d.data));
       parentPort!.postMessage({ ok: true, result });
     } catch (e) {
       const message = (e as Error).message;
       parentPort!.postMessage({
         ok: false,
         code:
-          workerData.kind === 'image'
-            ? 'INVALID_IMAGE'
-            : ['INVALID_TEMPLATE', 'EMPTY_WORKBOOK'].includes(message)
-              ? message
-              : 'INVALID_WORKBOOK',
+          workerData.kind === 'results'
+            ? 'RESULT_EXPORT_FAILED'
+            : workerData.kind === 'image'
+              ? 'INVALID_IMAGE'
+              : ['INVALID_TEMPLATE', 'EMPTY_WORKBOOK'].includes(message)
+                ? message
+                : 'INVALID_WORKBOOK',
       });
     }
   })();

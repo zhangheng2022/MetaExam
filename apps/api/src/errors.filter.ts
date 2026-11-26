@@ -2,6 +2,10 @@ import { Catch, HttpException, type ArgumentsHost, type ExceptionFilter } from '
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { IdentityError } from '@metaexam/db';
 const messages: Record<string, string> = {
+  RESULTS_UNPUBLISHED: '成绩尚未发布，暂不能查看统计或导出',
+  RESULTS_INCONSISTENT: '已发布成绩数据不完整，请联系管理员检查，暂不提供统计',
+  RESULT_EXPORT_BUSY: '成绩导出正在处理中，请稍后重试',
+  RESULT_EXPORT_FAILED: '成绩文件生成失败，请稍后重试',
   GRADING_NOT_READY: '尚未满足阅卷或发布条件：请等待考试结束、后台判分，并完成全部已交卷答卷的评分',
   GRADES_IMMUTABLE: '成绩已经发布，不能再修改或撤回',
   GRADE_INVALID: '只能人工评分简答题，分数须在本题范围内且以 0.5 分为单位',

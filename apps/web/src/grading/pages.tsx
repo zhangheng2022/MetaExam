@@ -89,6 +89,7 @@ export function GradingPage() {
       {holder}
       <div className="management-toolbar">
         <Link to={'/exams/' + id}>返回考试详情</Link>
+        {info.value?.publishedAt && <Link to={`/exams/${id}/report`}>成绩统计与导出</Link>}
         <Button onClick={refresh} disabled={busy}>
           刷新阅卷状态
         </Button>

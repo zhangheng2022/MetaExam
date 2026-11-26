@@ -593,6 +593,10 @@ body {
 .attempt-navigation {
   margin-top: 16px;
 }
+.report-statistics > :nth-child(3n + 1) {
+  border-inline-start: 0;
+  padding-inline-start: 0;
+}
 .attempt-answer {
   border: 0;
   padding: 0;

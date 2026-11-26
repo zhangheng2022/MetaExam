@@ -30,6 +30,7 @@ export {
   InputNumber,
   Radio,
   Checkbox,
+  Progress,
 } from 'antd';
 export type { TableColumnsType } from 'antd';
 

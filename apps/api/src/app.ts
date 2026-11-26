@@ -19,6 +19,7 @@ import { PapersModule } from './papers/papers.module';
 import { ExamsModule } from './exams/exams.module';
 import { AttemptsModule } from './attempts/attempts.module';
 import { GradingModule } from './grading/grading.module';
+import { ReportsModule } from './reports/reports.module';
 @Module({})
 class AppModule {}
 export async function createApp(
@@ -68,6 +69,7 @@ export async function createApp(
         ExamsModule,
         AttemptsModule,
         GradingModule,
+        ReportsModule,
       ],
     },
     new FastifyAdapter({
