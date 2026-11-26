@@ -1,6 +1,6 @@
 {
   "name": "metaexam",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "packageManager": "pnpm@10.24.0",
   "engines": {
@@ -20,6 +20,7 @@
     "test:desktop": "tsx tests/desktop-setup.mts && node tests/desktop-manager.mjs",
     "test:license-manager": "tsx tests/license-maintenance.mts && node tests/license-manager-ui.mjs",
     "test:backup": "tsx tests/backup.mts && tsx tests/backup-active.mts && node tests/backup-ui.mjs",
+    "test:upgrade": "tsx tests/upgrade.mts && node tests/upgrade-package.mjs",
     "test:package": "node tests/package.mjs",
     "test:db-restart": "node tests/database-restart.mjs",
     "db:migrate": "node apps/worker/dist/cli.js migrate",

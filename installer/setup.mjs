@@ -92,10 +92,7 @@ if (existsSync(marker) && !owned)
   throw new Error('Data directory belongs to a different installation');
 if (!owned && existsSync(path.join(data, 'postgres')))
   throw new Error('Existing database without installation record');
-if (owned)
-  throw new Error(
-    'PHASE1_UPGRADE_REQUIRES_MANUAL_MAINTENANCE: preserve data, use the documented recovery procedure',
-  );
+if (owned) throw new Error('EXISTING_INSTALLATION_USE_UPGRADE');
 if (!!certFile != !!keyFile)
   throw new Error('Certificate and private key must be supplied together');
 for (const p of [port, databasePort])
@@ -294,6 +291,17 @@ sc('start', 'MetaExam.Api');
 sc('start', 'MetaExam.Worker');
 writeFileSync(
   marker,
-  JSON.stringify({ product: 'MetaExam', app, data, phase: 'installed', version: '0.1.0' }, null, 2),
+  JSON.stringify(
+    {
+      product: 'MetaExam',
+      app,
+      data,
+      phase: 'installed',
+      version: JSON.parse(readFileSync(path.join(app, 'release.json'), 'utf8')).version,
+      buildId: JSON.parse(readFileSync(path.join(app, 'release.json'), 'utf8')).buildId,
+    },
+    null,
+    2,
+  ),
 );
 console.log('INSTALL_CONFIGURED: complete the independent acceptance checklist');

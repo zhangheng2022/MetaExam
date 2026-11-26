@@ -5,7 +5,7 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import fastifyStatic from '@fastify/static';
 import fastifyMultipart from '@fastify/multipart';
 import { readFileSync, existsSync } from 'node:fs';
-import { loadConfig, type RuntimeConfig } from '@metaexam/db';
+import { loadConfig, upgradePending, type RuntimeConfig } from '@metaexam/db';
 import { DatabaseModule } from './database/database.module';
 import { SystemModule } from './system/system.module';
 import { SetupModule } from './setup/setup.module';
@@ -95,6 +95,19 @@ export async function createApp(
     },
   });
   const server = app.getHttpAdapter().getInstance();
+  server.addHook('onRequest', async (req, reply) => {
+    if (
+      upgradePending(config.home) &&
+      !['/health/live', '/health/ready', '/api/v1/maintenance/stop'].includes(
+        req.url.split('?')[0] ?? '',
+      )
+    )
+      return reply.code(503).send({
+        code: 'UPGRADE_IN_PROGRESS',
+        message: '系统正在升级，请稍后重试',
+        requestId: req.id,
+      });
+  });
   server.addHook('onSend', async (_req, reply, payload) => {
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header(

@@ -1,4 +1,6 @@
-#define MyAppVersion "0.1.0"
+#ifndef MyAppVersion
+#define MyAppVersion "0.1.1"
+#endif
 [Setup]
 AppId={{5F3FDD48-CFEC-4F32-A343-50D44B341446}
 AppName=MetaExam Internal Test
@@ -19,15 +21,27 @@ UninstallDisplayIcon={app}\manager\MetaExam.Manager.exe
 CloseApplications=no
 SetupLogging=yes
 [Files]
-Source: "..\artifacts\payload\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\artifacts\payload\*"; DestDir: "{code:PayloadDirectory}"; Flags: ignoreversion recursesubdirs createallsubdirs
 [Icons]
 Name: "{autoprograms}\MetaExam"; Filename: "{app}\manager\MetaExam.Manager.exe"; WorkingDir: "{app}"
 Name: "{autodesktop}\MetaExam"; Filename: "{app}\manager\MetaExam.Manager.exe"; WorkingDir: "{app}"
+[UninstallDelete]
+Type: files; Name: "{app}\release.json"
+Type: files; Name: "{app}\maintenance\release.mjs"
+Type: files; Name: "{app}\maintenance\upgrade.mjs"
+Type: files; Name: "{app}\maintenance\upgrade-engine.mjs"
+Type: files; Name: "{app}\maintenance\upgrade-windows.mjs"
+Type: files; Name: "{app}\maintenance\UPGRADE.md"
 [Code]
 var
   NetworkPage: TInputQueryWizardPage;
   CertPage: TInputFileWizardPage;
   LocalOnlyPage: TInputOptionWizardPage;
+  Upgrading: Boolean;
+function PayloadDirectory(Param: String): String;
+begin
+ if Upgrading then Result := ExpandConstant('{tmp}\upgrade-payload') else Result := ExpandConstant('{app}');
+end;
 function InitializeUninstall: Boolean;
 var Code: Integer; Args: String;
 begin
@@ -44,6 +58,7 @@ begin
 end;
 procedure InitializeWizard;
 begin
+  Upgrading := FileExists(ExpandConstant('{commonappdata}\MetaExam\installation.json'));
   LocalOnlyPage := CreateInputOptionPage(wpSelectDir, 'Internal test deployment', 'Choose the access mode', 'This package is unsigned and is for phase 1 technical validation.', True, False);
   LocalOnlyPage.Add('Local computer only (HTTP loopback)');
   LocalOnlyPage.Add('LAN access with HTTPS certificate');
@@ -58,7 +73,7 @@ begin
 end;
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
- Result := (PageID = CertPage.ID) and (LocalOnlyPage.SelectedValueIndex = 0);
+ Result := ((PageID = CertPage.ID) and (LocalOnlyPage.SelectedValueIndex = 0)) or (Upgrading and ((PageID = LocalOnlyPage.ID) or (PageID = NetworkPage.ID) or (PageID = CertPage.ID)));
 end;
 function NextButtonClick(CurPageID: Integer): Boolean;
 var Port, DatabasePort: Integer;
@@ -78,13 +93,19 @@ end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
  Result := '';
- if FileExists(ExpandConstant('{commonappdata}\MetaExam\installation.json')) then
-   Result := 'An existing installation was found. Phase 1 does not implement in-place upgrades. Preserve the database and follow the maintenance guide.';
+ if Upgrading and not FileExists(ExpandConstant('{app}\server\db.cjs')) then
+   Result := 'Select the existing MetaExam installation directory. Existing data will not be initialized again.';
 end;
 procedure CurStepChanged(CurStep: TSetupStep);
 var Code: Integer; Cert, Key, Args: String;
 begin
  if CurStep = ssPostInstall then begin
+   if Upgrading then begin
+     Args := '--use-system-ca "' + ExpandConstant('{tmp}\upgrade-payload\maintenance\upgrade.mjs') + '" apply "' + ExpandConstant('{app}') + '" "' + ExpandConstant('{commonappdata}\MetaExam') + '"';
+     if not Exec(ExpandConstant('{tmp}\upgrade-payload\runtime\node.exe'), Args, ExpandConstant('{tmp}\upgrade-payload'), SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
+       RaiseException('Upgrade did not complete. Close the manager, inspect ProgramData\MetaExam\upgrade.log and rerun the SAME package to resume. Do not remove maintenance markers or install an older version.');
+     Exit;
+   end;
    if NeedsVCRuntime then
      if not Exec(ExpandConstant('{app}\vendor\vc_redist.x64.exe'), '/install /quiet /norestart', ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Code) or ((Code <> 0) and (Code <> 3010) and (Code <> 1638)) then
        RaiseException('Visual C++ runtime installation failed.');

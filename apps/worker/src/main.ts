@@ -4,6 +4,7 @@ import {
   readiness,
   finishExpiredAttempts,
   gradeNextAttempt,
+  upgradePending,
 } from '@metaexam/db';
 import { setTimeout } from 'node:timers/promises';
 let stopping = false;
@@ -19,6 +20,13 @@ async function main() {
     let lastExpiration = 0;
     while (!stopping) {
       try {
+        if (upgradePending(db.config.home)) {
+          await db.pool.query(
+            'INSERT INTO worker_heartbeat(id,seen_at) VALUES(1,now()) ON CONFLICT(id) DO UPDATE SET seen_at=now()',
+          );
+          await setTimeout(500);
+          continue;
+        }
         if (Date.now() - lastExpiration >= 1000) {
           await finishExpiredAttempts(db);
           lastExpiration = Date.now();

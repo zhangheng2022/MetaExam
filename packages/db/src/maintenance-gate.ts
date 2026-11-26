@@ -1,9 +1,18 @@
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import type { Client } from 'pg';
 
 export const MAINTENANCE_LOCK = 184427;
 export const maintenanceMarker = (home: string) => path.join(home, 'maintenance.json');
+export function upgradePending(home: string): boolean {
+  try {
+    statSync(path.join(home, '../upgrade-pending.json'));
+    return true;
+  } catch (error) {
+    // Permission and filesystem errors must not silently reopen business traffic.
+    return (error as NodeJS.ErrnoException).code !== 'ENOENT';
+  }
+}
 
 /** pg-pool's locked onConnect hook runs before a connection is exposed to callers. */
 export async function enterRuntime(client: Client, home: string) {

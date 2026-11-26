@@ -12,7 +12,7 @@ import { instanceInfo } from './schema';
 import { loadConfig, type RuntimeConfig } from './config';
 export { loadConfig, type RuntimeConfig };
 export { loadMaintenanceConfig } from './config';
-export const APP_VERSION = '0.1.0';
+export const APP_VERSION = '0.1.1';
 import { MIGRATIONS, validateMigrations, migrationRows } from './migrations';
 export { MIGRATION, MIGRATIONS, SCHEMA_VERSION, grantRuntimeAccess } from './migrations';
 export * from './management';
@@ -26,6 +26,8 @@ export * from './attempts';
 export * from './grading';
 export * from './reports';
 export { BackupService, ordinaryPath } from './backup';
+export { UpgradeDatabase } from './upgrade';
+export { upgradePending } from './maintenance-gate';
 import { processImportJob } from './imports';
 export function createDatabase(config = loadConfig()) {
   const options = {
@@ -59,6 +61,14 @@ export async function transaction<T>(
 }
 export async function migrate(db: Database): Promise<void> {
   const c = await db.pool.connect();
+  try {
+    await migrateConnection(c);
+  } finally {
+    c.release();
+  }
+}
+/** Caller owns the connection and, for offline upgrades, the maintenance lock. */
+export async function migrateConnection(c: PoolClient): Promise<void> {
   let locked = false;
   try {
     await c.query('SELECT pg_advisory_lock(184426)');
@@ -83,11 +93,7 @@ export async function migrate(db: Database): Promise<void> {
       }
     }
   } finally {
-    try {
-      if (locked) await c.query('SELECT pg_advisory_unlock(184426)');
-    } finally {
-      c.release();
-    }
+    if (locked) await c.query('SELECT pg_advisory_unlock(184426)');
   }
 }
 export async function readiness(db: Database): Promise<boolean> {

@@ -116,14 +116,16 @@ $env:LICENSE_SEQUENCE = '1'
 
 环境准备统一校验 toolchain.lock.json 中的下载哈希，失败时中止，不自动改写锁文件。`-SkipDependencies` 可用于只检查和准备工具链。打包实现位于 installer/build.mjs，日常仍通过 package:win 调用；electron-builder 复用 bootstrap 准备的本地 Electron，并核对其版本，不在打包时重复下载运行时。
 
-产物为 `artifacts/MetaExam-Setup-0.1.0-win-x64-internal.exe` 及 SHA256。打包前核验工具链锁文件；Electron 由 electron-builder 输出目录，后端生产代码与生产依赖由 esbuild 封装，Inno Setup 统一生成 EXE。包内含独立 Node、React、Electron、PostgreSQL、WinSW、VC++ 运行库；安装后不运行 npm、不下载依赖。内部包未做正式 Authenticode 发布签名。
+产物为 `artifacts/MetaExam-Setup-0.1.1-win-x64-internal.exe` 及 SHA256。打包前核验工具链锁文件；Electron 由 electron-builder 输出目录，后端生产代码与生产依赖由 esbuild 封装，Inno Setup 统一生成 EXE。包内含独立 Node、React、Electron、PostgreSQL、WinSW、VC++ 运行库；安装后不运行 npm、不下载依赖。内部包未做正式 Authenticode 发布签名。
 
 仅在独立 Windows 11 x64 测试机运行安装器。可选本机 HTTP 或局域网 HTTPS；生产 LAN 必须导入真实可用证书，客户端信任其 CA。HTTPS 证书需覆盖 127.0.0.1 及访问用 LAN IP/域名；程序不跳过 TLS 验证。详细步骤见 [独立环境验收清单](docs/phase1-acceptance.md)。
 
 安装版维护命令：管理员终端设置 `METAEXAM_CONFIG=C:\ProgramData\MetaExam\config.json`，然后使用 `C:\Program Files\MetaExam\runtime\node.exe --use-system-ca C:\Program Files\MetaExam\server\cli.cjs license-request <输出路径>` 等同名命令。含空格路径需 PowerShell 的 `&` 与引号。
 
-已有数据库禁止重新 initdb；安装器拒绝覆盖安装；当前有序迁移升级至 V10，维护命令见 [M2 阅卷与成绩说明](docs/m2-grading.md)。卸载删除应用服务和应用文件、保留 ProgramData 数据。同机业务数据恢复见下文；保留数据的重新安装仍需人工维护，不提供净机或跨机恢复入口。当前仍为内部测试包，完整考试业务及正式发布尚未交付；后续变更按影响范围回归。
+已有数据库禁止重新 initdb；安装器对受支持的旧版进入独立升级流程，见 [M3 离线升级](docs/m3-upgrade.md)。当前迁移为 V10，维护命令见 [M2 阅卷与成绩说明](docs/m2-grading.md)。卸载删除应用服务和应用文件、保留 ProgramData 数据。同机业务数据恢复见下文；保留数据的重新安装仍需人工维护，不提供净机或跨机恢复入口。当前仍为内部测试包，正式发布尚未交付；后续变更按影响范围回归。
 
 ## 本地备份与恢复
 
 本地管理器支持同机离线备份与恢复。先停止 API／Worker，保留 PostgreSQL；以管理员身份运行管理器，在“备份与恢复”中操作。范围、恢复后果、异常回退和独立环境清单见 [M3 第二批](docs/m3-backup.md)。回归命令：`./tools/run.ps1 test:backup`。
+
+0.1.1 离线升级及内部包验证结果见 [M3 第三批验证记录](docs/m3-upgrade-status.md)；安装环境回归尚待完成。

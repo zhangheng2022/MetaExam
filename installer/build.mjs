@@ -15,6 +15,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { inventory, buildId } from './release.mjs';
 const root = path.resolve(import.meta.dirname, '..'),
   artifacts = path.join(root, 'artifacts'),
   payload = path.join(artifacts, 'payload');
@@ -273,7 +274,15 @@ for (const dir of ['bin', 'lib', 'share'])
   });
 for (const name of ['server_license.txt', 'commandlinetools_3rd_party_licenses.txt'])
   copyFileSync(path.join(root, '.tools/pgsql', name), path.join(payload, 'licenses', name));
-for (const name of ['setup.mjs', 'postgres-service.mjs', 'data-directory.ps1'])
+for (const name of [
+  'setup.mjs',
+  'postgres-service.mjs',
+  'data-directory.ps1',
+  'upgrade.mjs',
+  'upgrade-engine.mjs',
+  'upgrade-windows.mjs',
+  'release.mjs',
+])
   copyFileSync(path.join(root, 'installer', name), path.join(payload, 'maintenance', name));
 for (const name of ['WinSW.NET462.exe', 'vc_redist.x64.exe'])
   copyFileSync(path.join(root, '.tools', name), path.join(payload, 'vendor', name));
@@ -294,11 +303,12 @@ for (const value of Object.values(keys))
 writeFileSync(path.join(payload, 'public-keys.json'), JSON.stringify(keys, null, 2));
 writeFileSync(
   path.join(payload, 'INTERNAL-TEST.txt'),
-  'Internal unsigned M2 result-reports package. No production signing key. Updated package Windows service installation and restart regression pending. Public test key only; no signing tool included.\n',
+  'Internal unsigned M3 offline-upgrade package. No production signing key. Windows service upgrade, ACL and restart regression pending. Public test key only; no signing tool included. See maintenance/UPGRADE.md.\n',
 );
 if (existsSync(path.join(root, 'docs/phase1-acceptance.md')))
   copyFileSync(path.join(root, 'docs/phase1-acceptance.md'), path.join(payload, 'ACCEPTANCE.md'));
 copyFileSync(path.join(root, 'docs/m1-acceptance.md'), path.join(payload, 'M1-ACCEPTANCE.md'));
+copyFileSync(path.join(root, 'docs/m3-upgrade.md'), path.join(payload, 'maintenance/UPGRADE.md'));
 const all = [];
 function walk(dir) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -308,6 +318,23 @@ function walk(dir) {
   }
 }
 walk(payload);
+const version = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version;
+const databaseModule = createRequire(import.meta.url)('../packages/db/dist/index.js');
+if (databaseModule.APP_VERSION !== version) throw new Error('RELEASE_VERSION_MISMATCH');
+const release = {
+  format: 1,
+  product: 'MetaExam',
+  version,
+  minimumVersion: '0.1.0',
+  arch: 'x64',
+  postgresMajor: 18,
+  schemaVersion: databaseModule.SCHEMA_VERSION,
+  migrations: databaseModule.MIGRATIONS.map(({ version, checksum }) => ({ version, checksum })),
+  files: await inventory(payload),
+};
+release.buildId = buildId(release);
+writeFileSync(path.join(payload, 'release.json'), JSON.stringify(release, null, 2));
+all.push(path.join(payload, 'release.json'));
 const denied = [];
 const builderRequire = createRequire(createRequire(import.meta.url).resolve('electron-builder'));
 const asar = createRequire(builderRequire.resolve('app-builder-lib'))('@electron/asar');
@@ -358,10 +385,10 @@ writeFileSync(
 );
 execFileSync(
   path.join(root, '.tools/inno/ISCC.exe'),
-  ['/Qp', path.join(root, 'installer/MetaExam.iss')],
+  ['/Qp', '/DMyAppVersion=' + version, path.join(root, 'installer/MetaExam.iss')],
   { cwd: root, stdio: 'inherit', windowsHide: true },
 );
-const exe = path.join(artifacts, 'MetaExam-Setup-0.1.0-win-x64-internal.exe');
+const exe = path.join(artifacts, `MetaExam-Setup-${version}-win-x64-internal.exe`);
 writeFileSync(
   exe + '.sha256',
   createHash('sha256').update(readFileSync(exe)).digest('hex') + '  ' + path.basename(exe) + '\n',
