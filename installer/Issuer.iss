@@ -1,7 +1,9 @@
 #ifndef IssuerVersion
-  #define IssuerVersion "0.1.2"
+  #define IssuerVersion "0.1.3"
 #endif
 [Setup]
+SignTool=metaexam
+SignedUninstaller=yes
 AppId={{3502D13A-BF68-44DC-97DD-736EC05D6298}
 AppName=MetaExam 授权签发器
 AppVersion={#IssuerVersion}

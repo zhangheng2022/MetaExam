@@ -10,6 +10,7 @@ work/
 *.key
 *.p12
 *.pfx
+*.dpapi
 **/*private*.pem
 .impeccable/review/
 graphify-out/

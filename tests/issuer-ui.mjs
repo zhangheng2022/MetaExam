@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { _electron as electron } from 'playwright';
+import { verifyExecutable } from '../installer/signing.mjs';
 
 const home = mkdtempSync(path.join(tmpdir(), 'MetaExam-issuer-ui-'));
 const packaged = process.argv.includes('--packaged');
@@ -31,6 +32,11 @@ function cleanup() {
   rmSync(home, { recursive: true, force: true });
 }
 try {
+  if (packaged) {
+    const version = JSON.parse(readFileSync('apps/issuer/package.json')).version;
+    verifyExecutable(`artifacts/MetaExam-Issuer-Setup-${version}-win-x64-internal.exe`);
+    verifyExecutable('artifacts/issuer-payload/MetaExam.Issuer.exe');
+  }
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
   desktop = await electron.launch({

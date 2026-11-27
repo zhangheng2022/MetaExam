@@ -117,6 +117,8 @@
 
 ## 内部版本交付
 
+客户与供应方安装包统一自签名，规范见 docs/code-signing.md。私密证书备份放 `C:\Users\96227\OneDrive\MetaExam\code-signing`，不得进 Git 或任何安装包。构建签名失败必须中止，不自动创建证书、导入受信任根或回退无签名。程序 Authenticode 与软件授权 Ed25519 密钥隔离；旧包不补签覆盖，新内容提升补丁版本。
+
 交付包保持版本与内容一一对应，`package:win` 禁止覆盖同版本 EXE／SHA256，并用互斥锁保护共享构建目录。新内容提升应用补丁版本；旧包与基线保留供中断续升级和跨版本测试。`test:package` 包含最终管理器诊断回归；`test:upgrade` 通过 `METAEXAM_UPGRADE_BASELINE` 选择真实旧载荷，不能伪造版本号替代旧程序。
 
 ## 供应方离线签发

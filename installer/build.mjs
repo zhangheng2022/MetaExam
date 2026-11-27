@@ -21,6 +21,13 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { inventory, buildId } from './release.mjs';
 import { loadBuildTrust } from './trust.mjs';
+import {
+  signingInfo,
+  signExecutable,
+  verifyExecutable,
+  exportSigningCertificate,
+  innoSigningArgument,
+} from './signing.mjs';
 const root = path.resolve(import.meta.dirname, '..'),
   artifacts = path.join(root, 'artifacts'),
   payload = path.join(artifacts, 'payload');
@@ -33,6 +40,7 @@ if (existsSync(exe) || existsSync(exe + '.sha256'))
 const profileIndex = process.argv.indexOf('--trust-profile');
 const trustProfile = profileIndex < 0 ? undefined : process.argv[profileIndex + 1];
 const buildTrust = loadBuildTrust(root, version, trustProfile, process.env.METAEXAM_TRUST_MANIFEST);
+signingInfo();
 mkdirSync(artifacts, { recursive: true });
 const buildLock = path.join(artifacts, '.package-build.lock');
 const handle = openSync(buildLock, 'wx');
@@ -285,6 +293,18 @@ cpSync(path.join(artifacts, 'desktop/win-unpacked'), path.join(payload, 'manager
   recursive: true,
 });
 cpSync(path.join(root, 'apps/web/dist'), path.join(payload, 'web'), { recursive: true });
+signExecutable(path.join(payload, 'manager/MetaExam.Manager.exe'));
+const codeSigning = exportSigningCertificate(
+  path.join(payload, 'licenses/MetaExam-CodeSigning.cer'),
+);
+writeFileSync(
+  path.join(payload, 'licenses/code-signing.json'),
+  JSON.stringify(codeSigning, null, 2),
+);
+copyFileSync(
+  path.join(root, 'docs/code-signing.md'),
+  path.join(payload, 'licenses/CODE-SIGNING.md'),
+);
 copyFileSync(path.join(root, '.tools/node/node.exe'), path.join(payload, 'runtime/node.exe'));
 copyFileSync(
   path.join(root, '.tools/node/LICENSE'),
@@ -324,7 +344,7 @@ writeFileSync(
 );
 writeFileSync(
   path.join(payload, 'INTERNAL-TEST.txt'),
-  `Internal unsigned package. License trust profile: ${trustProfile}. No private signing key or supplier tool included. Windows installation acceptance remains separate. See maintenance/UPGRADE.md.\n`,
+  `Internal self-signed package. License trust profile: ${trustProfile}. No private signing key or supplier tool included. Windows trust and installation acceptance remain separate. See licenses/CODE-SIGNING.md and maintenance/UPGRADE.md.\n`,
 );
 if (existsSync(path.join(root, 'docs/phase1-acceptance.md')))
   copyFileSync(path.join(root, 'docs/phase1-acceptance.md'), path.join(payload, 'ACCEPTANCE.md'));
@@ -381,7 +401,7 @@ for (const entry of archiveEntries) {
 for (const file of all) {
   const name = path.relative(payload, file);
   if (
-    /provider-test|test-license|issuer|private\.pem|\.mlic$|\.missuer$|\.sqlite$|\.env$|config\.json$/.test(
+    /provider-test|test-license|issuer|private\.pem|\.pfx$|\.p12$|\.dpapi$|\.mlic$|\.missuer$|\.sqlite$|\.env$|config\.json$/.test(
       name,
     ) &&
     !name.includes('locales')
@@ -419,10 +439,18 @@ const staging = path.join(artifacts, 'package-staging');
 safeReset(staging);
 execFileSync(
   path.join(root, '.tools/inno/ISCC.exe'),
-  ['/Qp', '/O' + staging, '/DMyAppVersion=' + version, path.join(root, 'installer/MetaExam.iss')],
+  [
+    '/Qp',
+    innoSigningArgument(),
+    '/O' + staging,
+    '/DMyAppVersion=' + version,
+    path.join(root, 'installer/MetaExam.iss'),
+  ],
   { cwd: root, stdio: 'inherit', windowsHide: true },
 );
+verifyExecutable(path.join(staging, path.basename(exe)));
 copyFileSync(path.join(staging, path.basename(exe)), exe, constants.COPYFILE_EXCL);
+exportSigningCertificate(exe + '.cer');
 writeFileSync(
   exe + '.sha256',
   createHash('sha256').update(readFileSync(exe)).digest('hex') + '  ' + path.basename(exe) + '\n',

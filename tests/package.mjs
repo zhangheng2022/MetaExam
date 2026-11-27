@@ -16,6 +16,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { randomUUID, randomBytes, generateKeyPairSync, sign, createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { isolatedDatabase } from './database-fixture.mts';
+import { verifyExecutable } from '../installer/signing.mjs';
 const { licenseRequest, importLicense, BootstrapRepository, digestToken } = createRequire(
   import.meta.url,
 )('../packages/db/dist/index.js');
@@ -31,6 +32,8 @@ const releaseExe = path.join(
 const digest = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
 const originalExeHash = digest(releaseExe),
   originalManifestHash = digest(path.join(payload, 'release.json'));
+verifyExecutable(releaseExe);
+verifyExecutable(path.join(payload, 'manager/MetaExam.Manager.exe'));
 assert.throws(
   () =>
     execFileSync(process.execPath, ['installer/build.mjs'], {

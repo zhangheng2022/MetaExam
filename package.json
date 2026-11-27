@@ -1,6 +1,6 @@
 {
   "name": "metaexam",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "packageManager": "pnpm@10.24.0",
   "engines": {
@@ -52,7 +52,8 @@
     "test:attempts": "tsx tests/attempts.mts && tsx tests/admissions.mts && tsx tests/attempts-ui.mts",
     "test:installer": "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tests/installer-acl.ps1",
     "test:grading": "tsx tests/grading.mts && tsx tests/grading-ui.mts",
-    "test:reports": "tsx tests/reports.mts && tsx tests/reports-ui.mts"
+    "test:reports": "tsx tests/reports.mts && tsx tests/reports-ui.mts",
+    "test:signing": "node tests/signing.mjs"
   },
   "devDependencies": {
     "@ant-design/cli": "6.7.2",

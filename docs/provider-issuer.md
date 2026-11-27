@@ -1,6 +1,6 @@
 # 供应方离线授权签发器
 
-独立的 Windows 单人桌面工具。供应方数据存于当前 Windows 用户的 `AppData/Roaming/MetaExam.Issuer`；客户业务数据库、管理器与服务不参与签发。客户程序版本 0.1.3，签发器独立版本 0.1.2。两种 EXE 均为未正式签名的内部交付。
+独立的 Windows 单人桌面工具。供应方数据存于当前 Windows 用户的 `AppData/Roaming/MetaExam.Issuer`；客户业务数据库、管理器与服务不参与签发。当前客户程序版本 0.1.4，签发器独立版本 0.1.3。两种 EXE 均使用自签名 Authenticode，见 [程序签名规范](code-signing.md)。下方 0.1.3 / 0.1.2 表格保留历史交付记录。
 
 ## 日常使用
 
@@ -34,7 +34,7 @@
 - `package:issuer`：生成供应方 EXE；包内无真实私钥、台账、PostgreSQL 或 WinSW。
 - `test:issuer:package`：运行实际打包程序的 Electron 回归。
 - `package:win`：明确测试信任配置的客户内部包，可沿用 `.local/provider/public-keys.json`。
-- `package:win:production`：正式授权信任配置的客户内部包；必须设置 `METAEXAM_TRUST_MANIFEST` 为签发器导出的目标版本清单，缺失时禁止回退测试密钥。实际发布前还需独立验收和程序签名安排。
+- `package:win:production`：正式授权信任配置的客户内部包；必须设置 `METAEXAM_TRUST_MANIFEST` 为签发器导出的目标版本清单，缺失时禁止回退测试密钥。同样强制程序自签名；实际发布前仍需独立验收。
 
 指定信任清单的公钥必须为 Ed25519，指纹须匹配，环境与目标版本一致。客户载荷含 `public-keys.json` 和 `trust-manifest.json`；只有公钥，不能包含签发服务或私钥。更换密钥需要受控更新客户信任配置，本批不自动把旧测试安装转换为正式配置，原升级流程仍保留客户已有信任配置。
 

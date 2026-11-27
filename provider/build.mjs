@@ -16,6 +16,13 @@ import {
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import {
+  signingInfo,
+  signExecutable,
+  verifyExecutable,
+  exportSigningCertificate,
+  innoSigningArgument,
+} from '../installer/signing.mjs';
 const root = path.resolve(import.meta.dirname, '..'),
   artifacts = path.join(root, 'artifacts');
 const version = JSON.parse(
@@ -23,6 +30,7 @@ const version = JSON.parse(
 ).version;
 const file = path.join(artifacts, `MetaExam-Issuer-Setup-${version}-win-x64-internal.exe`);
 if (existsSync(file) || existsSync(file + '.sha256')) throw new Error('RELEASE_ALREADY_EXISTS');
+signingInfo();
 mkdirSync(artifacts, { recursive: true });
 const lock = path.join(artifacts, '.issuer-package.lock');
 writeFileSync(lock, JSON.stringify({ pid: process.pid, version }), { flag: 'wx' });
@@ -74,6 +82,10 @@ run([
 const payload = path.join(artifacts, 'issuer-payload');
 reset(payload);
 cpSync(path.join(artifacts, 'issuer-desktop/win-unpacked'), payload, { recursive: true });
+signExecutable(path.join(payload, 'MetaExam.Issuer.exe'));
+const codeSigning = exportSigningCertificate(path.join(payload, 'MetaExam-CodeSigning.cer'));
+writeFileSync(path.join(payload, 'code-signing.json'), JSON.stringify(codeSigning, null, 2));
+copyFileSync(path.join(root, 'docs/code-signing.md'), path.join(payload, 'CODE-SIGNING.md'));
 mkdirSync(path.join(payload, 'runtime'));
 mkdirSync(path.join(payload, 'service'));
 copyFileSync(path.join(root, '.tools/node/node.exe'), path.join(payload, 'runtime/node.exe'));
@@ -93,7 +105,8 @@ const builderRequire = createRequire(createRequire(import.meta.url).resolve('ele
 const asar = createRequire(builderRequire.resolve('app-builder-lib'))('@electron/asar');
 const archive = path.join(payload, 'resources/app.asar'),
   entries = asar.listPackage(archive);
-const denied = /private\.pem|\.sqlite(?:-wal|-shm)?$|\.missuer$|\.mlic$|WinSW|postgres/i;
+const denied =
+  /private\.pem|\.pfx$|\.p12$|\.dpapi$|\.sqlite(?:-wal|-shm)?$|\.missuer$|\.mlic$|WinSW|postgres/i;
 const secret = /-----BEGIN (?:ENCRYPTED |RSA |EC )?PRIVATE KEY-----[\r\n]+[A-Za-z0-9+/=]{30}/;
 for (const entry of entries) {
   const name = entry.replaceAll('\\', '/').replace(/^\//, '');
@@ -137,10 +150,18 @@ const staging = path.join(artifacts, 'issuer-staging');
 reset(staging);
 execFileSync(
   path.join(root, '.tools/inno/ISCC.exe'),
-  ['/Qp', '/O' + staging, '/DIssuerVersion=' + version, path.join(root, 'installer/Issuer.iss')],
+  [
+    '/Qp',
+    innoSigningArgument(),
+    '/O' + staging,
+    '/DIssuerVersion=' + version,
+    path.join(root, 'installer/Issuer.iss'),
+  ],
   { cwd: root, stdio: 'inherit', windowsHide: true },
 );
+verifyExecutable(path.join(staging, path.basename(file)));
 copyFileSync(path.join(staging, path.basename(file)), file, constants.COPYFILE_EXCL);
+exportSigningCertificate(file + '.cer');
 writeFileSync(
   file + '.sha256',
   createHash('sha256').update(readFileSync(file)).digest('hex') + '  ' + path.basename(file) + '\n',
