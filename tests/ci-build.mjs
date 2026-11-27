@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { recordBuild, verifyBuild } from '../tools/ci/build.mjs';
 
+mkdirSync(path.resolve('.local'), { recursive: true });
 const directory = mkdtempSync(path.resolve('.local/ci-build-test-'));
 assert.equal(path.dirname(directory), path.resolve('.local'));
 const write = (file, value) => {
