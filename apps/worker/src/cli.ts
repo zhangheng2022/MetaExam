@@ -12,6 +12,7 @@ import {
   requireAdministrator,
   loadMaintenanceConfig,
   grantRuntimeAccess,
+  BootstrapRepository,
 } from '@metaexam/db';
 import { LicenseError } from '@metaexam/domain';
 import { readLicenseMaintenanceInput, runLicenseMaintenance } from './license-maintenance';
@@ -69,12 +70,21 @@ async function main() {
     if (!response.ok) throw new Error('STOP_FAILED');
     return;
   }
-  if (command === 'migrate-installed') requireAdministrator();
+  if (command && ['migrate-installed', 'setup-token', 'setup-token-if-needed'].includes(command))
+    requireAdministrator();
   const db = createDatabase(
     command === 'migrate-installed' ? loadMaintenanceConfig() : loadConfig(),
   );
   try {
     switch (command) {
+      case 'setup-token-if-needed':
+        if (await new BootstrapRepository(db).initialized()) {
+          console.log('ALREADY_INITIALIZED');
+        } else {
+          await issueBootstrapFile(db);
+          console.log('SETUP_TOKEN_READY');
+        }
+        break;
       case 'setup-token':
         await issueBootstrapFile(db);
         console.log('SETUP_TOKEN_READY');

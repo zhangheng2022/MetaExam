@@ -1,6 +1,6 @@
 {
   "name": "metaexam",
-  "version": "0.1.9",
+  "version": "0.1.13",
   "private": true,
   "packageManager": "pnpm@10.24.0",
   "engines": {
@@ -56,7 +56,8 @@
     "test:reports": "tsx tests/reports.mts && tsx tests/reports-ui.mts",
     "test:compatibility": "node tests/windows-compatibility.mjs",
     "test:signing": "node tests/signing.mjs",
-    "test:ci": "node tests/ci.mjs && powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tests/ci-signing.ps1 && node tests/ci-runner.mjs"
+    "test:ci": "node tests/ci.mjs && powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tests/ci-signing.ps1 && node tests/ci-runner.mjs",
+    "test:install-repair": "node --test tests/install-repair.mjs && node tests/service-config.mjs && node tests/install-bootstrap.mjs"
   },
   "devDependencies": {
     "@ant-design/cli": "6.7.2",

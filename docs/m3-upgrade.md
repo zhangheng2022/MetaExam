@@ -54,3 +54,9 @@
 - [ ] Inno 安装失败／取消、卸载日志合并与快捷方式无异常；不得将测试适配器结果视为通过。
 
 参考：[Inno Setup 事件](https://jrsoftware.org/inno-setup/documentation/topic_scriptevents.htm)、[脚本常量](https://jrsoftware.org/inno-setup/documentation/topic_scriptconstants.htm)、[PostgreSQL 18 升级说明](https://www.postgresql.org/docs/18/upgrading.html)。本批固定 PostgreSQL 二进制，未实施大版本数据库升级。
+
+# 未完成的首次安装
+
+客户 0.1.13 起，安装记录为 `phase=configuring` 时，安装器自动进入首次安装修复，正常 `installed` 记录仍走上述升级协议。关闭管理器，选择原安装目录，直接运行新修复包即可。程序替换前先停止本产品服务，保存旧程序及数据冷副本到 `ProgramData\MetaExam\repairs\<ID>`；保留配置、DPAPI 凭据、公钥和已有 PostgreSQL 数据。配置或凭据缺失、归属不明、运行库或迁移清单不匹配时拒绝，不猜测密码或删除数据库。
+
+修复中断保留 `upgrade-pending.json`（`kind=install-repair`），只能用相同 buildId 的包续跑。完成服务、API 版本、schema 和 Worker 心跳检查后才标记 installed、解除业务阻断。已有业务管理员不会被覆盖，不提供默认密码；Windows Administrator 密码也不属于安装器修改范围。详见 [修复与验收记录](install-repair.md)。

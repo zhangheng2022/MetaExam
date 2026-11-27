@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import { setTimeout } from 'node:timers/promises';
 import net from 'node:net';
 import { ordinary, hashFile } from './release.mjs';
+import { refreshServiceConfiguration } from './service-config.mjs';
 
 export function run(exe, args, options = {}, input) {
   return new Promise((resolve, reject) => {
@@ -131,12 +132,19 @@ export async function windowsPlatform({ app, data, source }) {
     programAccess: async (directory) => {
       await ordinary(directory);
       await run('icacls.exe', [
+        path.join(data, 'installation.json'),
+        '/grant',
+        'NT SERVICE\\MetaExam.Postgres:R',
+      ]);
+      await run('icacls.exe', [
         directory,
         '/grant',
         ...['Api', 'Worker', 'Postgres'].map((id) => 'NT SERVICE\\MetaExam.' + id + ':(OI)(CI)RX'),
         '/T',
       ]);
     },
+    recordAccess: async (file) =>
+      run('icacls.exe', [file, '/grant', 'NT SERVICE\\MetaExam.Postgres:R']),
     pendingAccess: async (file) => {
       await ordinary(file);
       await run('icacls.exe', [
@@ -172,6 +180,12 @@ export async function windowsPlatform({ app, data, source }) {
         );
         if (!response.ok) throw new Error('UPGRADE_DRAIN_FAILED');
       }
+      // Prevent a queued SCM recovery action from restarting the old binaries
+      // between Stop-Service and the program-directory replacement.
+      for (const id of ['MetaExam.Api', 'MetaExam.Worker']) {
+        await run('sc.exe', ['config', id, 'start=', 'disabled']);
+        await run('sc.exe', ['failure', id, 'reset=', '86400', 'actions=', '']);
+      }
       await ps(
         "$ErrorActionPreference='Stop'; foreach($id in @('MetaExam.Api','MetaExam.Worker')) { $s=Get-Service -Name $id; if($s.Status -ne 'Stopped') { Stop-Service -Name $id -ErrorAction Stop; $s.WaitForStatus('Stopped',[TimeSpan]::FromSeconds(45)) } }",
       );
@@ -201,6 +215,18 @@ export async function windowsPlatform({ app, data, source }) {
       });
     },
     start: async () => {
+      await refreshServiceConfiguration(app, data);
+      for (const id of ['MetaExam.Api', 'MetaExam.Worker']) {
+        await run('sc.exe', ['config', id, 'start=', 'auto']);
+        await run('sc.exe', [
+          'failure',
+          id,
+          'reset=',
+          '86400',
+          'actions=',
+          'restart/5000/restart/15000/restart/60000',
+        ]);
+      }
       await ps(
         "$ErrorActionPreference='Stop'; Start-Service MetaExam.Api,MetaExam.Worker; foreach($id in @('MetaExam.Api','MetaExam.Worker')) { (Get-Service $id).WaitForStatus('Running',[TimeSpan]::FromSeconds(45)) }",
       );

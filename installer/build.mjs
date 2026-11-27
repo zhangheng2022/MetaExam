@@ -326,10 +326,15 @@ for (const name of ['server_license.txt', 'commandlinetools_3rd_party_licenses.t
 for (const name of [
   'setup.mjs',
   'postgres-service.mjs',
+  'bootstrap-database.mjs',
+  'service-config.mjs',
+  'postgres-shutdown.mjs',
   'data-directory.ps1',
   'upgrade.mjs',
   'upgrade-engine.mjs',
   'upgrade-windows.mjs',
+  'repair-engine.mjs',
+  'repair-windows.mjs',
   'release.mjs',
 ])
   copyFileSync(path.join(root, 'installer', name), path.join(payload, 'maintenance', name));

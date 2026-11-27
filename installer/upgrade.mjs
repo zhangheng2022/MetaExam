@@ -4,6 +4,8 @@ import { existsSync } from 'node:fs';
 import { upgrade } from './upgrade-engine.mjs';
 import { windowsPlatform } from './upgrade-windows.mjs';
 import { ordinary } from './release.mjs';
+import { repair } from './repair-engine.mjs';
+import { repairWindows } from './repair-windows.mjs';
 
 const [action, appDir, dataDir] = process.argv.slice(2);
 if (!['apply', 'resume'].includes(action) || !appDir || !dataDir)
@@ -23,8 +25,16 @@ try {
     path.resolve(record.data).toLowerCase() !== options.data.toLowerCase()
   )
     throw new Error('UPGRADE_OWNERSHIP');
-  const platform = await windowsPlatform(options);
-  const result = await upgrade(options, platform);
+  const pendingFile = path.join(options.data, 'upgrade-pending.json');
+  let pending;
+  if (existsSync(pendingFile)) {
+    await ordinary(pendingFile);
+    pending = JSON.parse(await readFile(pendingFile, 'utf8'));
+  }
+  const result =
+    record.phase === 'configuring' || pending?.kind === 'install-repair'
+      ? await repair(options, repairWindows(options))
+      : await upgrade(options, await windowsPlatform(options));
   console.log(JSON.stringify(result));
 } catch (error) {
   const code =

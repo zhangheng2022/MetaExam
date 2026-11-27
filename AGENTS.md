@@ -116,6 +116,8 @@
 
 离线升级见 `docs/m3-upgrade.md`，`test:upgrade` 使用真实旧包和独立数据库验证。安装升级使用独立协调器及维护身份；禁止复用首次安装初始化、改写历史迁移或自动降级数据库。Node/PostgreSQL/WinSW 在本批固定；配置、授权、公钥和历史附件保留。升级 pending 存在时 API 拒绝业务请求、Worker 仅心跳，完成检查后才放行业务。失败保留维护标记、旧程序和完整备份，只允许相同 buildId 续升级；Windows 服务、ACL、Inno 和重启另行验收。
 
+首次安装未完成（`phase=configuring`）使用独立修复流程，见 `docs/install-repair.md`；`test:install-repair` 覆盖中断续跑与隔离 PostgreSQL 的幂等续初始化。修复先停服务并保存数据冷副本和旧程序，保持配置、DPAPI 凭据和公钥；已有 PG_VERSION 不再 initdb，已完成业务初始化不重开令牌。修复 pending 同样阻断业务，健康检查通过才移除；不得把失败安装伪装成正常升级或删除数据重装。
+
 ## 本地诊断
 
 本地诊断见 `docs/m3-diagnostics.md`，使用 `test:diagnostics` 和 `test:desktop` 验证。报告只能逐项挑选固定状态字段，不能复制原始 API 响应、异常、日志、凭据或用户内容。只调用固定回环探针，禁用 Cookie 与重定向；保持超时／体积限制。IPC 不接受路径或 URL，原生文件选择留在主进程；导出禁止覆盖现有文件或写入程序／数据目录。未知不能改写为未激活／未初始化。

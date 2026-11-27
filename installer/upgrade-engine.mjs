@@ -211,12 +211,16 @@ export async function upgrade({ app, data, source }, platform) {
     await platform.start();
     await platform.healthy(release, since);
     await atomic(path.join(app, 'release.json'), release);
-    await atomic(installationFile, {
-      ...installation,
-      version: release.version,
-      buildId: release.buildId,
-      upgradedAt: new Date().toISOString(),
-    });
+    await atomic(
+      installationFile,
+      {
+        ...installation,
+        version: release.version,
+        buildId: release.buildId,
+        upgradedAt: new Date().toISOString(),
+      },
+      platform.recordAccess,
+    );
     delete state.errorCode;
     await checkpoint('completed');
     await atomic(path.join(work, 'result.json'), state);

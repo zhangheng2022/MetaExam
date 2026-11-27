@@ -1,6 +1,6 @@
 {
   "name": "@metaexam/worker",
-  "version": "0.1.9",
+  "version": "0.1.13",
   "private": true,
   "main": "dist/main.js",
   "types": "dist/index.d.ts",

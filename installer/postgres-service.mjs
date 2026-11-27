@@ -1,7 +1,9 @@
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { ensureApplicationDatabase } from './bootstrap-database.mjs';
+import { installPostgresShutdown, startPostgres } from './postgres-shutdown.mjs';
 const app = process.env.METAEXAM_INSTALL_ROOT,
   data = process.env.METAEXAM_DATA_ROOT;
 if (!app || !data) throw new Error('SERVICE_CONFIGURATION_REQUIRED');
@@ -28,8 +30,15 @@ function decrypt(file) {
   });
 }
 const ownerPassword = decrypt(path.join(data, 'secrets/owner.dpapi'));
+const record = JSON.parse(readFileSync(path.join(data, 'installation.json'), 'utf8'));
+const configuring =
+  record.product === 'MetaExam' &&
+  record.phase === 'configuring' &&
+  path.resolve(record.app).toLowerCase() === path.resolve(app).toLowerCase() &&
+  path.resolve(record.data).toLowerCase() === path.resolve(data).toLowerCase();
 const fresh = !existsSync(path.join(pgData, 'PG_VERSION'));
 if (fresh) {
+  if (!configuring) throw new Error('DATABASE_MISSING_REQUIRES_RECOVERY');
   if (existsSync(pgData))
     throw new Error('Refusing to initialize a nonempty or partial database directory');
   const file = path.join(data, 'postgres/init-pass.txt');
@@ -53,12 +62,9 @@ if (fresh) {
     unlinkSync(file);
   }
 }
-const child = spawn(
-  path.join(bin, 'postgres.exe'),
-  ['-D', pgData, '-h', '127.0.0.1', '-p', String(config.database.port)],
-  { stdio: 'inherit', windowsHide: true },
-);
+const child = startPostgres(bin, pgData, config.database.port);
 child.on('exit', (code) => process.exit(code ?? 1));
+installPostgresShutdown(child, bin, pgData);
 // The PostgreSQL supervisor must remain available for interrupted-restore recovery.
 const db = {
   pool: new Pool({
@@ -80,14 +86,14 @@ try {
     }
   }
   if (!connected) throw new Error('PostgreSQL did not become ready');
-  if (fresh) {
-    // Password is a generated hex string; no user-supplied SQL identifiers are accepted.
-    if (!/^[a-f0-9]{64}$/.test(config.database.password))
-      throw new Error('Unexpected generated credential');
-    await db.pool.query(
-      "CREATE ROLE metaexam_app LOGIN PASSWORD '" + config.database.password + "'",
-    );
-    await db.pool.query('CREATE DATABASE metaexam OWNER metaexam_owner');
+  if (configuring) {
+    await ensureApplicationDatabase(db.pool, config.database.password);
+    const runtime = new Pool(config.database);
+    try {
+      await runtime.query('SELECT 1');
+    } finally {
+      await runtime.end();
+    }
   }
   await db.pool.end();
   if (existsSync(path.join(config.home, 'maintenance.json'))) {
@@ -98,7 +104,7 @@ try {
       database: { ...config.database, user: 'metaexam_owner', password: ownerPassword },
     });
     try {
-      if (fresh) {
+      if (configuring) {
         await migrate(owner);
         await ensureInstance(owner);
       }

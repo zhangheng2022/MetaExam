@@ -1,3 +1,4 @@
+import { serviceXml, serviceEntries, registerServiceEventSources } from './service-config.mjs';
 // Executed by the elevated installer ONLY on the dedicated test machine.
 import {
   readFileSync,
@@ -6,7 +7,9 @@ import {
   existsSync,
   copyFileSync,
   appendFileSync,
+  unlinkSync,
 } from 'node:fs';
+import { createRequire } from 'node:module';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { randomBytes, X509Certificate, createPrivateKey, createPublicKey } from 'node:crypto';
 import path from 'node:path';
@@ -21,7 +24,7 @@ const [
   subnet = 'LocalSubnet',
   databasePortArg = '55432',
 ] = process.argv.slice(2);
-if (!appDir || !dataDir || !['install', 'uninstall'].includes(action))
+if (!appDir || !dataDir || !['install', 'repair', 'uninstall'].includes(action))
   throw new Error('Invalid setup arguments');
 const app = path.resolve(appDir),
   data = path.resolve(dataDir),
@@ -75,9 +78,32 @@ if (action === 'uninstall') {
   console.log('SERVICES_REMOVED_DATA_PRESERVED');
   process.exit(0);
 }
-const port = Number(portArg);
+const repairing = action === 'repair';
+let savedConfig;
+if (repairing) {
+  const require = createRequire(path.join(app, 'server/db.cjs'));
+  require('./db.cjs').requireAdministrator();
+  const { repairWindows } = await import('./repair-windows.mjs');
+  await repairWindows({ app, data, source: app }).validate();
+  const pending = JSON.parse(readFileSync(path.join(data, 'upgrade-pending.json'), 'utf8'));
+  const record = JSON.parse(readFileSync(marker, 'utf8'));
+  const release = JSON.parse(readFileSync(path.join(app, 'release.json'), 'utf8'));
+  if (
+    pending.kind !== 'install-repair' ||
+    pending.phase !== 'configuring' ||
+    pending.buildId !== release.buildId ||
+    pending.app !== app ||
+    pending.data !== data ||
+    record.product !== 'MetaExam' ||
+    record.app !== app ||
+    record.data !== data
+  )
+    throw new Error('REPAIR_COORDINATOR_REQUIRED');
+  savedConfig = JSON.parse(readFileSync(path.join(data, 'config.json'), 'utf8'));
+}
+const port = repairing ? savedConfig.api.port : Number(portArg);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid HTTPS port');
-const databasePort = Number(databasePortArg);
+const databasePort = repairing ? savedConfig.database.port : Number(databasePortArg);
 if (
   !Number.isInteger(databasePort) ||
   databasePort < 1 ||
@@ -92,7 +118,7 @@ if (existsSync(marker) && !owned)
   throw new Error('Data directory belongs to a different installation');
 if (!owned && existsSync(path.join(data, 'postgres')))
   throw new Error('Existing database without installation record');
-if (owned) throw new Error('EXISTING_INSTALLATION_USE_UPGRADE');
+if (owned && !repairing) throw new Error('EXISTING_INSTALLATION_USE_UPGRADE');
 if (!!certFile != !!keyFile)
   throw new Error('Certificate and private key must be supplied together');
 for (const p of [port, databasePort])
@@ -111,16 +137,17 @@ if (certFile) {
     throw new Error('Certificate must include 127.0.0.1 SAN for local management');
   createPublicKey(key);
 }
-run('powershell.exe', [
-  '-NoProfile',
-  '-NonInteractive',
-  '-ExecutionPolicy',
-  'Bypass',
-  '-File',
-  path.join(app, 'maintenance/data-directory.ps1'),
-  '-DataPath',
-  data,
-]);
+if (!repairing)
+  run('powershell.exe', [
+    '-NoProfile',
+    '-NonInteractive',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-File',
+    path.join(app, 'maintenance/data-directory.ps1'),
+    '-DataPath',
+    data,
+  ]);
 dataSecured = true;
 for (const sub of [
   'runtime',
@@ -132,53 +159,21 @@ for (const sub of [
   'logs/postgres',
 ])
   mkdirSync(path.join(data, sub), { recursive: true });
-writeFileSync(
-  marker,
-  JSON.stringify({ product: 'MetaExam', app, data, phase: 'configuring' }, null, 2),
-);
-const encode = (s) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;');
+if (!repairing)
+  writeFileSync(
+    marker,
+    JSON.stringify({ product: 'MetaExam', app, data, phase: 'configuring' }, null, 2),
+  );
 const node = path.join(app, 'runtime/node.exe'),
   configPath = path.join(data, 'config.json');
-const entries = [
-  ['MetaExam.Postgres', 'maintenance/postgres-service.mjs', path.join(data, 'logs/postgres')],
-  ['MetaExam.Api', 'server/api.cjs', path.join(data, 'logs/api')],
-  ['MetaExam.Worker', 'server/worker.cjs', path.join(data, 'logs/worker')],
-];
-for (const [id, entry, log] of entries) {
-  const stop =
-    id === 'MetaExam.Postgres'
-      ? '<stopexecutable>' +
-        encode(path.join(app, 'postgres/bin/pg_ctl.exe')) +
-        '</stopexecutable><stoparguments>-D &quot;' +
-        encode(path.join(data, 'postgres/data')) +
-        '&quot; stop -m fast -w</stoparguments>'
-      : '';
-  const xml =
-    '<service><id>' +
-    id +
-    '</id><name>' +
-    id +
-    '</name><description>MetaExam internal test service</description><executable>' +
-    encode(node) +
-    '</executable><arguments>--use-system-ca &quot;' +
-    encode(path.join(app, entry)) +
-    '&quot;</arguments><workingdirectory>' +
-    encode(app) +
-    '</workingdirectory><env name="METAEXAM_CONFIG" value="' +
-    encode(configPath) +
-    '"/><env name="METAEXAM_INSTALL_ROOT" value="' +
-    encode(app) +
-    '"/><env name="METAEXAM_DATA_ROOT" value="' +
-    encode(data) +
-    '"/><logpath>' +
-    encode(log) +
-    '</logpath><log mode="roll-by-size"><sizeThreshold>10240</sizeThreshold><keepFiles>5</keepFiles></log><stoptimeout>30sec</stoptimeout>' +
-    stop +
-    '</service>';
+registerServiceEventSources();
+for (const [id, entry, log] of serviceEntries(data)) {
+  const xml = serviceXml(app, data, id, entry, log);
   const exe = path.join(app, 'services', id + '.exe');
   copyFileSync(path.join(app, 'vendor/WinSW.NET462.exe'), exe);
   writeFileSync(path.join(app, 'services', id + '.xml'), xml);
-  sc('create', id, 'binPath=', '"' + exe + '"', 'start=', 'auto', 'obj=', 'NT SERVICE\\' + id);
+  if (repairing && query(id)) sc('config', id, 'start=', 'auto');
+  else sc('create', id, 'binPath=', '"' + exe + '"', 'start=', 'auto', 'obj=', 'NT SERVICE\\' + id);
   sc('sidtype', id, 'unrestricted');
   sc('failure', id, 'reset=', '86400', 'actions=', 'restart/5000/restart/15000/restart/60000');
   run('icacls.exe', [data, '/grant', 'NT SERVICE\\' + id + ':RX']);
@@ -187,6 +182,7 @@ for (const [id, entry, log] of entries) {
 }
 sc('config', 'MetaExam.Api', 'depend=', 'MetaExam.Postgres');
 sc('config', 'MetaExam.Worker', 'depend=', 'MetaExam.Postgres');
+run('icacls.exe', [marker, '/grant', 'NT SERVICE\\MetaExam.Postgres:R']);
 for (const id of services)
   run('icacls.exe', [path.join(data, 'runtime'), '/grant', 'NT SERVICE\\' + id + ':(OI)(CI)M']);
 run('icacls.exe', [
@@ -216,60 +212,63 @@ function secret(name, value, allowed) {
   ]);
   return file;
 }
-const appPassword = secret('database.dpapi', randomBytes(32).toString('hex'), services);
-secret('owner.dpapi', randomBytes(32).toString('hex'), ['MetaExam.Postgres']);
-const config = {
-  home: path.join(data, 'runtime'),
-  database: {
-    host: '127.0.0.1',
-    port: databasePort,
-    database: 'metaexam',
-    user: 'metaexam_app',
-    password: '',
-  },
-  passwordDpapi: appPassword,
-  api: {
-    host: certFile ? '0.0.0.0' : '127.0.0.1',
-    port,
-    webDir: path.join(app, 'web'),
-    managementToken: randomBytes(32).toString('hex'),
-  },
-  trustFile: path.join(app, 'public-keys.json'),
-  production: !!certFile,
-  leaseSeconds: 30,
-};
-if (certFile) {
-  config.api.tlsCert = path.join(data, 'certs/server.crt');
-  config.api.tlsKey = path.join(data, 'certs/server.key');
-  copyFileSync(certFile, config.api.tlsCert);
-  copyFileSync(keyFile, config.api.tlsKey);
-  run('icacls.exe', [path.join(data, 'certs'), '/grant', 'NT SERVICE\\MetaExam.Api:(OI)(CI)R']);
+if (!repairing) {
+  const appPassword = secret('database.dpapi', randomBytes(32).toString('hex'), services);
+  secret('owner.dpapi', randomBytes(32).toString('hex'), ['MetaExam.Postgres']);
+  const config = {
+    home: path.join(data, 'runtime'),
+    database: {
+      host: '127.0.0.1',
+      port: databasePort,
+      database: 'metaexam',
+      user: 'metaexam_app',
+      password: '',
+    },
+    passwordDpapi: appPassword,
+    api: {
+      host: certFile ? '0.0.0.0' : '127.0.0.1',
+      port,
+      webDir: path.join(app, 'web'),
+      managementToken: randomBytes(32).toString('hex'),
+    },
+    trustFile: path.join(app, 'public-keys.json'),
+    production: !!certFile,
+    leaseSeconds: 30,
+  };
+  if (certFile) {
+    config.api.tlsCert = path.join(data, 'certs/server.crt');
+    config.api.tlsKey = path.join(data, 'certs/server.key');
+    copyFileSync(certFile, config.api.tlsCert);
+    copyFileSync(keyFile, config.api.tlsKey);
+    run('icacls.exe', [path.join(data, 'certs'), '/grant', 'NT SERVICE\\MetaExam.Api:(OI)(CI)R']);
+  }
+  writeFileSync(configPath, JSON.stringify(config, null, 2));
+  run('icacls.exe', [configPath, '/grant', ...services.map((id) => 'NT SERVICE\\' + id + ':R')]);
+  writeFileSync(
+    path.join(data, 'public-config.json'),
+    JSON.stringify({ api: { port, tlsCert: config.api.tlsCert } }),
+  );
+  run('icacls.exe', [path.join(data, 'public-config.json'), '/grant', '*S-1-5-32-545:R']);
+  run('icacls.exe', [data, '/grant', '*S-1-5-32-545:RX']);
+  if (certFile)
+    run('netsh.exe', [
+      'advfirewall',
+      'firewall',
+      'add',
+      'rule',
+      'name=MetaExam HTTPS',
+      'dir=in',
+      'action=allow',
+      'protocol=TCP',
+      'localport=' + port,
+      'remoteip=' + subnet,
+      'profile=private,domain',
+      'program=' + node,
+    ]);
 }
-writeFileSync(configPath, JSON.stringify(config, null, 2));
-run('icacls.exe', [configPath, '/grant', ...services.map((id) => 'NT SERVICE\\' + id + ':R')]);
-writeFileSync(
-  path.join(data, 'public-config.json'),
-  JSON.stringify({ api: { port, tlsCert: config.api.tlsCert } }),
-);
-run('icacls.exe', [path.join(data, 'public-config.json'), '/grant', '*S-1-5-32-545:R']);
-run('icacls.exe', [data, '/grant', '*S-1-5-32-545:RX']);
-if (certFile)
-  run('netsh.exe', [
-    'advfirewall',
-    'firewall',
-    'add',
-    'rule',
-    'name=MetaExam HTTPS',
-    'dir=in',
-    'action=allow',
-    'protocol=TCP',
-    'localport=' + port,
-    'remoteip=' + subnet,
-    'profile=private,domain',
-    'program=' + node,
-  ]);
-sc('start', 'MetaExam.Postgres');
 const readyFile = path.join(data, 'runtime/database-ready.json');
+if (existsSync(readyFile)) unlinkSync(readyFile);
+sc('start', 'MetaExam.Postgres');
 let ready = false;
 for (let i = 0; i < 90; i++) {
   if (existsSync(readyFile)) {
@@ -282,26 +281,31 @@ if (!ready)
   throw new Error(
     'DATABASE_INITIALIZATION_FAILED: inspect database service logs; existing data was retained',
   );
-execFileSync(node, [path.join(app, 'server/cli.cjs'), 'setup-token'], {
-  env: { ...process.env, METAEXAM_CONFIG: configPath },
-  windowsHide: true,
-  stdio: 'pipe',
-});
+execFileSync(
+  node,
+  [path.join(app, 'server/cli.cjs'), repairing ? 'setup-token-if-needed' : 'setup-token'],
+  {
+    env: { ...process.env, METAEXAM_CONFIG: configPath },
+    windowsHide: true,
+    stdio: 'pipe',
+  },
+);
 sc('start', 'MetaExam.Api');
 sc('start', 'MetaExam.Worker');
-writeFileSync(
-  marker,
-  JSON.stringify(
-    {
-      product: 'MetaExam',
-      app,
-      data,
-      phase: 'installed',
-      version: JSON.parse(readFileSync(path.join(app, 'release.json'), 'utf8')).version,
-      buildId: JSON.parse(readFileSync(path.join(app, 'release.json'), 'utf8')).buildId,
-    },
-    null,
-    2,
-  ),
-);
+if (!repairing)
+  writeFileSync(
+    marker,
+    JSON.stringify(
+      {
+        product: 'MetaExam',
+        app,
+        data,
+        phase: 'installed',
+        version: JSON.parse(readFileSync(path.join(app, 'release.json'), 'utf8')).version,
+        buildId: JSON.parse(readFileSync(path.join(app, 'release.json'), 'utf8')).buildId,
+      },
+      null,
+      2,
+    ),
+  );
 console.log('INSTALL_CONFIGURED: complete the independent acceptance checklist');

@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-#define MyAppVersion "0.1.9"
+#define MyAppVersion "0.1.13"
 #endif
 [Setup]
 SetupIconFile=..\packages\ui\public\brand\icon.ico
@@ -34,6 +34,11 @@ Type: files; Name: "{app}\maintenance\release.mjs"
 Type: files; Name: "{app}\maintenance\upgrade.mjs"
 Type: files; Name: "{app}\maintenance\upgrade-engine.mjs"
 Type: files; Name: "{app}\maintenance\upgrade-windows.mjs"
+Type: files; Name: "{app}\maintenance\repair-engine.mjs"
+Type: files; Name: "{app}\maintenance\repair-windows.mjs"
+Type: files; Name: "{app}\maintenance\bootstrap-database.mjs"
+Type: files; Name: "{app}\maintenance\service-config.mjs"
+Type: files; Name: "{app}\maintenance\postgres-shutdown.mjs"
 Type: files; Name: "{app}\maintenance\UPGRADE.md"
 Type: files; Name: "{app}\maintenance\DIAGNOSTICS.md"
 [Code]
@@ -105,7 +110,7 @@ end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
  Result := '';
- if Upgrading and not FileExists(ExpandConstant('{app}\server\db.cjs')) then
+ if Upgrading and (not FileExists(ExpandConstant('{app}\release.json')) or not FileExists(ExpandConstant('{app}\runtime\node.exe'))) then
    Result := 'Select the existing MetaExam installation directory. Existing data will not be initialized again.';
 end;
 procedure CurStepChanged(CurStep: TSetupStep);
@@ -117,7 +122,7 @@ begin
    if Upgrading then begin
      Args := '--use-system-ca "' + ExpandConstant('{tmp}\upgrade-payload\maintenance\upgrade.mjs') + '" apply "' + ExpandConstant('{app}') + '" "' + ExpandConstant('{commonappdata}\MetaExam') + '"';
      if not Exec(ExpandConstant('{tmp}\upgrade-payload\runtime\node.exe'), Args, ExpandConstant('{tmp}\upgrade-payload'), SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
-       RaiseException('Upgrade did not complete. Close the manager, inspect ProgramData\MetaExam\upgrade.log and rerun the SAME package to resume. Do not remove maintenance markers or install an older version.');
+       RaiseException('Upgrade or incomplete-install repair did not complete. Close the manager, inspect ProgramData\MetaExam\upgrade.log and rerun the SAME package to resume. Existing data and recovery records are retained. Do not remove maintenance markers or install an older version.');
      CompletePostInstall;
      Exit;
    end;
