@@ -17,7 +17,8 @@ if (-not $Child) {
     Add-Type -Path (Join-Path $PSScriptRoot 'RestrictedProcess.cs')
     $exe=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
     $command='"'+$exe+'" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$PSCommandPath+'" -Child'
-    $code=[MetaExamRestrictedProcess]::Run($exe,$command,$root)
+    $code=[MetaExamRestrictedProcess]::Run($exe,$command,$root,($log+'.native'))
+    if (Test-Path ($log+'.native')) { Get-Content ($log+'.native') }
   } else {
     & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $PSCommandPath -Child
     $code=$LASTEXITCODE
@@ -37,8 +38,16 @@ if (-not $Child) {
   $env:PATH=(Join-Path $root '.tools/node')+';'+(Join-Path $root '.tools/pnpm')+';'+$env:PATH
   function Task([string[]]$Arguments) {
     Write-Output ('TASK_START: '+($Arguments -join ' '))
-    & (Join-Path $root '.tools/node/node.exe') (Join-Path $root '.tools/pnpm/node_modules/pnpm/bin/pnpm.cjs') @Arguments
-    if ($null -eq $LASTEXITCODE -or $LASTEXITCODE -ne 0) { throw ('CI_TASK_FAILED: '+($Arguments -join ' ')) }
+    $exitCode=$null
+    $global:LASTEXITCODE=$null
+    # Windows PowerShell represents native stderr as ErrorRecords; keep diagnostic
+    # text, but determine success from exit status and actual test completion.
+    $ErrorActionPreference='Continue'
+    try {
+      & (Join-Path $root '.tools/node/node.exe') (Join-Path $root '.tools/pnpm/node_modules/pnpm/bin/pnpm.cjs') @Arguments 2>&1 | ForEach-Object { $_.ToString() }
+      $exitCode=$global:LASTEXITCODE
+    } finally { $ErrorActionPreference='Stop' }
+    if ($null -eq $exitCode -or $exitCode -ne 0) { throw ('CI_TASK_FAILED: '+($Arguments -join ' ')) }
     Write-Output ('TASK_OK: '+($Arguments -join ' '))
   }
   try {

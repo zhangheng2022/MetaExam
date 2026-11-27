@@ -36,6 +36,12 @@ try {
   result = execute();
   assert.notEqual(result.status, 0);
   assert.match(result.stderr + result.stdout, /CI_VERIFICATION_INCOMPLETE/);
+  writeFileSync(
+    stub,
+    `process.stderr.write('expected native diagnostic\\n');console.log('ISOLATED_PACKAGE_SMOKE_PASSED\\nPASS packaged issuer real Electron\\nSIGNING_OK:\\nPASS closing Electron leaves API and worker running');\n`,
+  );
+  result = execute();
+  assert.equal(result.status, 0, result.stderr + result.stdout);
   console.log(
     'PASS real child exit failure and silent success cannot pass the CI verification gate',
   );

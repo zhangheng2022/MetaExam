@@ -12,6 +12,7 @@ public static class MetaExamRestrictedProcess {
         public short Show,ReservedSize; public IntPtr Reserved2,Input,Output,Error;
     }
     [StructLayout(LayoutKind.Sequential)] struct ProcessInfo { public IntPtr Process,Thread; public uint Id,ThreadId; }
+    [StructLayout(LayoutKind.Sequential)] struct SecurityAttributes { public int Size; public IntPtr Descriptor; [MarshalAs(UnmanagedType.Bool)] public bool Inherit; }
     [DllImport("advapi32.dll",SetLastError=true)] static extern bool OpenProcessToken(IntPtr process,uint access,out IntPtr token);
     [DllImport("kernel32.dll")] static extern IntPtr GetCurrentProcess();
     [DllImport("advapi32.dll",SetLastError=true)] static extern bool CreateRestrictedToken(IntPtr token,uint flags,uint count,ref Sid disabled,uint delete,IntPtr privileges,uint restrict,IntPtr sids,out IntPtr result);
@@ -20,12 +21,14 @@ public static class MetaExamRestrictedProcess {
     [DllImport("kernel32.dll")] static extern uint WaitForSingleObject(IntPtr handle,uint timeout);
     [DllImport("kernel32.dll")] static extern bool GetExitCodeProcess(IntPtr handle,out uint code);
     [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle);
+    [DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)] static extern IntPtr CreateFileW(string name,uint access,uint share,ref SecurityAttributes security,uint disposition,uint flags,IntPtr template);
     static IntPtr AllocateSid(string value) {
         var sid=new SecurityIdentifier(value); var bytes=new byte[sid.BinaryLength]; sid.GetBinaryForm(bytes,0);
         var pointer=Marshal.AllocHGlobal(bytes.Length); Marshal.Copy(bytes,0,pointer,bytes.Length); return pointer;
     }
-    public static int Run(string executable,string command,string cwd) {
+    public static int Run(string executable,string command,string cwd,string outputFile) {
         IntPtr original=IntPtr.Zero, restricted=IntPtr.Zero;
+        IntPtr input=IntPtr.Zero, output=IntPtr.Zero;
         var admin=AllocateSid("S-1-5-32-544"); var medium=AllocateSid("S-1-16-8192");
         try {
             if(!OpenProcessToken(GetCurrentProcess(),0xF01FF,out original)) throw new Win32Exception();
@@ -33,14 +36,18 @@ public static class MetaExamRestrictedProcess {
             if(!CreateRestrictedToken(original,5,1,ref disabled,0,IntPtr.Zero,0,IntPtr.Zero,out restricted)) throw new Win32Exception();
             var integrity=new Sid{Pointer=medium,Attributes=0x20};
             if(!SetTokenInformation(restricted,25,ref integrity,Marshal.SizeOf(typeof(Sid))+new SecurityIdentifier("S-1-16-8192").BinaryLength)) throw new Win32Exception();
-            var startup=new Startup{Size=Marshal.SizeOf(typeof(Startup)),Flags=1,Show=0}; ProcessInfo child;
-            // Hosted runners may have no console. Allocate a hidden console so nested
-            // native tools do not inherit invalid standard handles and silently exit.
-            if(!CreateProcessAsUserW(restricted,executable,new StringBuilder(command),IntPtr.Zero,IntPtr.Zero,false,0x10,IntPtr.Zero,cwd,ref startup,out child)) throw new Win32Exception();
+            var security=new SecurityAttributes{Size=Marshal.SizeOf(typeof(SecurityAttributes)),Inherit=true};
+            input=CreateFileW("NUL",0x80000000,3,ref security,3,0,IntPtr.Zero);
+            output=CreateFileW(outputFile,0x40000000,3,ref security,2,0,IntPtr.Zero);
+            if(input==new IntPtr(-1)||output==new IntPtr(-1))throw new Win32Exception();
+            var startup=new Startup{Size=Marshal.SizeOf(typeof(Startup)),Flags=0x101,Show=0,Input=input,Output=output,Error=output}; ProcessInfo child;
+            // Explicit inheritable file/NUL handles also work on runners without a
+            // desktop console. Capture early startup errors before script redirection.
+            if(!CreateProcessAsUserW(restricted,executable,new StringBuilder(command),IntPtr.Zero,IntPtr.Zero,true,0x08000000,IntPtr.Zero,cwd,ref startup,out child)) throw new Win32Exception();
             try {
                 if(WaitForSingleObject(child.Process,0xffffffff)!=0) throw new Win32Exception();
                 uint code; if(!GetExitCodeProcess(child.Process,out code)) throw new Win32Exception(); return (int)code;
             } finally {CloseHandle(child.Thread);CloseHandle(child.Process);}
-        } finally {if(original!=IntPtr.Zero)CloseHandle(original);if(restricted!=IntPtr.Zero)CloseHandle(restricted);Marshal.FreeHGlobal(admin);Marshal.FreeHGlobal(medium);}
+        } finally {if(input!=IntPtr.Zero&&input!=new IntPtr(-1))CloseHandle(input);if(output!=IntPtr.Zero&&output!=new IntPtr(-1))CloseHandle(output);if(original!=IntPtr.Zero)CloseHandle(original);if(restricted!=IntPtr.Zero)CloseHandle(restricted);Marshal.FreeHGlobal(admin);Marshal.FreeHGlobal(medium);}
     }
 }
