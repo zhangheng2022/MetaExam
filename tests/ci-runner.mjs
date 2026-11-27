@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, copyFileSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 const root = process.cwd(),
   directory = mkdtempSync(path.join(root, '.local/ci-runner-test-'));
 assert.equal(path.dirname(directory), path.join(root, '.local'));
@@ -15,6 +15,7 @@ try {
     path.join(directory, '.tools/node/node.exe'),
   );
   const stub = path.join(directory, '.tools/pnpm/node_modules/pnpm/bin/pnpm.cjs');
+  const env = { ...process.env, GITHUB_STEP_SUMMARY: path.join(directory, 'summary.md') };
   const execute = () =>
     spawnSync(
       'powershell.exe',
@@ -26,7 +27,7 @@ try {
         '-File',
         path.join(directory, 'tools/ci/verify.ps1'),
       ],
-      { encoding: 'utf8', windowsHide: true, timeout: 60000 },
+      { encoding: 'utf8', windowsHide: true, timeout: 60000, env },
     );
   writeFileSync(stub, "process.exit(process.argv.includes('db:start') ? 23 : 0);\n");
   let result = execute();
@@ -47,6 +48,40 @@ try {
   );
   result = execute();
   assert.equal(result.status, 0, result.stderr + result.stdout);
+  writeFileSync(
+    stub,
+    "if(process.argv.includes('db:start')) { console.log('READY_BEFORE_EXIT'); setTimeout(()=>process.exit(23),2500); }\n",
+  );
+  const child = spawn(
+    'powershell.exe',
+    [
+      '-NoProfile',
+      '-NonInteractive',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-File',
+      path.join(directory, 'tools/ci/verify.ps1'),
+    ],
+    { windowsHide: true, timeout: 60000, env },
+  );
+  let firstOutputAt,
+    output = '';
+  child.stderr.resume();
+  child.stdout.on('data', (data) => {
+    output += data;
+    if (output.includes('READY_BEFORE_EXIT') && firstOutputAt === undefined)
+      firstOutputAt = Date.now();
+  });
+  const code = await new Promise((resolve, reject) => {
+    child.once('error', reject);
+    child.once('close', resolve);
+  });
+  assert.notEqual(code, 0);
+  assert.ok(
+    firstOutputAt !== undefined && Date.now() - firstOutputAt >= 500,
+    'test output must be visible while the child is still doing work',
+  );
+  assert.match(output, /TASK_RESULT:/);
   console.log(
     'PASS real child exit failure and silent success cannot pass the CI verification gate',
   );

@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
@@ -73,7 +74,16 @@ public static class MetaExamRestrictedProcess {
             // desktop console. Capture early startup errors before script redirection.
             if(!CreateProcessAsUserW(restricted,executable,new StringBuilder(command),ref desktopSecurity,ref desktopSecurity,true,0x08000000,IntPtr.Zero,cwd,ref startup,out child)) throw new Win32Exception();
             try {
-                if(WaitForSingleObject(child.Process,0xffffffff)!=0) throw new Win32Exception();
+                using(var stream=new FileStream(outputFile,FileMode.Open,FileAccess.Read,FileShare.ReadWrite))
+                using(var reader=new StreamReader(stream,Encoding.UTF8)) {
+                    uint state;
+                    do {
+                        state=WaitForSingleObject(child.Process,250);
+                        Console.Write(reader.ReadToEnd());
+                        if(state!=0 && state!=258) throw new Win32Exception();
+                    } while(state==258);
+                    Console.Write(reader.ReadToEnd());
+                }
                 uint code; if(!GetExitCodeProcess(child.Process,out code)) throw new Win32Exception(); return (int)code;
             } finally {CloseHandle(child.Thread);CloseHandle(child.Process);}
         } finally {if(desktop!=IntPtr.Zero)CloseDesktop(desktop);if(station!=IntPtr.Zero)CloseWindowStation(station);if(descriptor!=IntPtr.Zero)LocalFree(descriptor);if(input!=IntPtr.Zero&&input!=new IntPtr(-1))CloseHandle(input);if(output!=IntPtr.Zero&&output!=new IntPtr(-1))CloseHandle(output);if(original!=IntPtr.Zero)CloseHandle(original);if(restricted!=IntPtr.Zero)CloseHandle(restricted);Marshal.FreeHGlobal(admin);}

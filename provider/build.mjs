@@ -1,4 +1,5 @@
 import { build } from 'esbuild';
+import { verifyBuild } from '../tools/ci/build.mjs';
 import { execFileSync } from 'node:child_process';
 import {
   existsSync,
@@ -63,7 +64,8 @@ for (const item of vendor.files.filter((item) => /node-official|innosetup/.test(
   )
     throw new Error('VENDOR_CHECKSUM_MISMATCH');
 run(['test:compatibility']);
-run(['--filter', '@metaexam/issuer...', 'build']);
+if (process.argv.includes('--reuse-build')) verifyBuild(root);
+else run(['--filter', '@metaexam/issuer...', 'build']);
 const electronDist = path.join(root, 'apps/desktop/node_modules/electron/dist');
 const electronVersion = JSON.parse(
   readFileSync(path.join(root, 'apps/issuer/package.json'), 'utf8'),

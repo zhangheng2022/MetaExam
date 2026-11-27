@@ -18,8 +18,7 @@ jobs:
         with:
           persist-credentials: false
       - name: 准备锁定工具链
-        shell: powershell
-        run: ./tools/bootstrap.ps1
+        uses: ./.github/actions/setup
       - name: CI 保护规则回归
         shell: powershell
         run: ./tools/run.ps1 test:ci

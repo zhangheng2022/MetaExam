@@ -21,6 +21,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { inventory, buildId } from './release.mjs';
 import { loadBuildTrust } from './trust.mjs';
+import { verifyBuild } from '../tools/ci/build.mjs';
 import {
   signingInfo,
   signExecutable,
@@ -79,7 +80,8 @@ for (const item of lock.files) {
 }
 run(['test:compatibility']);
 run(['test:installer-result']);
-run(['build']);
+if (process.argv.includes('--reuse-build')) verifyBuild(root);
+else run(['build']);
 safeReset(payload);
 for (const d of [
   'runtime',

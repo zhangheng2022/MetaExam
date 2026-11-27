@@ -6,7 +6,9 @@ import {
   waitForDraft,
   assetNames,
   validateSourceRun,
+  validatePreflight,
 } from '../tools/ci/release.mjs';
+import { validateBaseline } from '../tools/ci/upgrade-baseline.mjs';
 import { loadBuildTrust } from '../installer/trust.mjs';
 const sha = 'a'.repeat(40),
   tag = 'v0.1.5';
@@ -101,3 +103,31 @@ assert.throws(
   /PRODUCTION_TRUST_MANIFEST_REQUIRED/,
 );
 console.log('PASS CI versions, release immutability, draft commit ownership and public test trust');
+validatePreflight(null, null, sha, tag, false);
+validatePreflight(draft, { object: { type: 'commit', sha } }, sha, tag, true);
+assert.throws(() => validatePreflight(draft, null, sha, tag, false), /REQUIRES_RESUME/);
+assert.throws(
+  () => validatePreflight({ ...draft, draft: false }, null, sha, tag, true),
+  /ALREADY_PUBLISHED/,
+);
+assert.throws(
+  () =>
+    validatePreflight(null, { object: { type: 'commit', sha: 'b'.repeat(40) } }, sha, tag, false),
+  /TAG_COMMIT_MISMATCH/,
+);
+const artifact = { name: 'customer-payload', expired: false, expires_at: '2030-01-01T00:00:00Z' };
+const now = Date.parse('2026-11-28T00:00:00Z');
+validateBaseline([artifact], '0.1.13', '0.1.20', now);
+for (const artifacts of [
+  [],
+  [artifact, artifact],
+  [{ ...artifact, expired: true }],
+  [{ ...artifact, expires_at: 'invalid' }],
+  [{ ...artifact, expires_at: '2026-11-01T00:00:00Z' }],
+]) {
+  assert.throws(() => validateBaseline(artifacts, '0.1.13', '0.1.20', now), /BASELINE_UNAVAILABLE/);
+}
+for (const previous of ['0.1.20', '0.1.21', 'invalid']) {
+  assert.throws(() => validateBaseline([artifact], previous, '0.1.20', now), /NOT_OLDER/);
+}
+console.log('PASS early release and upgrade baseline rejection');

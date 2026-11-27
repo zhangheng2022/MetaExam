@@ -1,5 +1,6 @@
 param([switch]$Child)
 $ErrorActionPreference='Stop'
+[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 Set-Location $root
 New-Item -ItemType Directory -Force '.local' | Out-Null
@@ -33,14 +34,17 @@ if (-not $Child) {
     Write-Output 'CI_RESTRICTED_CHILD_START'
     $code=[MetaExamRestrictedProcess]::Run($exe,$command,$root,($log+'.native'))
     Write-Output ('CI_RESTRICTED_CHILD_EXIT='+$code)
-    if (Test-Path ($log+'.native')) { Get-Content ($log+'.native') }
     Remove-Item -LiteralPath $probe -Force
     Remove-Item Env:METAEXAM_CI_ADMIN_PROBE
   } else {
     & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $PSCommandPath -Child
     $code=$LASTEXITCODE
   }
-  if (Test-Path $log) { Get-Content $log }
+  if ($env:GITHUB_STEP_SUMMARY -and (Test-Path -LiteralPath $log)) {
+    Get-Content -LiteralPath $log | Where-Object { $_.StartsWith('TASK_RESULT: ') } |
+      ForEach-Object { '- '+$_.Substring(13) } |
+      Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+  }
   if ($code -eq 0) {
     $content=Get-Content -LiteralPath $log -Raw
     foreach($marker in @('CI_VERIFICATION_COMPLETE','ISOLATED_PACKAGE_SMOKE_PASSED','PASS packaged issuer real Electron','SIGNING_OK:','PASS closing Electron leaves API and worker running')) {
@@ -61,7 +65,10 @@ if (-not $Child) {
   }
   $env:PATH=(Join-Path $root '.tools/node')+';'+(Join-Path $root '.tools/pnpm')+';'+$env:PATH
   function Task([string[]]$Arguments) {
-    Write-Output ('TASK_START: '+($Arguments -join ' '))
+    $taskName=$Arguments -join ' '
+    $timer=[Diagnostics.Stopwatch]::StartNew()
+    Write-Output ('::group::'+$taskName)
+    Write-Output ('TASK_START: '+$taskName)
     $exitCode=$null
     $global:LASTEXITCODE=$null
     # Windows PowerShell represents native stderr as ErrorRecords; keep diagnostic
@@ -70,7 +77,14 @@ if (-not $Child) {
     try {
       & (Join-Path $root '.tools/node/node.exe') (Join-Path $root '.tools/pnpm/node_modules/pnpm/bin/pnpm.cjs') @Arguments 2>&1 | ForEach-Object { $_.ToString() }
       $exitCode=$global:LASTEXITCODE
-    } finally { $ErrorActionPreference='Stop' }
+    } finally {
+      $ErrorActionPreference='Stop'
+      $timer.Stop()
+      $seconds=[Math]::Round($timer.Elapsed.TotalSeconds,1)
+      $result=if($null -ne $exitCode -and $exitCode -eq 0){'通过'}else{'失败'}
+      Write-Output ('TASK_RESULT: '+$taskName+' '+$result+' '+$seconds+'s')
+      Write-Output '::endgroup::'
+    }
     if ($null -eq $exitCode -or $exitCode -ne 0) { throw ('CI_TASK_FAILED: '+($Arguments -join ' ')) }
     Write-Output ('TASK_OK: '+($Arguments -join ' '))
   }
@@ -80,4 +94,4 @@ if (-not $Child) {
     foreach ($task in @('test:integration','test:install-repair','test:upgrade','test:attempts','test:issuer','test:signing','test:package','test:issuer:package')) { Task @($task) }
   } finally { Task @('db:stop') }
   Write-Output 'CI_VERIFICATION_COMPLETE'
-} *> $log
+} 2>&1 | ForEach-Object { $_.ToString() } | Tee-Object -FilePath $log

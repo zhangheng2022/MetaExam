@@ -175,6 +175,26 @@ function sourceRun() {
   appendFileSync(process.env.GITHUB_ENV, `RELEASE_SOURCE_SHA=${sha}\n`);
   console.log(`Validated successful build ${id} at ${sha}`);
 }
+export function validatePreflight(release, tag, sha, name, resume) {
+  if (release) {
+    validateDraft(release, sha, name);
+    if (!resume) throw new Error('RELEASE_DRAFT_REQUIRES_RESUME');
+  }
+  if (tag && (tag.object.type !== 'commit' || tag.object.sha !== sha))
+    throw new Error('RELEASE_TAG_COMMIT_MISMATCH');
+}
+function preflight() {
+  const c = context();
+  validateVersions(c.customer, c.issuer, process.env.CUSTOMER_VERSION, process.env.ISSUER_VERSION);
+  validatePreflight(
+    findRelease(c.tag),
+    optionalApi(`git/ref/tags/${c.tag}`),
+    c.sha,
+    c.tag,
+    process.env.RELEASE_RESUME === 'true',
+  );
+  console.log(`RELEASE_PREFLIGHT_OK: ${c.tag}`);
+}
 async function publish() {
   const c = context(),
     manifest = json(path.join(directory, 'release-manifest.json'));
@@ -278,5 +298,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
   if (process.argv[2] === 'prepare') prepare();
   else if (process.argv[2] === 'publish') await publish();
   else if (process.argv[2] === 'source-run') sourceRun();
+  else if (process.argv[2] === 'preflight') preflight();
   else throw new Error('RELEASE_COMMAND_INVALID');
 }

@@ -17,7 +17,6 @@ on:
       upgrade_baseline_run_id:
         description: 真实旧客户载荷的成功构建 ID（customer-payload 资产必须仍可下载）
         required: true
-        default: '45983115933'
         type: string
 permissions:
   contents: read
@@ -37,25 +36,46 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: 校验版本
+      - name: 预检版本、发布状态与升级基线
         shell: powershell
         env:
+          GH_TOKEN: ${{ github.token }}
           CUSTOMER_VERSION: ${{ inputs.customer_version }}
           ISSUER_VERSION: ${{ inputs.issuer_version }}
+          UPGRADE_BASELINE_RUN_ID: ${{ inputs.upgrade_baseline_run_id }}
         run: |
-          $customer=(Get-Content package.json -Raw | ConvertFrom-Json).version
-          $issuer=(Get-Content apps/issuer/package.json -Raw | ConvertFrom-Json).version
-          if ($env:CUSTOMER_VERSION -cne $customer -or $env:ISSUER_VERSION -cne $issuer -or $customer -notmatch '^\d+\.\d+\.\d+$' -or $issuer -notmatch '^\d+\.\d+\.\d+$') { throw 'RELEASE_VERSION_MISMATCH' }
+          node tools/ci/release.mjs preflight
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          node tools/ci/upgrade-baseline.mjs --check
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: 准备锁定工具链
+        uses: ./.github/actions/setup
+        with:
+          packaging: 'true'
+      - name: CI 保护规则回归
         shell: powershell
-        run: ./tools/bootstrap.ps1 -Packaging
-      - name: 检查与构建
+        run: ./tools/run.ps1 test:ci
+      - name: 构建应用并记录产物摘要
         shell: powershell
-        run: |
-          foreach ($task in @('test:ci','build','typecheck','lint','format:check','test')) {
-            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/run.ps1 $task
-            if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          }
+        run: ./.tools/node/node.exe tools/ci/build.mjs
+      - name: TypeScript 类型检查
+        shell: powershell
+        run: ./tools/run.ps1 typecheck
+      - name: ESLint 零警告检查
+        shell: powershell
+        run: ./tools/run.ps1 exec eslint . --max-warnings 0
+      - name: Prettier 格式检查
+        shell: powershell
+        run: ./tools/run.ps1 format:check
+      - name: 单元测试
+        shell: powershell
+        run: ./tools/run.ps1 test
+      - name: 获取并核对真实旧客户升级基线
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPGRADE_BASELINE_RUN_ID: ${{ inputs.upgrade_baseline_run_id }}
+        run: ./.tools/node/node.exe tools/ci/upgrade-baseline.mjs
       - name: 导入签名证书
         shell: powershell
         env:
@@ -66,15 +86,9 @@ jobs:
         shell: powershell
         run: |
           foreach ($task in @('package:win','package:issuer')) {
-            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/run.ps1 $task
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/run.ps1 $task --reuse-build
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
           }
-      - name: 获取并核对真实旧客户升级基线
-        shell: powershell
-        env:
-          GH_TOKEN: ${{ github.token }}
-          UPGRADE_BASELINE_RUN_ID: ${{ inputs.upgrade_baseline_run_id }}
-        run: ./.tools/node/node.exe tools/ci/upgrade-baseline.mjs
       - name: 普通权限集成与成品验证
         shell: powershell
         run: ./tools/ci/verify.ps1
@@ -101,7 +115,7 @@ jobs:
           name: customer-payload
           path: artifacts/customer-payload.tgz
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
           compression-level: 0
   verify_resume:
     if: github.ref == 'refs/heads/master' && github.repository == 'zhangheng2022/MetaExam' && inputs.resume_run_id != ''
@@ -126,19 +140,38 @@ jobs:
           node tools/ci/release.mjs source-run
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           Copy-Item tools/ci (Join-Path $env:RUNNER_TEMP 'ci-helpers') -Recurse
+          Copy-Item .github/actions/setup (Join-Path $env:RUNNER_TEMP 'ci-setup') -Recurse
+      - name: 预检续发布状态与升级基线
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_RESUME: 'true'
+          CUSTOMER_VERSION: ${{ inputs.customer_version }}
+          ISSUER_VERSION: ${{ inputs.issuer_version }}
+          UPGRADE_BASELINE_RUN_ID: ${{ inputs.upgrade_baseline_run_id }}
+        run: |
+          node tools/ci/release.mjs preflight
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          node tools/ci/upgrade-baseline.mjs --check
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ env.RELEASE_SOURCE_SHA }}
           fetch-depth: 0
           persist-credentials: false
-      - name: 准备原源码和修正后的验证器
+      - name: 恢复当前验证器
         shell: powershell
         run: |
           Copy-Item (Join-Path $env:RUNNER_TEMP 'ci-helpers/*') tools/ci -Force
-          ./tools/bootstrap.ps1 -Packaging
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/run.ps1 build
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force .github/actions/setup | Out-Null
+          Copy-Item (Join-Path $env:RUNNER_TEMP 'ci-setup/*') .github/actions/setup -Force
+      - name: 准备原源码工具链
+        uses: ./.github/actions/setup
+        with:
+          packaging: 'true'
+      - name: 构建原源码测试依赖
+        shell: powershell
+        run: ./tools/run.ps1 build
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: release-assets
