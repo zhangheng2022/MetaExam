@@ -140,7 +140,19 @@ function publish() {
     throw new Error('RELEASE_TAG_COMMIT_MISMATCH');
   let release = optionalApi(`releases/tags/${c.tag}`);
   if (release) validateDraft(release, c.sha, c.tag);
-  else {
+  if (!tag) {
+    gh([
+      'api',
+      '--method',
+      'POST',
+      `repos/${repository}/git/refs`,
+      '-f',
+      `ref=refs/tags/${c.tag}`,
+      '-f',
+      `sha=${c.sha}`,
+    ]);
+  }
+  if (!release) {
     gh([
       'release',
       'create',
