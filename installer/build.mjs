@@ -20,6 +20,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { inventory, buildId } from './release.mjs';
+import { loadBuildTrust } from './trust.mjs';
 const root = path.resolve(import.meta.dirname, '..'),
   artifacts = path.join(root, 'artifacts'),
   payload = path.join(artifacts, 'payload');
@@ -29,6 +30,9 @@ if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('RELEASE_VERSION_INVALID')
 const exe = path.join(artifacts, `MetaExam-Setup-${version}-win-x64-internal.exe`);
 if (existsSync(exe) || existsSync(exe + '.sha256'))
   throw new Error('RELEASE_ALREADY_EXISTS: preserve the original package and use a new version');
+const profileIndex = process.argv.indexOf('--trust-profile');
+const trustProfile = profileIndex < 0 ? undefined : process.argv[profileIndex + 1];
+const buildTrust = loadBuildTrust(root, version, trustProfile, process.env.METAEXAM_TRUST_MANIFEST);
 mkdirSync(artifacts, { recursive: true });
 const buildLock = path.join(artifacts, '.package-build.lock');
 const handle = openSync(buildLock, 'wx');
@@ -313,19 +317,14 @@ copyFileSync(
   path.join(root, 'toolchain.lock.json'),
   path.join(payload, 'licenses/toolchain.lock.json'),
 );
-const trust = path.join(root, '.local/provider/public-keys.json');
-if (!existsSync(trust))
-  throw new Error(
-    'Generate isolated internal test keys with provider/test-license.mjs keygen .local/provider',
-  );
-const keys = JSON.parse(readFileSync(trust, 'utf8'));
-for (const value of Object.values(keys))
-  if (typeof value !== 'string' || !value.startsWith('-----BEGIN PUBLIC KEY-----'))
-    throw new Error('Invalid public trust');
-writeFileSync(path.join(payload, 'public-keys.json'), JSON.stringify(keys, null, 2));
+writeFileSync(path.join(payload, 'public-keys.json'), JSON.stringify(buildTrust.keys, null, 2));
+writeFileSync(
+  path.join(payload, 'trust-manifest.json'),
+  JSON.stringify(buildTrust.manifest, null, 2),
+);
 writeFileSync(
   path.join(payload, 'INTERNAL-TEST.txt'),
-  'Internal unsigned M3 offline-upgrade package. No production signing key. Windows service upgrade, ACL and restart regression pending. Public test key only; no signing tool included. See maintenance/UPGRADE.md.\n',
+  `Internal unsigned package. License trust profile: ${trustProfile}. No private signing key or supplier tool included. Windows installation acceptance remains separate. See maintenance/UPGRADE.md.\n`,
 );
 if (existsSync(path.join(root, 'docs/phase1-acceptance.md')))
   copyFileSync(path.join(root, 'docs/phase1-acceptance.md'), path.join(payload, 'ACCEPTANCE.md'));
@@ -367,7 +366,9 @@ const archive = path.join(payload, 'manager/resources/app.asar');
 const archiveEntries = asar.listPackage(archive);
 for (const entry of archiveEntries) {
   const name = entry.replaceAll('\\', '/').replace(/^\//, '');
-  if (/provider-test|test-license|private\.pem|\.mlic$|\.env$/.test(name))
+  if (
+    /provider-test|test-license|issuer|private\.pem|\.mlic$|\.missuer$|\.sqlite$|\.env$/.test(name)
+  )
     denied.push('app.asar:' + name);
   if (
     /\.(json|js|pem|key)$/.test(name) &&
@@ -380,7 +381,9 @@ for (const entry of archiveEntries) {
 for (const file of all) {
   const name = path.relative(payload, file);
   if (
-    /provider-test|test-license|private\.pem|\.mlic$|\.env$|config\.json$/.test(name) &&
+    /provider-test|test-license|issuer|private\.pem|\.mlic$|\.missuer$|\.sqlite$|\.env$|config\.json$/.test(
+      name,
+    ) &&
     !name.includes('locales')
   )
     denied.push(name);
@@ -402,7 +405,11 @@ writeFileSync(
       electronArchiveEntries: archiveEntries.length,
       privateKeys: 0,
       providerTools: 0,
-      trust: 'ephemeral internal-test public key only',
+      trust: trustProfile,
+      publicKeyFingerprints: buildTrust.manifest.keys.map(({ kid, fingerprint }) => ({
+        kid,
+        fingerprint,
+      })),
     },
     null,
     2,

@@ -17,3 +17,7 @@ graphify-out/
 *.mbackup/
 backup-secret/
 restore-*/
+*.missuer
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

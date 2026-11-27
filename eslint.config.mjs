@@ -23,6 +23,7 @@ export default ts.config(
     files: [
       'apps/web/src/**/*.{ts,tsx}',
       'apps/desktop/renderer/**/*.{ts,tsx}',
+      'apps/issuer/renderer/**/*.{ts,tsx}',
       'packages/ui/src/**/*.{ts,tsx}',
     ],
   },

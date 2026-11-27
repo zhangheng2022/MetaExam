@@ -4,6 +4,7 @@ export * from './attempts';
 export * from './grading';
 export * from './reports';
 export * from './desktop-license';
+export * from './issuer';
 
 export const licenseHeaderSchema = z
   .object({

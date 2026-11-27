@@ -116,7 +116,7 @@ $env:LICENSE_SEQUENCE = '1'
 
 环境准备统一校验 toolchain.lock.json 中的下载哈希，失败时中止，不自动改写锁文件。`-SkipDependencies` 可用于只检查和准备工具链。打包实现位于 installer/build.mjs，日常仍通过 package:win 调用；electron-builder 复用 bootstrap 准备的本地 Electron，并核对其版本，不在打包时重复下载运行时。
 
-产物为 `artifacts/MetaExam-Setup-0.1.2-win-x64-internal.exe` 及 SHA256。打包前核验工具链锁文件；Electron 由 electron-builder 输出目录，后端生产代码与生产依赖由 esbuild 封装，Inno Setup 统一生成 EXE。包内含独立 Node、React、Electron、PostgreSQL、WinSW、VC++ 运行库；安装后不运行 npm、不下载依赖。内部包未做正式 Authenticode 发布签名。
+产物为 `artifacts/MetaExam-Setup-0.1.3-win-x64-internal.exe` 及 SHA256。打包前核验工具链锁文件；Electron 由 electron-builder 输出目录，后端生产代码与生产依赖由 esbuild 封装，Inno Setup 统一生成 EXE。包内含独立 Node、React、Electron、PostgreSQL、WinSW、VC++ 运行库；安装后不运行 npm、不下载依赖。内部包未做正式 Authenticode 发布签名。
 
 `package:win` 拒绝覆盖已有同版本 EXE 或 SHA256；修改交付内容需递增应用版本，保留旧包用于同 buildId 续升级。构建互斥锁位于 `artifacts/.package-build.lock`，正常退出自动清理；异常退出后须确认记录中的构建进程已结束再人工处理锁，不能在构建期间删除。编译先输出暂存目录，再排他创建最终 EXE；编译失败不覆盖已交付文件。
 
@@ -134,4 +134,8 @@ $env:LICENSE_SEQUENCE = '1'
 
 本地管理器的“故障诊断”已纳入 0.1.2，支持服务断连时导出脱敏 JSON 报告。操作与范围见 [M3 第四批](docs/m3-diagnostics.md)，验证命令 `./tools/run.ps1 test:diagnostics`；`test:package` 还会验证打包后的管理器。上一批 0.1.1 原包保持不变。
 
-当前安装包摘要、升级路径和独立环境清单见 [0.1.2 交付记录](docs/m3-release-012.md)。
+0.1.2 历史安装包摘要及验收清单见 [0.1.2 交付记录](docs/m3-release-012.md)；当前 0.1.3 客户包与独立签发器交付见 [供应方签发器](docs/provider-issuer.md)。
+
+## 供应方授权签发器
+
+独立 Windows 签发器已接入工程，运行 `./tools/run.ps1 dev:issuer`。支持客户申请、口令保护密钥、限期／永久授权、序号台账、续期扩容和加密备份恢复。使用与信任配置见 [供应方操作手册](docs/provider-issuer.md)。供应方包通过 `package:issuer` 生成；客户 `package:win` 明确使用测试公钥，正式信任构建使用 `package:win:production` 并设置 `METAEXAM_TRUST_MANIFEST`，不回退测试配置。客户包不包含签发器或私钥。
