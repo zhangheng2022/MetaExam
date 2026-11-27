@@ -230,26 +230,38 @@ body {
   text-underline-offset: 4px;
 }
 
+.web-surface {
+  min-height: 100dvh;
+}
 .login-surface {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  background: linear-gradient(145deg, var(--mx-primary-bg), var(--mx-layout) 55%);
 }
 .login-brand {
   display: flex;
   align-items: center;
-  gap: 24px;
-  padding: 24px 32px;
+  flex-direction: column;
+  gap: var(--web-space-sm);
+  margin-bottom: var(--web-space-lg);
 }
 .login-main {
   flex: 1;
   display: grid;
-  align-items: center;
-  padding: 24px 0 64px;
+  place-items: center;
+  padding: 48px var(--web-space-lg) var(--web-space);
+}
+.login-stack {
+  width: 100%;
+  max-width: 432px;
 }
 .login-main .identity-panel {
-  width: min(100% - 32px, 432px);
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
+}
+.login-main .ant-card {
+  box-shadow: var(--web-card-shadow);
 }
 .identity-panel h1.ant-typography {
   font-size: 24px;
@@ -270,6 +282,9 @@ body {
   min-height: 100dvh;
 }
 .business-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
   border-inline-end: 1px solid var(--mx-border);
 }
 .business-sidebar .ant-layout-sider-children {
@@ -284,7 +299,10 @@ body {
   border-bottom: 1px solid var(--mx-border);
 }
 .business-sidebar nav {
-  padding: 16px 8px;
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 8px;
 }
 .business-sidebar .ant-menu {
   border-inline-end: 0;
@@ -299,6 +317,9 @@ body {
   min-width: 0;
 }
 .business-header.ant-layout-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -325,15 +346,19 @@ body {
 .business-main {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 32px;
+  padding: var(--web-space-lg);
   outline: none;
+}
+.business-main [id],
+.business-main [tabindex='-1'] {
+  scroll-margin-top: 88px;
 }
 .business-page-heading {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 24px;
-  margin-bottom: 24px;
+  gap: var(--web-space);
+  margin-bottom: var(--web-space);
 }
 .business-page-heading h1.ant-typography {
   font-size: 24px;
@@ -359,12 +384,20 @@ body {
 .overview-statistics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
+  gap: var(--web-space);
   font-variant-numeric: tabular-nums;
 }
-.overview-statistics > * + * {
-  border-inline-start: 1px solid var(--mx-border);
-  padding-inline-start: 24px;
+.overview-statistics > * {
+  min-width: 0;
+  padding: var(--web-space);
+  background: var(--mx-layout);
+  border-radius: var(--mx-radius);
+}
+.editor-footer {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .overview-description.ant-typography {
   margin: 0;
@@ -393,12 +426,19 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: var(--web-space);
+  margin-bottom: var(--web-space);
+}
+.management-toolbar > .ant-typography {
+  margin-bottom: 0;
 }
 .management-filters.ant-form {
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: var(--web-space-sm) var(--web-space);
+  padding: var(--web-space);
+  margin-bottom: var(--web-space);
+  background: var(--mx-layout);
+  border-radius: var(--mx-radius);
 }
 .management-filters .ant-form-item {
   margin: 0;
@@ -418,7 +458,6 @@ body {
 @media (max-width: 767px) {
   .management-toolbar {
     align-items: flex-start;
-    flex-direction: column;
   }
   .management-filters.ant-form {
     flex-direction: column;
@@ -484,16 +523,8 @@ body {
   .overview-statistics {
     gap: 16px;
   }
-  .overview-statistics > * + * {
-    padding-inline-start: 16px;
-  }
-  .login-brand {
-    padding: 24px;
-    flex-direction: column;
-    gap: 8px;
-  }
   .login-main {
-    padding-bottom: 32px;
+    padding: 32px 16px 16px;
   }
   .identity-panel .ant-card-body {
     padding: 24px;
@@ -550,12 +581,83 @@ body {
   margin-bottom: 24px;
 }
 
-.attempt-navigation {
-  margin-top: 16px;
+.attempt-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 272px;
+  grid-template-areas: 'overview navigation' 'work navigation';
+  gap: var(--web-space-lg);
+  align-items: start;
 }
-.report-statistics > :nth-child(3n + 1) {
-  border-inline-start: 0;
-  padding-inline-start: 0;
+.attempt-overview {
+  grid-area: overview;
+  min-width: 0;
+}
+.attempt-work > .question-history {
+  margin-top: 0;
+}
+.attempt-work {
+  grid-area: work;
+  min-width: 0;
+}
+.attempt-sidebar {
+  grid-area: navigation;
+  position: sticky;
+  top: 88px;
+  max-height: calc(100dvh - 112px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--web-space);
+}
+.attempt-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: var(--web-space);
+}
+.attempt-navigation .ant-btn {
+  min-width: 40px;
+}
+.attempt-overview .ant-card-head-wrapper {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.attempt-overview .ant-card-head-title {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.attempt-overview .ant-tag {
+  margin-inline-end: 0;
+  font-variant-numeric: tabular-nums;
+}
+.attempt-work .question-stem {
+  font-size: var(--web-reading-size);
+  line-height: 1.75;
+}
+.attempt-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--web-space);
+  padding: var(--web-space) 0;
+}
+.attempt-answer .ant-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+@media (max-width: 1100px) {
+  .attempt-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'overview' 'navigation' 'work';
+    gap: var(--web-space);
+  }
+  .attempt-sidebar {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
 }
 .attempt-answer {
   border: 0;

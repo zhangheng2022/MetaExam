@@ -1,7 +1,18 @@
 import { ProductBrand } from './brand';
 export { ProductBrand } from './brand';
-import { useState, type PropsWithChildren, type ReactNode } from 'react';
-import { Avatar, Breadcrumb, Button, Drawer, Layout, Menu, Typography } from 'antd';
+import { useState, type PropsWithChildren, type ReactNode, type CSSProperties } from 'react';
+import {
+  Avatar,
+  Breadcrumb,
+  Button,
+  ConfigProvider,
+  Drawer,
+  Layout,
+  Menu,
+  Typography,
+  theme,
+  type MenuProps,
+} from 'antd';
 import {
   BookOutlined,
   LogoutOutlined,
@@ -37,15 +48,51 @@ export {
 } from 'antd';
 export type { TableColumnsType } from 'antd';
 
+// Keep Web density and decoration independent of both Electron applications.
+export function WebSurface({ children }: PropsWithChildren) {
+  const { token } = theme.useToken();
+  const style = {
+    '--web-space': `${token.padding}px`,
+    '--web-space-lg': `${token.paddingLG}px`,
+    '--web-space-sm': `${token.paddingSM}px`,
+    '--web-card-shadow': token.boxShadowTertiary,
+    '--web-reading-size': `${token.fontSizeLG}px`,
+  } as CSSProperties;
+  return (
+    <ConfigProvider
+      theme={{
+        components: {
+          Card: {
+            bodyPadding: token.paddingMD,
+            headerFontSize: token.fontSizeLG,
+            headerHeight: 48,
+          },
+          Table: { cellPaddingBlock: token.paddingSM, cellPaddingInline: token.padding },
+          Form: { itemMarginBottom: token.margin },
+          Menu: { itemHeight: 40, itemMarginBlock: 4, groupTitleFontSize: token.fontSizeSM },
+        },
+      }}
+    >
+      <div className="web-surface" style={style}>
+        {children}
+      </div>
+    </ConfigProvider>
+  );
+}
+
 export function LoginSurface({ children }: PropsWithChildren) {
   return (
     <div className="login-surface">
-      <header className="login-brand">
-        <ProductBrand />
-        <Typography.Text type="secondary">本地考试管理系统</Typography.Text>
-      </header>
-      <main className="login-main">{children}</main>
-      <footer className="login-footer">元考 / MetaExam · 局域网访问，数据本地保存</footer>
+      <main className="login-main">
+        <div className="login-stack">
+          <header className="login-brand">
+            <ProductBrand />
+            <Typography.Text type="secondary">本地考试管理系统</Typography.Text>
+          </header>
+          {children}
+        </div>
+      </main>
+      <footer className="login-footer">局域网访问 · 数据本地保存</footer>
     </div>
   );
 }
@@ -75,6 +122,35 @@ export function BusinessShell({
   mustChangePassword = false,
 }: BusinessShellProps) {
   const [open, setOpen] = useState(false);
+  const examItems: MenuProps['items'] = [
+    ...(permissions.includes('questions.use')
+      ? [{ key: 'question-banks', icon: <ReadOutlined />, label: '题库管理' }]
+      : []),
+    ...(permissions.includes('papers.use')
+      ? [{ key: 'papers', icon: <BookOutlined />, label: '试卷管理' }]
+      : []),
+    ...(permissions.includes('exams.manage')
+      ? [{ key: 'exams', icon: <AuditOutlined />, label: '考试管理' }]
+      : []),
+    ...(permissions.includes('exams.self')
+      ? [{ key: 'my-exams', icon: <ReadOutlined />, label: '我的考试' }]
+      : []),
+  ];
+  const managementItems: MenuProps['items'] = [
+    ...(permissions.includes('users.manage')
+      ? [{ key: 'users', icon: <TeamOutlined />, label: '账号管理' }]
+      : []),
+    ...(permissions.includes('organizations.manage')
+      ? [
+          { key: 'classes', icon: <ApartmentOutlined />, label: '班级管理' },
+          { key: 'courses', icon: <ReadOutlined />, label: '课程管理' },
+          { key: 'assignments', icon: <BookOutlined />, label: '授课安排' },
+        ]
+      : []),
+    ...(permissions.includes('audit.read')
+      ? [{ key: 'audit', icon: <AuditOutlined />, label: '操作日志' }]
+      : []),
+  ];
   const navigation = (
     <nav aria-label="账号导航">
       <Menu
@@ -88,35 +164,39 @@ export function BusinessShell({
           ...(!mustChangePassword
             ? [
                 { key: 'workspace', icon: <HomeOutlined />, label: '工作台' },
-                ...(permissions.includes('questions.use')
-                  ? [{ key: 'question-banks', icon: <ReadOutlined />, label: '题库管理' }]
-                  : []),
-                ...(permissions.includes('papers.use')
-                  ? [{ key: 'papers', icon: <BookOutlined />, label: '试卷管理' }]
-                  : []),
-                ...(permissions.includes('exams.manage')
-                  ? [{ key: 'exams', icon: <AuditOutlined />, label: '考试管理' }]
-                  : []),
-                ...(permissions.includes('exams.self')
-                  ? [{ key: 'my-exams', icon: <ReadOutlined />, label: '我的考试' }]
-                  : []),
-                ...(permissions.includes('users.manage')
-                  ? [{ key: 'users', icon: <TeamOutlined />, label: '账号管理' }]
-                  : []),
-                ...(permissions.includes('organizations.manage')
+                ...(examItems.length
                   ? [
-                      { key: 'classes', icon: <ApartmentOutlined />, label: '班级管理' },
-                      { key: 'courses', icon: <ReadOutlined />, label: '课程管理' },
-                      { key: 'assignments', icon: <BookOutlined />, label: '授课安排' },
+                      {
+                        type: 'group' as const,
+                        key: 'exam-group',
+                        label: '考试教学',
+                        children: examItems,
+                      },
                     ]
                   : []),
-                ...(permissions.includes('audit.read')
-                  ? [{ key: 'audit', icon: <AuditOutlined />, label: '操作日志' }]
+                ...(managementItems.length
+                  ? [
+                      {
+                        type: 'group' as const,
+                        key: 'management-group',
+                        label: '基础管理',
+                        children: managementItems,
+                      },
+                    ]
                   : []),
-                { key: 'profile', icon: <UserOutlined />, label: '个人信息' },
               ]
             : []),
-          { key: 'security', icon: <SafetyOutlined />, label: '账号安全' },
+          {
+            type: 'group',
+            key: 'account-group',
+            label: '我的账号',
+            children: [
+              ...(!mustChangePassword
+                ? [{ key: 'profile', icon: <UserOutlined />, label: '个人信息' }]
+                : []),
+              { key: 'security', icon: <SafetyOutlined />, label: '账号安全' },
+            ],
+          },
         ]}
       />
     </nav>
@@ -172,7 +252,6 @@ export function BusinessShell({
             {children}
           </main>
         </Layout.Content>
-        <Layout.Footer className="business-footer">元考 / MetaExam · 本地考试管理</Layout.Footer>
       </Layout>
       <Drawer
         title="元考导航"

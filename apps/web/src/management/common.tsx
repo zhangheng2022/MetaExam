@@ -249,14 +249,14 @@ export function Editor({
         maskClosable={!busy && !externalBusy}
         destroyOnHidden
         footer={
-          <Space>
-            <Button type="primary" loading={busy || externalBusy} onClick={() => form.submit()}>
-              {submitText}
-            </Button>
+          <div className="editor-footer">
             <Button disabled={busy || externalBusy} onClick={cancel}>
               取消
             </Button>
-          </Space>
+            <Button type="primary" loading={busy || externalBusy} onClick={() => form.submit()}>
+              {submitText}
+            </Button>
+          </div>
         }
       >
         {error && (

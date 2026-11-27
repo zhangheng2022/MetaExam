@@ -12,6 +12,7 @@ import {
 import {
   Dashboard,
   MetaExamProvider,
+  WebSurface,
   IdentityPanel,
   IdentityForm,
   Alert,
@@ -429,6 +430,8 @@ const router = createBrowserRouter([
 ]);
 createRoot(document.getElementById('root')!).render(
   <MetaExamProvider>
-    <RouterProvider router={router} />
+    <WebSurface>
+      <RouterProvider router={router} />
+    </WebSurface>
   </MetaExamProvider>,
 );

@@ -134,8 +134,9 @@ export function AttemptPage() {
           <Link to={`/my-exams/${meta.examId}/result`}>查看成绩</Link>
         </Card>
       ) : (
-        <>
+        <div className="attempt-layout">
           <Card
+            className="attempt-overview"
             title={meta.name}
             extra={
               <Tag color={remaining < 300 ? 'warning' : 'processing'}>
@@ -143,63 +144,75 @@ export function AttemptPage() {
               </Tag>
             }
           >
-            {meta.instructions && (
-              <section aria-label="作答说明">
-                <Typography.Title level={5}>作答说明</Typography.Title>
-                <Typography.Paragraph className="question-text">
-                  {meta.instructions}
-                </Typography.Paragraph>
-              </section>
-            )}
-            <Typography.Paragraph>
-              截止时间（北京）：{dateText(meta.deadlineAt)} · 已保存填写 {meta.answeredCount} /{' '}
-              {meta.items.length} 题
+            <Typography.Paragraph type="secondary">
+              截止时间（北京）：{dateText(meta.deadlineAt)}
             </Typography.Paragraph>
             <Alert
-              className="identity-alert"
               type="info"
-              title="答案自动保存"
-              description="请确认显示“已保存”。关闭页面仍继续计时，到期自动提交已保存答案；断线时请勿关闭页面。"
+              showIcon
+              title="答案自动保存，请确认显示“已保存”。关闭页面仍继续计时，到期自动提交已保存答案；断线时请勿关闭页面。"
             />
-            <Space wrap className="attempt-navigation">
-              {meta.items.map((i) => (
-                <Button
-                  key={i.position}
-                  type={position === i.position ? 'primary' : 'default'}
-                  aria-label={`第 ${i.position} 题${i.answered ? '，已填写' : ''}`}
-                  disabled={busy}
-                  onClick={() => void move(i.position)}
-                >
-                  {i.position}
-                  {i.answered ? ' ✓' : ''}
-                </Button>
-              ))}
-            </Space>
           </Card>
-          <QuestionEditor
-            key={id + ':' + position}
-            ref={editor}
-            id={id!}
-            position={position}
-            locked={busy}
-            onSaved={() => void reload()}
-            onClosed={() => void reload()}
-          />
-          <Space wrap className="question-history">
-            <Button disabled={busy || position === 1} onClick={() => void move(position - 1)}>
-              上一题
-            </Button>
-            <Button
-              disabled={busy || position === meta.items.length}
-              onClick={() => void move(position + 1)}
-            >
-              下一题
-            </Button>
-            <Button type="primary" loading={busy} onClick={() => void submit()}>
-              交卷
-            </Button>
-          </Space>
-        </>
+          <aside className="attempt-sidebar" aria-label="考试信息与题号">
+            <Card title="答题卡">
+              <Typography.Text type="secondary">
+                已保存填写 {meta.answeredCount} / {meta.items.length} 题
+              </Typography.Text>
+              <nav className="attempt-navigation" aria-label="题号导航">
+                {meta.items.map((i) => (
+                  <Button
+                    key={i.position}
+                    type={position === i.position ? 'primary' : 'default'}
+                    aria-current={position === i.position ? 'step' : undefined}
+                    aria-label={`第 ${i.position} 题${i.answered ? '，已填写' : ''}`}
+                    disabled={busy}
+                    onClick={() => void move(i.position)}
+                  >
+                    {i.position}
+                    {i.answered ? ' ✓' : ''}
+                  </Button>
+                ))}
+              </nav>
+            </Card>
+            {meta.instructions && (
+              <Card>
+                <section aria-label="作答说明">
+                  <Typography.Title level={5}>作答说明</Typography.Title>
+                  <Typography.Paragraph className="question-text">
+                    {meta.instructions}
+                  </Typography.Paragraph>
+                </section>
+              </Card>
+            )}
+          </aside>
+          <div className="attempt-work">
+            <QuestionEditor
+              key={id + ':' + position}
+              ref={editor}
+              id={id!}
+              position={position}
+              locked={busy}
+              onSaved={() => void reload()}
+              onClosed={() => void reload()}
+            />
+            <div className="attempt-actions">
+              <Space wrap>
+                <Button disabled={busy || position === 1} onClick={() => void move(position - 1)}>
+                  上一题
+                </Button>
+                <Button
+                  disabled={busy || position === meta.items.length}
+                  onClick={() => void move(position + 1)}
+                >
+                  下一题
+                </Button>
+              </Space>
+              <Button type="primary" loading={busy} onClick={() => void submit()}>
+                交卷
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
@@ -369,7 +382,7 @@ function QuestionEditor({
         <Skeleton paragraph={{ rows: 3 }} />
       ) : (
         <>
-          <Typography.Paragraph className="question-text">
+          <Typography.Paragraph className="question-text question-stem">
             {q.stem.replaceAll('[[blank]]', '（填空）')}
           </Typography.Paragraph>
           {q.images.map((i) => (
