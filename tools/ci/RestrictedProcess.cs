@@ -34,7 +34,9 @@ public static class MetaExamRestrictedProcess {
             var integrity=new Sid{Pointer=medium,Attributes=0x20};
             if(!SetTokenInformation(restricted,25,ref integrity,Marshal.SizeOf(typeof(Sid))+new SecurityIdentifier("S-1-16-8192").BinaryLength)) throw new Win32Exception();
             var startup=new Startup{Size=Marshal.SizeOf(typeof(Startup)),Flags=1,Show=0}; ProcessInfo child;
-            if(!CreateProcessAsUserW(restricted,executable,new StringBuilder(command),IntPtr.Zero,IntPtr.Zero,false,0,IntPtr.Zero,cwd,ref startup,out child)) throw new Win32Exception();
+            // Hosted runners may have no console. Allocate a hidden console so nested
+            // native tools do not inherit invalid standard handles and silently exit.
+            if(!CreateProcessAsUserW(restricted,executable,new StringBuilder(command),IntPtr.Zero,IntPtr.Zero,false,0x10,IntPtr.Zero,cwd,ref startup,out child)) throw new Win32Exception();
             try {
                 if(WaitForSingleObject(child.Process,0xffffffff)!=0) throw new Win32Exception();
                 uint code; if(!GetExitCodeProcess(child.Process,out code)) throw new Win32Exception(); return (int)code;

@@ -23,18 +23,28 @@ if (-not $Child) {
     $code=$LASTEXITCODE
   }
   if (Test-Path $log) { Get-Content $log }
+  if ($code -eq 0) {
+    $content=Get-Content -LiteralPath $log -Raw
+    foreach($marker in @('CI_VERIFICATION_COMPLETE','ISOLATED_PACKAGE_SMOKE_PASSED','PASS packaged issuer real Electron','SIGNING_OK:','PASS closing Electron leaves API and worker running')) {
+      if(-not $content.Contains($marker)){throw ('CI_VERIFICATION_INCOMPLETE: '+$marker)}
+    }
+  }
   exit $code
 }
 & {
   if ($admin -or $identity.User.Value -ne $env:METAEXAM_CI_EXPECTED_SID) { throw 'CI_RESTRICTED_IDENTITY_REQUIRED' }
   Write-Output 'PASS real non-administrator token, original Windows user preserved'
+  $env:PATH=(Join-Path $root '.tools/node')+';'+(Join-Path $root '.tools/pnpm')+';'+$env:PATH
   function Task([string[]]$Arguments) {
-    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/run.ps1 @Arguments
-    if ($LASTEXITCODE) { throw ('CI_TASK_FAILED: '+($Arguments -join ' ')) }
+    Write-Output ('TASK_START: '+($Arguments -join ' '))
+    & (Join-Path $root '.tools/node/node.exe') (Join-Path $root '.tools/pnpm/node_modules/pnpm/bin/pnpm.cjs') @Arguments
+    if ($null -eq $LASTEXITCODE -or $LASTEXITCODE -ne 0) { throw ('CI_TASK_FAILED: '+($Arguments -join ' ')) }
+    Write-Output ('TASK_OK: '+($Arguments -join ' '))
   }
   try {
     Task @('db:start')
     Task -Arguments @('exec','playwright','install','chromium')
     foreach ($task in @('test:integration','test:issuer','test:signing','test:package','test:issuer:package')) { Task @($task) }
   } finally { Task @('db:stop') }
+  Write-Output 'CI_VERIFICATION_COMPLETE'
 } *> $log

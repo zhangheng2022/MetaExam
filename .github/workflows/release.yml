@@ -90,9 +90,81 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
+  verify_resume:
+    if: github.ref == 'refs/heads/master' && github.repository == 'zhangheng2022/MetaExam' && inputs.resume_run_id != ''
+    runs-on: windows-2025
+    environment: windows-signing
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: 核对原构建并保留当前验证器
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_RUN_ID: ${{ inputs.resume_run_id }}
+          RELEASE_RESUME: 'true'
+        run: |
+          node tools/ci/release.mjs source-run
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Copy-Item tools/ci (Join-Path $env:RUNNER_TEMP 'ci-helpers') -Recurse
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ env.RELEASE_SOURCE_SHA }}
+          persist-credentials: false
+      - name: 准备原源码和修正后的验证器
+        shell: powershell
+        run: |
+          Copy-Item (Join-Path $env:RUNNER_TEMP 'ci-helpers/*') tools/ci -Force
+          ./tools/bootstrap.ps1 -Packaging
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/run.ps1 build
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-assets
+          path: artifacts/release
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.resume_run_id }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: customer-payload
+          path: artifacts/payload-archive
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.resume_run_id }}
+      - name: 恢复原始成品以供测试
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory artifacts/payload | Out-Null
+          & tar.exe -xzf artifacts/payload-archive/customer-payload.tgz -C artifacts/payload
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Copy-Item artifacts/release/*.exe* artifacts
+          $issuer=(Get-Content apps/issuer/package.json -Raw | ConvertFrom-Json).version
+          $exe=Join-Path (Get-Location) "artifacts/MetaExam-Issuer-Setup-$issuer-win-x64-internal.exe"
+          $target=Join-Path (Get-Location) 'artifacts/issuer-payload'
+          $install=Start-Process -FilePath $exe -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-',('/DIR="'+$target+'"')) -WindowStyle Hidden -Wait -PassThru
+          if ($install.ExitCode) { throw 'ISSUER_CANDIDATE_INSTALL_FAILED' }
+      - name: 临时导入验证证书
+        shell: powershell
+        env:
+          METAEXAM_SIGNING_PFX_BASE64: ${{ secrets.METAEXAM_SIGNING_PFX_BASE64 }}
+          METAEXAM_SIGNING_PFX_PASSWORD: ${{ secrets.METAEXAM_SIGNING_PFX_PASSWORD }}
+        run: ./tools/ci/signing.ps1 -Action Import
+      - name: 重新验证原始成品
+        shell: powershell
+        run: ./tools/ci/verify.ps1
+      - name: 清理验证证书私钥
+        if: always()
+        shell: powershell
+        run: ./tools/ci/signing.ps1 -Action Clean
   publish:
-    needs: build
-    if: always() && !cancelled() && github.ref == 'refs/heads/master' && github.repository == 'zhangheng2022/MetaExam' && (needs.build.result == 'success' || (inputs.resume_run_id != '' && needs.build.result == 'skipped'))
+    needs: [build, verify_resume]
+    if: always() && !cancelled() && github.ref == 'refs/heads/master' && github.repository == 'zhangheng2022/MetaExam' && (needs.build.result == 'success' || (inputs.resume_run_id != '' && needs.build.result == 'skipped' && needs.verify_resume.result == 'success'))
     runs-on: windows-2025
     timeout-minutes: 20
     permissions:
