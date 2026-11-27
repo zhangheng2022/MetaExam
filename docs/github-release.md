@@ -40,3 +40,5 @@ Release 只接收白名单：两种 EXE、各自 SHA256、公开 CER、签名说
 发布和续发布新增必填输入 `upgrade_baseline_run_id`，指定真实旧客户构建的 customer-payload 资产。下载前核对本仓库 master 手动发布工作流及成功 build job，下载后验证完整载荷清单、buildId 和旧版本。默认 45983115933 对应 0.1.13 的原始构建；Actions 资产有保留期限，过期必须选用仍可下载的真实旧构建，不能跳过或伪造基线。
 
 普通权限验证增加 test:install-repair、test:upgrade 和 test:attempts。创建 Release 草稿后允许短暂列表不可见，最多查询八次；发现错误提交、重复草稿或已发布版本仍立即拒绝，不覆盖资产。
+
+构建及续发布验证检出完整 Git 历史，以便 test:attempts 读取真实历史迁移并核对不可变内容。默认浅克隆缺少历史提交会导致验证失败，不能删除该断言或改用当前迁移伪造旧基线。

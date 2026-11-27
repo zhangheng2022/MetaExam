@@ -35,6 +35,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
+          fetch-depth: 0
           persist-credentials: false
       - name: 校验版本
         shell: powershell
@@ -128,6 +129,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ env.RELEASE_SOURCE_SHA }}
+          fetch-depth: 0
           persist-credentials: false
       - name: 准备原源码和修正后的验证器
         shell: powershell
