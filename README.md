@@ -1,6 +1,6 @@
-# MetaExam
+# 元考 / MetaExam
 
-客户 0.1.6／供应方 0.1.5 的安装运行目标为 Windows 10 22H2、Windows 11、Windows Server 2022／2025（桌面体验），均为原生 x64。目标与实测状态分开记录，见 [Windows 兼容目标](docs/windows-compatibility.md) 和 [本批验证记录](docs/windows-compatibility-validation.md)。
+客户 0.1.7／供应方 0.1.6 的安装运行目标为 Windows 10 22H2、Windows 11、Windows Server 2022／2025（桌面体验），均为原生 x64。目标与实测状态分开记录，见 [Windows 兼容目标](docs/windows-compatibility.md) 和 [本批验证记录](docs/windows-compatibility-validation.md)。
 
 M2 第七批已实现已发布成绩的全场统计、逐题分析、名单筛选与 Excel 导出，验收见 [成绩统计与导出](docs/m2-reports.md)。数据库保持 V10，无新增迁移。沿用 [阅卷与成绩发布](docs/m2-grading.md)、[答题会话](docs/m2-attempts.md)、[考试发布与名单](docs/m2-exams.md)、[组卷与冻结](docs/m2-papers.md)、[Excel 导入与图片](docs/m2-imports.md) 和 [题库基础](docs/m2-questions.md)；跨考试分析、复核改分和补考尚未交付。
 

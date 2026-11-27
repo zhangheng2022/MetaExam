@@ -1,11 +1,12 @@
 #ifndef MyAppVersion
-#define MyAppVersion "0.1.6"
+#define MyAppVersion "0.1.7"
 #endif
 [Setup]
+SetupIconFile=..\packages\ui\public\brand\icon.ico
 SignTool=metaexam
 SignedUninstaller=yes
 AppId={{5F3FDD48-CFEC-4F32-A343-50D44B341446}
-AppName=MetaExam Internal Test
+AppName=元考 MetaExam 内部测试版
 AppVersion={#MyAppVersion}
 DefaultDirName={autopf}\MetaExam
 DefaultGroupName=MetaExam

@@ -25,11 +25,12 @@ else
     const file = path.resolve(__dirname, '../renderer-dist/index.html'),
       url = pathToFileURL(file).href;
     const window = new BrowserWindow({
+      icon: path.resolve(__dirname, '../renderer-dist/brand/icon.ico'),
       width: 1120,
       height: 800,
       minWidth: 380,
       minHeight: 600,
-      title: 'MetaExam 授权签发器',
+      title: '元考 / MetaExam · 授权签发器',
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
         sandbox: true,

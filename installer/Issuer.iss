@@ -1,11 +1,12 @@
 #ifndef IssuerVersion
-  #define IssuerVersion "0.1.5"
+  #define IssuerVersion "0.1.6"
 #endif
 [Setup]
+SetupIconFile=..\packages\ui\public\brand\icon.ico
 SignTool=metaexam
 SignedUninstaller=yes
 AppId={{3502D13A-BF68-44DC-97DD-736EC05D6298}
-AppName=MetaExam 授权签发器
+AppName=元考 MetaExam 授权签发器
 AppVersion={#IssuerVersion}
 DefaultDirName={localappdata}\Programs\MetaExam.Issuer
 DefaultGroupName=MetaExam 授权签发器

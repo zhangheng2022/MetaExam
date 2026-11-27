@@ -18,6 +18,7 @@ import {
   type ThemeConfig,
 } from 'antd';
 import { DashboardOutlined, ReloadOutlined } from '@ant-design/icons';
+import { ProductBrand } from './brand';
 import zhCN from 'antd/locale/zh_CN';
 import 'antd/dist/reset.css';
 import type { SystemStatus } from '@metaexam/contracts';
@@ -147,13 +148,8 @@ function StatusOverview({ loadStatus, desktop = false }: DashboardProps) {
   return (
     <div className="metaexam-shell">
       <aside className="metaexam-sidebar">
-        <a className="metaexam-brand" href="./" aria-label="MetaExam 运行概览">
-          <svg viewBox="0 0 32 32" aria-hidden="true">
-            <path d="M5 25V7l11 10L27 7v18M11 25V18l5 5 5-5v7" />
-          </svg>
-          <span>
-            MetaExam<small>本地考试管理</small>
-          </span>
+        <a className="metaexam-brand" href="./" aria-label="元考 / MetaExam 运行概览">
+          <ProductBrand />
         </a>
         <nav aria-label="主导航">
           <Menu

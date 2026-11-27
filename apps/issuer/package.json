@@ -1,6 +1,6 @@
 {
   "name": "@metaexam/issuer",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "description": "MetaExam offline supplier license issuer",
   "author": "MetaExam",
@@ -37,7 +37,8 @@
     },
     "win": {
       "target": "dir",
-      "signAndEditExecutable": false
+      "signExecutable": false,
+      "icon": "../../packages/ui/public/brand/icon.ico"
     },
     "npmRebuild": false
   }

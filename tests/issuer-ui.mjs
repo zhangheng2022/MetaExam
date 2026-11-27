@@ -68,6 +68,18 @@ try {
     });
   }, home);
   await page.getByLabel('口令', { exact: true }).fill(password);
+  await page.locator('.product-brand').first().waitFor();
+  assert.ok(
+    await page.locator('.product-brand').first().getByText('元考', { exact: true }).isVisible(),
+  );
+  await page
+    .locator('.product-brand img')
+    .first()
+    .evaluate(async (image) => {
+      await image.decode();
+      if (!image.naturalWidth) throw new Error('Brand image failed to load');
+    });
+
   await page.getByLabel('确认口令', { exact: true }).fill(password);
   await page.getByRole('button', { name: '创建密钥库', exact: true }).click();
   await page.getByRole('button', { name: '保存客户', exact: true }).waitFor();

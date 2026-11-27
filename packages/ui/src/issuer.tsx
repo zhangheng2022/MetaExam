@@ -21,6 +21,7 @@ import {
   Typography,
   theme,
 } from 'antd';
+import { ProductBrand } from './brand';
 import type {
   IssuerBridge,
   IssuerDraft,
@@ -580,7 +581,12 @@ export function IssuerApp({ bridge }: { bridge: IssuerBridge }) {
     >
       {modalContext}
       <Flex wrap justify="space-between" align="center" gap={token.margin}>
-        <Typography.Title level={2}>MetaExam 授权签发器</Typography.Title>
+        <Flex align="center" gap={token.margin} wrap>
+          <ProductBrand />
+          <Typography.Title level={2} style={{ margin: 0 }}>
+            授权签发器
+          </Typography.Title>
+        </Flex>
         {status?.unlocked && actions}
       </Flex>
       {feedback && <Alert type={feedback.type} title={feedback.text} showIcon style={section} />}

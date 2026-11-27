@@ -114,7 +114,13 @@ components:
     typography: '{typography.body}'
 ---
 
-# Design System: MetaExam
+# Design System: 元考 / MetaExam
+
+## 品牌标识（2026-11-27）
+
+中文品牌名为“元考”，英文为 MetaExam。共享 ProductBrand 使用蓝色书页／M 与勾选图形，中文在上、英文在下；文字保留为可访问的真实文本。登录、业务导航、运行概览、本地管理器与供应方签发器复用同一组件。图形装饰性呈现，不重复朗读品牌。默认 40px 图形与 4px 间距体系适配浅色及深色导航。
+
+应用尺寸图标保存在 packages/ui/public/brand，全部离线加载。Web favicon、Electron 窗口、程序 EXE 与 Inno 安装器使用同一多尺寸 ICO；EXE 资源更新必须在 Authenticode 签名前完成。系统协议中的 MetaExam、安装目录和可执行文件名保持兼容。客户 0.1.7、供应方 0.1.6 为本次品牌版本，旧交付包不覆盖。
 
 ## M2 第七批成绩统计与导出界面（2026-11-26）
 

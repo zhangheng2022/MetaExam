@@ -20,6 +20,7 @@ import type {
   BackupBridge,
   DiagnosticBridge,
 } from '@metaexam/contracts';
+import { ProductBrand } from './brand';
 import { IdentityForm } from './identity';
 import { LicenseActions } from './license-actions';
 import { BackupActions } from './backup-actions';
@@ -213,10 +214,8 @@ export function LocalManager({ bridge }: { bridge: LocalManagerBridge }) {
     <div className="local-manager" style={style}>
       <header className="local-manager-header">
         <div className="local-manager-brand">
-          <svg viewBox="0 0 32 32" aria-hidden="true">
-            <path d="M5 25V7l11 10L27 7v18M11 25V18l5 5 5-5v7" />
-          </svg>
-          <Typography.Title level={1}>MetaExam 本地管理</Typography.Title>
+          <ProductBrand />
+          <Typography.Title level={1}>本地管理</Typography.Title>
         </div>
         <Button
           icon={<ReloadOutlined />}

@@ -3,7 +3,7 @@
   "productName": "MetaExam Manager",
   "description": "MetaExam local service manager",
   "author": "MetaExam",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": true,
   "main": "dist/main.js",
   "scripts": {
@@ -34,7 +34,8 @@
     },
     "win": {
       "target": "dir",
-      "signAndEditExecutable": false
+      "signExecutable": false,
+      "icon": "../../packages/ui/public/brand/icon.ico"
     },
     "npmRebuild": false
   }

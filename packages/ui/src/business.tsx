@@ -1,3 +1,5 @@
+import { ProductBrand } from './brand';
+export { ProductBrand } from './brand';
 import { useState, type PropsWithChildren, type ReactNode } from 'react';
 import { Avatar, Breadcrumb, Button, Drawer, Layout, Menu, Typography } from 'antd';
 import {
@@ -35,15 +37,6 @@ export {
 } from 'antd';
 export type { TableColumnsType } from 'antd';
 
-export function ProductBrand() {
-  return (
-    <div className="product-brand">
-      <BookOutlined aria-hidden />
-      <span>MetaExam</span>
-    </div>
-  );
-}
-
 export function LoginSurface({ children }: PropsWithChildren) {
   return (
     <div className="login-surface">
@@ -52,7 +45,7 @@ export function LoginSurface({ children }: PropsWithChildren) {
         <Typography.Text type="secondary">本地考试管理系统</Typography.Text>
       </header>
       <main className="login-main">{children}</main>
-      <footer className="login-footer">MetaExam · 局域网访问，数据本地保存</footer>
+      <footer className="login-footer">元考 / MetaExam · 局域网访问，数据本地保存</footer>
     </div>
   );
 }
@@ -150,7 +143,7 @@ export function BusinessShell({
               aria-label="打开导航"
               onClick={() => setOpen(true)}
             />
-            <Breadcrumb items={[{ title: 'MetaExam' }, { title }]} />
+            <Breadcrumb items={[{ title: '元考' }, { title }]} />
           </div>
           <div className="business-user">
             <Avatar size="small" icon={<UserOutlined />} />
@@ -179,10 +172,10 @@ export function BusinessShell({
             {children}
           </main>
         </Layout.Content>
-        <Layout.Footer className="business-footer">MetaExam · 本地考试管理</Layout.Footer>
+        <Layout.Footer className="business-footer">元考 / MetaExam · 本地考试管理</Layout.Footer>
       </Layout>
       <Drawer
-        title="MetaExam 导航"
+        title="元考导航"
         placement="left"
         size={280}
         open={open}

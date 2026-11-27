@@ -31,6 +31,7 @@ async function main() {
   await app.whenReady();
   const file = path.resolve(__dirname, '../renderer-dist/index.html');
   const window = new BrowserWindow({
+    icon: path.resolve(__dirname, '../renderer-dist/brand/icon.ico'),
     width: 1000,
     height: 720,
     minWidth: 380,

@@ -70,6 +70,18 @@ try {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.getByText('正在检查服务', { exact: true }).waitFor();
+  await page.locator('.product-brand').first().waitFor();
+  assert.ok(
+    await page.locator('.product-brand').first().getByText('元考', { exact: true }).isVisible(),
+  );
+  await page
+    .locator('.product-brand img')
+    .first()
+    .evaluate(async (image) => {
+      await image.decode();
+      if (!image.naturalWidth) throw new Error('Brand image failed to load');
+    });
+
   assert.equal(await page.getByLabel('用户名', { exact: true }).count(), 0);
   hold = false;
   waiting.splice(0).forEach((respond) => respond());
