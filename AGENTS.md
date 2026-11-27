@@ -48,6 +48,7 @@
 - GitHub 质量检查见 docs/code-quality.md：基础检查保留独立步骤，CI ESLint 要求零警告；CodeQL 扫描 JavaScript/TypeScript 与 Actions。扫描任务不读取签名 Secrets，不通过排除源码或忽略失败来隐藏告警。
 
 - 按改动选择已有检查；源码/配置修改运行 typecheck、lint、format:check 和相关测试。
+- 客户安装后置步骤的结果必须保留非零失败退出码，使用 `test:installer-result` 执行实际共用 Inno 逻辑。打包回归须覆盖未内联的数据库服务依赖；首次令牌文件锁不能与离线维护锁复用。Server 2025 故障与验收范围见 `docs/server2025-installation-fix.md`。
 - UI 改动运行 test:ui；数据库/API/Worker 改动运行 test:integration；打包链路改动运行 package:win 和 test:package。
 - 本地管理器改动另运行 test:desktop，覆盖真实 Electron 普通权限拒绝、状态切换、受限 IPC 和窗口布局。模拟初始化成功与内容缩放不能代替独立环境的提升权限 ACL、实际 Windows DPI 验收；实现记录见 docs/local-manager.md。
 - test:dev 临时改写源码验证热更新，需独占执行，不与编辑、构建或其他测试并行。

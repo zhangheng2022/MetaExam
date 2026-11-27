@@ -93,6 +93,18 @@ async function wait(fn, p) {
 try {
   cpSync(path.join(payload, 'server'), path.join(isolated, 'server'), { recursive: true });
   cpSync(path.join(payload, 'runtime'), path.join(isolated, 'runtime'), { recursive: true });
+  // The unbundled PostgreSQL supervisor resolves pg from server/db.cjs. Exercise
+  // that same resolution outside the workspace, where pnpm cannot mask omissions.
+  const { Pool } = createRequire(path.join(isolated, 'server/db.cjs'))('pg');
+  const supervisorPool = new Pool(config.database);
+  try {
+    assert.equal(
+      (await supervisorPool.query('SELECT current_database() AS name')).rows[0].name,
+      config.database.database,
+    );
+  } finally {
+    await supervisorPool.end();
+  }
   const node = path.join(isolated, 'runtime/node.exe');
   execFileSync(node, ['server/cli.cjs', 'migrate'], {
     cwd: isolated,
@@ -724,6 +736,7 @@ try {
         timestamp: new Date().toISOString(),
         isolatedFromWorkspace: true,
         checks: [
+          'isolated PostgreSQL supervisor dependency resolves and connects to the test database',
           'bundled API ready and static web',
           'bundled setup, login, protected overview and password revocation',
           'bundled account/organization/assignment management and forced password boundary',

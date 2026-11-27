@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-#define MyAppVersion "0.1.7"
+#define MyAppVersion "0.1.9"
 #endif
 [Setup]
 SetupIconFile=..\packages\ui\public\brand\icon.ico
@@ -38,6 +38,7 @@ Type: files; Name: "{app}\maintenance\UPGRADE.md"
 Type: files; Name: "{app}\maintenance\DIAGNOSTICS.md"
 [Code]
 #include "windows-compatibility.iss"
+#include "install-result.iss"
 
 function InitializeSetup: Boolean;
 begin
@@ -111,10 +112,13 @@ procedure CurStepChanged(CurStep: TSetupStep);
 var Code: Integer; Cert, Key, Args: String;
 begin
  if CurStep = ssPostInstall then begin
+   BeginPostInstall;
+   WizardForm.StatusLabel.Caption := 'Configuring services and initializing the database...';
    if Upgrading then begin
      Args := '--use-system-ca "' + ExpandConstant('{tmp}\upgrade-payload\maintenance\upgrade.mjs') + '" apply "' + ExpandConstant('{app}') + '" "' + ExpandConstant('{commonappdata}\MetaExam') + '"';
      if not Exec(ExpandConstant('{tmp}\upgrade-payload\runtime\node.exe'), Args, ExpandConstant('{tmp}\upgrade-payload'), SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
        RaiseException('Upgrade did not complete. Close the manager, inspect ProgramData\MetaExam\upgrade.log and rerun the SAME package to resume. Do not remove maintenance markers or install an older version.');
+     CompletePostInstall;
      Exit;
    end;
    if NeedsVCRuntime then
@@ -125,5 +129,6 @@ begin
    Args := '"' + ExpandConstant('{app}\maintenance\setup.mjs') + '" install "' + ExpandConstant('{app}') + '" "' + ExpandConstant('{commonappdata}\MetaExam') + '" "' + Cert + '" "' + Key + '" "' + NetworkPage.Values[0] + '" "' + NetworkPage.Values[1] + '" "' + NetworkPage.Values[2] + '"';
    if not Exec(ExpandConstant('{app}\runtime\node.exe'), Args, ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
      RaiseException('Service configuration failed. Inspect installer and service logs. Existing data has been retained.');
+   CompletePostInstall;
  end;
 end;

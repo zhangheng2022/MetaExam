@@ -78,6 +78,7 @@ for (const item of lock.files) {
     throw new Error('VENDOR_CHECKSUM_MISMATCH: ' + item.file);
 }
 run(['test:compatibility']);
+run(['test:installer-result']);
 run(['build']);
 safeReset(payload);
 for (const d of [
@@ -112,7 +113,8 @@ const entries = {
   'file-processor': 'packages/db/dist/file-processor.js',
 };
 const dependencyDirs = new Set();
-// Keep native image binaries and ExcelJS's runtime resources beside their packages.
+// Keep native image binaries, ExcelJS resources and the unbundled supervisor's
+// PostgreSQL driver beside their packages.
 // Resolve every edge from its owning package, preserving pnpm's pinned versions.
 function packageDir(name, parent) {
   const require = createRequire(path.join(parent, 'package.json'));
@@ -172,7 +174,7 @@ function copyRuntime(name, parent, destination) {
     copyRuntime(dep, source, dest);
   }
 }
-for (const name of ['exceljs', 'sharp'])
+for (const name of ['exceljs', 'sharp', 'pg'])
   copyRuntime(name, path.join(root, 'packages/db'), path.join(payload, 'server'));
 const uiRequire = createRequire(path.join(root, 'packages/ui/package.json'));
 const visited = new Set();

@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { createApp } from '../apps/api/dist/app.js';
-import { migrate, BootstrapRepository, digestToken } from '../packages/db/dist/index.js';
+import {
+  migrate,
+  BootstrapRepository,
+  digestToken,
+  BOOTSTRAP_FILE_LOCK,
+} from '../packages/db/dist/index.js';
 import { isolatedDatabase } from './database-fixture.mts';
 const t = await isolatedDatabase();
 let app;
@@ -13,9 +18,18 @@ try {
   const api = app.getHttpAdapter().getInstance();
   assert.equal((await api.inject({ url: '/health/ready' })).json().schemaVersion, 10);
   const token = randomBytes(32).toString('hex');
-  await new BootstrapRepository(t.db).issue(digestToken(token), new Date(Date.now() + 60000), {
-    requestId: 'setup-http-test',
-  });
+  const tokenFileConnection = await t.db.pool.connect();
+  try {
+    await tokenFileConnection.query('SELECT pg_advisory_lock($1)', [BOOTSTRAP_FILE_LOCK]);
+    // The real token-file lock must allow the repository's second connection
+    // through the shared runtime/maintenance gate during first installation.
+    await new BootstrapRepository(t.db).issue(digestToken(token), new Date(Date.now() + 60000), {
+      requestId: 'setup-http-test',
+    });
+  } finally {
+    await tokenFileConnection.query('SELECT pg_advisory_unlock($1)', [BOOTSTRAP_FILE_LOCK]);
+    tokenFileConnection.release();
+  }
   const payload = { username: ' Admin ', displayName: '管理员', password: 'test password phrase' };
   assert.equal(
     (

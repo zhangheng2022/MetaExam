@@ -4,6 +4,9 @@ import { mkdirSync, writeFileSync, renameSync, lstatSync, existsSync, unlinkSync
 import path from 'node:path';
 import { BootstrapRepository, digestToken } from './identity';
 import type { Database } from './index';
+// Serialize token-file replacement without taking the offline-maintenance lock.
+// Runtime connections must retain their shared maintenance lock while issuing.
+export const BOOTSTRAP_FILE_LOCK = 184430;
 export function requireAdministrator() {
   if (process.platform !== 'win32') throw new Error('WINDOWS_REQUIRED');
   const result = execFileSync(
@@ -35,7 +38,7 @@ export async function issueBootstrapFile(db: Database) {
   });
   const c = await db.pool.connect();
   try {
-    await c.query('SELECT pg_advisory_lock(184427)');
+    await c.query('SELECT pg_advisory_lock($1)', [BOOTSTRAP_FILE_LOCK]);
     const token = randomBytes(32).toString('hex'),
       expiresAt = new Date(Date.now() + 30 * 60 * 1000);
     const file = path.join(dir, 'token.json'),
@@ -54,7 +57,7 @@ export async function issueBootstrapFile(db: Database) {
     }
   } finally {
     try {
-      await c.query('SELECT pg_advisory_unlock(184427)');
+      await c.query('SELECT pg_advisory_unlock($1)', [BOOTSTRAP_FILE_LOCK]);
     } finally {
       c.release();
     }

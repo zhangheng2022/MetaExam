@@ -12,7 +12,7 @@ import { instanceInfo } from './schema';
 import { loadConfig, type RuntimeConfig } from './config';
 export { loadConfig, type RuntimeConfig };
 export { loadMaintenanceConfig } from './config';
-export const APP_VERSION = '0.1.7';
+export const APP_VERSION = '0.1.9';
 import { MIGRATIONS, validateMigrations, migrationRows } from './migrations';
 export { MIGRATION, MIGRATIONS, SCHEMA_VERSION, grantRuntimeAccess } from './migrations';
 export * from './management';
@@ -388,4 +388,4 @@ export async function processOne(db: Database): Promise<boolean> {
 }
 
 export * from './identity';
-export { issueBootstrapFile, requireAdministrator } from './bootstrap';
+export { issueBootstrapFile, requireAdministrator, BOOTSTRAP_FILE_LOCK } from './bootstrap';
