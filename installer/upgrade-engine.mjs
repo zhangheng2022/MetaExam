@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { cp, mkdir, readFile, rename, statfs, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { lockInstallation } from './operation-lock.mjs';
 import {
   ordinary,
   readRelease,
@@ -37,6 +38,16 @@ async function matches(root, part, release) {
 
 /** Platform operations are injected; tests use ordinary processes, never Windows services. */
 export async function upgrade({ app, data, source }, platform) {
+  await platform.authorize();
+  await ordinary(data);
+  const unlock = await lockInstallation(data);
+  try {
+    return await performUpgrade({ app, data, source }, platform);
+  } finally {
+    await unlock();
+  }
+}
+async function performUpgrade({ app, data, source }, platform) {
   app = path.resolve(app);
   data = path.resolve(data);
   source = path.resolve(source);
@@ -206,6 +217,9 @@ export async function upgrade({ app, data, source }, platform) {
     await platform.database.migrate();
     await checkpoint('starting');
     await platform.database.allowRuntime();
+    // Keep the durable maintenance marker while DB session locks are released.
+    // Pending gates business traffic; the maintenance marker also excludes backup/restore.
+    await platform.restartDatabase?.();
     await unlink(marker);
     const since = new Date().toISOString();
     await platform.start();

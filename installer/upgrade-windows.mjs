@@ -7,6 +7,8 @@ import { setTimeout } from 'node:timers/promises';
 import net from 'node:net';
 import { ordinary, hashFile } from './release.mjs';
 import { refreshServiceConfiguration } from './service-config.mjs';
+import { restartDatabase } from './restart-database.mjs';
+import { waitForHealthy } from './install-health.mjs';
 
 export function run(exe, args, options = {}, input) {
   return new Promise((resolve, reject) => {
@@ -59,7 +61,7 @@ export async function windowsPlatform({ app, data, source }) {
   )
     throw new Error('UPGRADE_CONFIGURATION');
   const config = dbModule.loadMaintenanceConfig();
-  const database = new dbModule.UpgradeDatabase(config, runtime.database.user);
+  let database = new dbModule.UpgradeDatabase(config, runtime.database.user);
   const env = {
     ...process.env,
     METAEXAM_CONFIG: path.join(data, 'config.json'),
@@ -80,8 +82,44 @@ export async function windowsPlatform({ app, data, source }) {
         "@('MetaExam.Api','MetaExam.Worker','MetaExam.Postgres') | ForEach-Object { Get-CimInstance Win32_Service -Filter (\"Name='\"+$_+\"'\") -ErrorAction Stop | Select-Object Name,State,PathName,StartName } | ConvertTo-Json -Compress",
       ),
     );
+  const startPostgres = async () => {
+    await run('sc.exe', ['config', 'MetaExam.Postgres', 'start=', 'auto']);
+    await run('sc.exe', [
+      'failure',
+      'MetaExam.Postgres',
+      'reset=',
+      '86400',
+      'actions=',
+      'restart/5000/restart/15000/restart/60000',
+    ]);
+    await ps(
+      "$ErrorActionPreference='Stop'; $s=Get-Service MetaExam.Postgres; if($s.Status -ne 'Running') { Start-Service MetaExam.Postgres }; $s.WaitForStatus('Running',[TimeSpan]::FromSeconds(60))",
+    );
+    const { Pool } = require('pg');
+    const pool = new Pool({
+      ...config.database,
+      connectionTimeoutMillis: 2000,
+      query_timeout: 2000,
+    });
+    try {
+      for (let attempt = 0; attempt < 60; attempt++) {
+        try {
+          await pool.query('SELECT 1');
+          return;
+        } catch {
+          /* bounded startup */
+        }
+        await setTimeout(1000);
+      }
+      throw new Error('UPGRADE_DATABASE_START_FAILED');
+    } finally {
+      await pool.end();
+    }
+  };
   return {
-    database,
+    get database() {
+      return database;
+    },
     authorize: async () => dbModule.requireAdministrator(),
     validateServices: async () => {
       const list = await services();
@@ -100,8 +138,20 @@ export async function windowsPlatform({ app, data, source }) {
         )
           throw new Error('UPGRADE_RUNTIME_INCOMPATIBLE');
       }
-      if (list.find((s) => s.Name === 'MetaExam.Postgres').State !== 'Running')
-        throw new Error('UPGRADE_DATABASE_STOPPED');
+      if (list.find((s) => s.Name === 'MetaExam.Postgres').State !== 'Running') {
+        const pendingFile = path.join(data, 'upgrade-pending.json');
+        await ordinary(pendingFile);
+        const pending = JSON.parse(await readFile(pendingFile, 'utf8'));
+        if (
+          pending.phase !== 'starting' ||
+          pending.buildId !== release.buildId ||
+          pending.app !== app ||
+          pending.data !== data
+        )
+          throw new Error('UPGRADE_DATABASE_STOPPED');
+        await refreshServiceConfiguration(app, data);
+        await startPostgres();
+      }
       const running = await ps(
         '$p=[Console]::In.ReadToEnd(); @(Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($p,[StringComparison]::OrdinalIgnoreCase) }).Count',
         path.join(app, 'manager') + path.sep,
@@ -214,8 +264,38 @@ export async function windowsPlatform({ app, data, source }) {
         directory: path.join(work, 'backups', 'MetaExam-' + id + '.mbackup'),
       });
     },
+    restartDatabase: async () => {
+      await restartDatabase({
+        disconnect: async () => {
+          await database.close();
+          database = new dbModule.UpgradeDatabase(config, runtime.database.user);
+        },
+        disableRecovery: async () => {
+          await run('sc.exe', ['config', 'MetaExam.Postgres', 'start=', 'disabled']);
+          await run('sc.exe', ['failure', 'MetaExam.Postgres', 'reset=', '86400', 'actions=', '']);
+        },
+        stop: async () => {
+          const pg = (await services()).find((s) => s.Name === 'MetaExam.Postgres');
+          if (pg.State !== 'Stopped')
+            await run(
+              path.join(app, 'postgres/bin/pg_ctl.exe'),
+              ['-D', path.join(data, 'postgres/data'), 'stop', '-m', 'fast', '-w', '-t', '60'],
+              { timeout: 70000 },
+            );
+          await ps(
+            "$ErrorActionPreference='Stop'; (Get-Service MetaExam.Postgres).WaitForStatus('Stopped',[TimeSpan]::FromSeconds(60))",
+          );
+        },
+        refresh: async () => refreshServiceConfiguration(app, data),
+        start: startPostgres,
+        reconnect: async () => {
+          await database.lock();
+          await database.enter();
+          await database.allowRuntime();
+        },
+      });
+    },
     start: async () => {
-      await refreshServiceConfiguration(app, data);
       for (const id of ['MetaExam.Api', 'MetaExam.Worker']) {
         await run('sc.exe', ['config', id, 'start=', 'auto']);
         await run('sc.exe', [
@@ -233,24 +313,13 @@ export async function windowsPlatform({ app, data, source }) {
     },
     healthy: async (release, since) => {
       const url = (runtime.api.tlsCert ? 'https' : 'http') + '://127.0.0.1:' + runtime.api.port;
-      for (let retry = 0; retry < 60; retry++) {
-        try {
-          const live = await fetch(url + '/health/live', { signal: AbortSignal.timeout(2000) });
-          const ready = await fetch(url + '/health/ready', { signal: AbortSignal.timeout(2000) });
-          if (
-            live.ok &&
-            (await live.json()).version === release.version &&
-            ready.ok &&
-            (await ready.json()).schemaVersion === release.schemaVersion &&
-            (await database.workerReady(since))
-          )
-            return;
-        } catch {
-          /* bounded startup retry, never log credentials or request headers */
-        }
-        await setTimeout(1000);
-      }
-      throw new Error('UPGRADE_START_FAILED');
+      await waitForHealthy({
+        url,
+        release,
+        workerReady: () => database.workerReady(since),
+        servicesReady: async () =>
+          (await services()).filter((s) => s.State === 'Running').length === 3,
+      });
     },
   };
 }

@@ -14,6 +14,10 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { randomBytes, X509Certificate, createPrivateKey, createPublicKey } from 'node:crypto';
 import path from 'node:path';
 import net from 'node:net';
+import { completeInstallation } from './install-health.mjs';
+import { lockInstallation } from './operation-lock.mjs';
+import { prepareUninstall } from './uninstall-state.mjs';
+import { ordinary } from './release.mjs';
 const [
   action,
   appDir,
@@ -49,32 +53,42 @@ function query(name) {
 }
 const marker = path.join(data, 'installation.json');
 if (action === 'uninstall') {
-  if (!existsSync(marker) || JSON.parse(readFileSync(marker, 'utf8')).app !== app)
-    throw new Error('Installation ownership mismatch');
-  for (const id of [...services].reverse())
-    if (query(id)) {
-      spawnSync('sc.exe', ['stop', id], { windowsHide: true, stdio: 'ignore' });
-      // Wait for STOPPED using the numeric state (independent of OS language).
-      let stopped = false;
-      for (let i = 0; i < 45; i++) {
-        const state =
-          spawnSync('sc.exe', ['query', id], { encoding: 'utf8', windowsHide: true }).stdout ?? '';
-        if (/:\s+1\s+STOPPED/.test(state)) {
-          stopped = true;
-          break;
+  const { repairWindows } = await import('./repair-windows.mjs');
+  const platform = repairWindows({ app, data, source: app });
+  await platform.authorize();
+  await platform.validate();
+  const unlock = await lockInstallation(data);
+  try {
+    const commitUninstall = await prepareUninstall({ app, data }, platform);
+    for (const id of [...services].reverse())
+      if (query(id)) {
+        spawnSync('sc.exe', ['stop', id], { windowsHide: true, stdio: 'ignore' });
+        // Wait for STOPPED using the numeric state (independent of OS language).
+        let stopped = false;
+        for (let i = 0; i < 45; i++) {
+          const state =
+            spawnSync('sc.exe', ['query', id], { encoding: 'utf8', windowsHide: true }).stdout ??
+            '';
+          if (/:\s+1\s+STOPPED/.test(state)) {
+            stopped = true;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 1000));
         }
-        await new Promise((r) => setTimeout(r, 1000));
+        if (!stopped)
+          throw new Error(
+            'SERVICE_STOP_TIMEOUT: ' + id + '; retry removal after stopping the service',
+          );
+        sc('delete', id);
       }
-      if (!stopped)
-        throw new Error(
-          'SERVICE_STOP_TIMEOUT: ' + id + '; retry removal after stopping the service',
-        );
-      sc('delete', id);
-    }
-  spawnSync('netsh.exe', ['advfirewall', 'firewall', 'delete', 'rule', 'name=MetaExam HTTPS'], {
-    windowsHide: true,
-    stdio: 'ignore',
-  });
+    spawnSync('netsh.exe', ['advfirewall', 'firewall', 'delete', 'rule', 'name=MetaExam HTTPS'], {
+      windowsHide: true,
+      stdio: 'ignore',
+    });
+    await commitUninstall();
+  } finally {
+    await unlock();
+  }
   console.log('SERVICES_REMOVED_DATA_PRESERVED');
   process.exit(0);
 }
@@ -166,6 +180,8 @@ if (!repairing)
   );
 const node = path.join(app, 'runtime/node.exe'),
   configPath = path.join(data, 'config.json');
+mkdirSync(path.join(app, 'services'), { recursive: true });
+await ordinary(path.join(app, 'services'));
 registerServiceEventSources();
 for (const [id, entry, log] of serviceEntries(data)) {
   const xml = serviceXml(app, data, id, entry, log);
@@ -234,6 +250,7 @@ if (!repairing) {
     trustFile: path.join(app, 'public-keys.json'),
     production: !!certFile,
     leaseSeconds: 30,
+    firewallSubnet: certFile ? subnet : undefined,
   };
   if (certFile) {
     config.api.tlsCert = path.join(data, 'certs/server.crt');
@@ -266,6 +283,28 @@ if (!repairing) {
       'program=' + node,
     ]);
 }
+if (repairing && savedConfig.api.tlsCert) {
+  const record = JSON.parse(readFileSync(marker, 'utf8'));
+  const remote = savedConfig.firewallSubnet ?? record.reinstall?.subnet;
+  const { repairWindows } = await import('./repair-windows.mjs');
+  const firewallPlatform = repairWindows({ app, data, source: app });
+  await firewallPlatform.validate();
+  if (typeof remote === 'string' && remote.length > 0 && !(await firewallPlatform.firewallSubnet()))
+    run('netsh.exe', [
+      'advfirewall',
+      'firewall',
+      'add',
+      'rule',
+      'name=MetaExam HTTPS',
+      'dir=in',
+      'action=allow',
+      'protocol=TCP',
+      'localport=' + port,
+      'remoteip=' + remote,
+      'profile=private,domain',
+      'program=' + node,
+    ]);
+}
 const readyFile = path.join(data, 'runtime/database-ready.json');
 if (existsSync(readyFile)) unlinkSync(readyFile);
 sc('start', 'MetaExam.Postgres');
@@ -290,22 +329,33 @@ execFileSync(
     stdio: 'pipe',
   },
 );
-sc('start', 'MetaExam.Api');
-sc('start', 'MetaExam.Worker');
-if (!repairing)
-  writeFileSync(
-    marker,
-    JSON.stringify(
-      {
-        product: 'MetaExam',
-        app,
-        data,
-        phase: 'installed',
-        version: JSON.parse(readFileSync(path.join(app, 'release.json'), 'utf8')).version,
-        buildId: JSON.parse(readFileSync(path.join(app, 'release.json'), 'utf8')).buildId,
-      },
-      null,
-      2,
-    ),
-  );
+const { repairWindows } = await import('./repair-windows.mjs');
+const healthPlatform = repairWindows({ app, data, source: app });
+await healthPlatform.validate();
+await completeInstallation({
+  start: async () => {
+    sc('start', 'MetaExam.Api');
+    sc('start', 'MetaExam.Worker');
+  },
+  healthy: async (since) =>
+    healthPlatform.healthy(JSON.parse(readFileSync(path.join(app, 'release.json'), 'utf8')), since),
+  commit: async () => {
+    if (!repairing)
+      writeFileSync(
+        marker,
+        JSON.stringify(
+          {
+            product: 'MetaExam',
+            app,
+            data,
+            phase: 'installed',
+            version: JSON.parse(readFileSync(path.join(app, 'release.json'), 'utf8')).version,
+            buildId: JSON.parse(readFileSync(path.join(app, 'release.json'), 'utf8')).buildId,
+          },
+          null,
+          2,
+        ),
+      );
+  },
+});
 console.log('INSTALL_CONFIGURED: complete the independent acceptance checklist');

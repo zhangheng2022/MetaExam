@@ -16,7 +16,6 @@ const options = {
   source: path.resolve(import.meta.dirname, '..'),
 };
 try {
-  await ordinary(options.app);
   await ordinary(options.data);
   await ordinary(path.join(options.data, 'installation.json'));
   const record = JSON.parse(await readFile(path.join(options.data, 'installation.json'), 'utf8'));
@@ -32,7 +31,7 @@ try {
     pending = JSON.parse(await readFile(pendingFile, 'utf8'));
   }
   const result =
-    record.phase === 'configuring' || pending?.kind === 'install-repair'
+    ['configuring', 'uninstalled'].includes(record.phase) || pending?.kind === 'install-repair'
       ? await repair(options, repairWindows(options))
       : await upgrade(options, await windowsPlatform(options));
   console.log(JSON.stringify(result));

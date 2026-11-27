@@ -77,7 +77,7 @@ if (-not $Child) {
   try {
     Task @('db:start')
     Task -Arguments @('exec','playwright','install','chromium')
-    foreach ($task in @('test:integration','test:issuer','test:signing','test:package','test:issuer:package')) { Task @($task) }
+    foreach ($task in @('test:integration','test:install-repair','test:upgrade','test:attempts','test:issuer','test:signing','test:package','test:issuer:package')) { Task @($task) }
   } finally { Task @('db:stop') }
   Write-Output 'CI_VERIFICATION_COMPLETE'
 } *> $log

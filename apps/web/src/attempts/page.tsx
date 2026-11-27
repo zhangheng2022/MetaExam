@@ -16,6 +16,7 @@ import {
 import type { AttemptSummary, CandidateQuestion, CandidateAnswer } from '@metaexam/contracts';
 import { api, RequestError } from '../api';
 import { dateText } from '../management/common';
+import { UnsavedChangesGuard } from '../unsaved-changes';
 type EditorHandle = { flush: () => Promise<boolean> };
 export function AttemptPage() {
   const { attemptId: id } = useParams();
@@ -323,15 +324,6 @@ function QuestionEditor({
     const timer = setTimeout(() => void flush(), 800);
     return () => clearTimeout(timer);
   }, [answer, dirty, conflict, flush]);
-  useEffect(() => {
-    if (!dirty) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = '';
-    };
-    addEventListener('beforeunload', handler);
-    return () => removeEventListener('beforeunload', handler);
-  }, [dirty]);
   function change(next: CandidateAnswer) {
     current.current = next;
     setAnswer(next);
@@ -357,6 +349,7 @@ function QuestionEditor({
       title={`第 ${position} 题${q ? ' · ' + q.score + ' 分' : ''}`}
     >
       {holder}
+      <UnsavedChangesGuard dirty={dirty} busy={saving || locked} />
       {error && (
         <Alert
           type="error"

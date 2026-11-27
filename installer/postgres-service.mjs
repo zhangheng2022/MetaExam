@@ -33,7 +33,8 @@ const ownerPassword = decrypt(path.join(data, 'secrets/owner.dpapi'));
 const record = JSON.parse(readFileSync(path.join(data, 'installation.json'), 'utf8'));
 const configuring =
   record.product === 'MetaExam' &&
-  record.phase === 'configuring' &&
+  (record.phase === 'configuring' ||
+    (record.phase === 'uninstalled' && record.previousPhase === 'configuring')) &&
   path.resolve(record.app).toLowerCase() === path.resolve(app).toLowerCase() &&
   path.resolve(record.data).toLowerCase() === path.resolve(data).toLowerCase();
 const fresh = !existsSync(path.join(pgData, 'PG_VERSION'));

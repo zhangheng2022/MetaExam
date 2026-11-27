@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { ordinary, hashFile } from './release.mjs';
 import { run } from './upgrade-windows.mjs';
+import { waitForHealthy } from './install-health.mjs';
 
 const ids = ['MetaExam.Api', 'MetaExam.Worker', 'MetaExam.Postgres'];
 export function repairWindows({ app, data, source }) {
@@ -104,6 +105,14 @@ export function repairWindows({ app, data, source }) {
     pendingAccess: async (file) => run('icacls.exe', [file, '/grant', '*S-1-5-32-545:R']),
     recordAccess: async (file) =>
       run('icacls.exe', [file, '/grant', 'NT SERVICE\\MetaExam.Postgres:R']),
+    firewallSubnet: async () => {
+      if (!config.api.tlsCert) return undefined;
+      const result = await ps(
+        "$ErrorActionPreference='Stop'; $p=[Console]::In.ReadToEnd(); $rules=@(Get-NetFirewallRule -DisplayName 'MetaExam HTTPS' -ErrorAction SilentlyContinue | Where-Object { ($_ | Get-NetFirewallApplicationFilter).Program -eq $p }); $addresses=@($rules | Get-NetFirewallAddressFilter | ForEach-Object { $_.RemoteAddress } | Select-Object -Unique); [Console]::Write(($addresses -join ','))",
+        path.join(app, 'runtime/node.exe'),
+      );
+      return result.trim() || undefined;
+    },
     stop: async () => {
       const pending = JSON.parse(await readFile(path.join(data, 'upgrade-pending.json'), 'utf8'));
       if (
@@ -170,35 +179,19 @@ export function repairWindows({ app, data, source }) {
       });
       const url = (config.api.tlsCert ? 'https' : 'http') + '://127.0.0.1:' + config.api.port;
       try {
-        for (let attempt = 0; attempt < 60; attempt++) {
-          try {
-            const live = await fetch(url + '/health/live', {
-              redirect: 'error',
-              signal: AbortSignal.timeout(2000),
-            });
-            const ready = await fetch(url + '/health/ready', {
-              redirect: 'error',
-              signal: AbortSignal.timeout(2000),
-            });
+        await waitForHealthy({
+          url,
+          release,
+          workerReady: async () => {
             const heartbeat = await pool.query(
               'SELECT 1 FROM worker_heartbeat WHERE id=1 AND seen_at >= $1',
               [since],
             );
-            if (
-              live.ok &&
-              ready.ok &&
-              (await live.json()).version === release.version &&
-              (await ready.json()).schemaVersion === release.schemaVersion &&
-              heartbeat.rowCount === 1 &&
-              (await services()).filter((s) => s.State === 'Running').length === 3
-            )
-              return;
-          } catch {
-            /* Keep the pending gate closed until bounded checks pass. */
-          }
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
-        throw new Error('REPAIR_START_FAILED');
+            return heartbeat.rowCount === 1;
+          },
+          servicesReady: async () =>
+            (await services()).filter((s) => s.State === 'Running').length === 3,
+        });
       } finally {
         await pool.end();
       }

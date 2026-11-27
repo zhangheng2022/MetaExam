@@ -14,8 +14,14 @@ on:
         description: 可选：复用已成功构建的运行 ID，仅继续发布原资产
         required: false
         type: string
+      upgrade_baseline_run_id:
+        description: 真实旧客户载荷的成功构建 ID（customer-payload 资产必须仍可下载）
+        required: true
+        default: '45983115933'
+        type: string
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: metaexam-release
   cancel-in-progress: false
@@ -62,6 +68,12 @@ jobs:
             & powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/run.ps1 $task
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
           }
+      - name: 获取并核对真实旧客户升级基线
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPGRADE_BASELINE_RUN_ID: ${{ inputs.upgrade_baseline_run_id }}
+        run: ./.tools/node/node.exe tools/ci/upgrade-baseline.mjs
       - name: 普通权限集成与成品验证
         shell: powershell
         run: ./tools/ci/verify.ps1
@@ -155,6 +167,12 @@ jobs:
           METAEXAM_SIGNING_PFX_BASE64: ${{ secrets.METAEXAM_SIGNING_PFX_BASE64 }}
           METAEXAM_SIGNING_PFX_PASSWORD: ${{ secrets.METAEXAM_SIGNING_PFX_PASSWORD }}
         run: ./tools/ci/signing.ps1 -Action Import
+      - name: 获取并核对真实旧客户升级基线
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPGRADE_BASELINE_RUN_ID: ${{ inputs.upgrade_baseline_run_id }}
+        run: ./.tools/node/node.exe tools/ci/upgrade-baseline.mjs
       - name: 重新验证原始成品
         shell: powershell
         run: ./tools/ci/verify.ps1

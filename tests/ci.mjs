@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import {
   validateVersions,
   validateDraft,
+  waitForDraft,
   assetNames,
   validateSourceRun,
 } from '../tools/ci/release.mjs';
@@ -52,6 +53,35 @@ assert.throws(
   /VERSION_MISMATCH/,
 );
 validateDraft(draft, sha, tag);
+assert.throws(() => validateDraft(null, sha, tag), /DRAFT_NOT_VISIBLE/);
+let reads = 0;
+assert.equal(
+  await waitForDraft(
+    () => (++reads < 3 ? null : draft),
+    sha,
+    tag,
+    async () => {},
+  ),
+  draft,
+);
+assert.equal(reads, 3);
+await assert.rejects(
+  waitForDraft(
+    () => null,
+    sha,
+    tag,
+    async () => {},
+  ),
+  /DRAFT_NOT_VISIBLE/,
+);
+await assert.rejects(
+  waitForDraft(() => ({ ...draft, target_commitish: 'other' }), sha, tag),
+  /COMMIT_MISMATCH/,
+);
+await assert.rejects(
+  waitForDraft(() => ({ ...draft, draft: false }), sha, tag),
+  /ALREADY_PUBLISHED/,
+);
 assert.throws(() => validateDraft({ ...draft, draft: false }, sha, tag), /ALREADY_PUBLISHED/);
 assert.throws(
   () => validateDraft({ ...draft, target_commitish: 'master' }, sha, tag),

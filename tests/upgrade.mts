@@ -92,6 +92,12 @@ async function fixture() {
       validateBackup: async () => {
         events.push('backup-verified');
       },
+      restartDatabase: async () => {
+        assert.ok(existsSync(path.join(home, 'maintenance.json')));
+        assert.ok(existsSync(path.join(data, 'upgrade-pending.json')));
+        events.push('database-restart');
+        if (fault === 'database-restart') throw new Error('INJECTED_FAILURE');
+      },
       start: async () => {
         assert.ok(!existsSync(path.join(home, 'maintenance.json')));
         assert.ok(existsSync(path.join(data, 'upgrade-pending.json')));
@@ -137,7 +143,7 @@ async function fixture() {
     },
   };
 }
-for (const fault of ['switched-server', 'migrating', 'starting', 'completed']) {
+for (const fault of ['switched-server', 'migrating', 'starting', 'database-restart', 'completed']) {
   const t = await fixture();
   try {
     t.fault(fault);
@@ -177,6 +183,39 @@ for (const fault of ['switched-server', 'migrating', 'starting', 'completed']) {
 console.log(
   'PASS interrupted file switch/migration/start/finalization fail closed and resume without data rollback',
 );
+{
+  const t = await fixture();
+  const platform = t.platform();
+  try {
+    platform.restartDatabase = async () => {
+      await platform.database.close();
+      platform.database = new UpgradeDatabase(t.config, t.config.database.user);
+      assert.ok(existsSync(path.join(t.home, 'maintenance.json')));
+      const competing = t.platform();
+      try {
+        await assert.rejects(upgrade(t, competing), /REPAIR_ALREADY_RUNNING/);
+      } finally {
+        await competing.database.close();
+      }
+      const runtime = createDatabase(t.config);
+      try {
+        await assert.rejects(runtime.pool.query('SELECT 1'), /MAINTENANCE_REQUIRED/);
+      } finally {
+        await runtime.pool.end();
+      }
+      await platform.database.lock();
+      await platform.database.enter();
+      await platform.database.allowRuntime();
+    };
+    await upgrade(t, platform);
+    assert.ok(!existsSync(path.join(t.home, 'maintenance.json')));
+    console.log(
+      'PASS durable maintenance gate and file lock survive loss and reacquisition of DB session locks',
+    );
+  } finally {
+    await t.close();
+  }
+}
 for (const kind of ['tamper', 'runtime', 'backup', 'health', 'wrong-package']) {
   const t = await fixture();
   try {

@@ -3,7 +3,6 @@ import { existsSync } from 'node:fs';
 import {
   cp,
   mkdir,
-  open,
   readFile,
   readdir,
   rename,
@@ -13,6 +12,8 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import path from 'node:path';
+import { lockInstallation } from './operation-lock.mjs';
+import { readUninstallSnapshot } from './uninstall-state.mjs';
 import {
   ordinary,
   readRelease,
@@ -61,35 +62,12 @@ async function dataFiles(data) {
   }
   return Object.fromEntries(Object.entries(files).sort(([a], [b]) => a.localeCompare(b)));
 }
-async function lock(data) {
-  const file = path.join(data, 'install-repair.lock');
-  if (existsSync(file)) {
-    await ordinary(file);
-    const previous = await json(file);
-    if (!Number.isSafeInteger(previous.pid) || previous.pid < 1)
-      throw new Error('REPAIR_LOCK_INVALID');
-    let active = true;
-    try {
-      process.kill(previous.pid, 0);
-    } catch (error) {
-      if (error.code === 'ESRCH') active = false;
-    }
-    if (active) throw new Error('REPAIR_ALREADY_RUNNING');
-    await rename(file, file + '.abandoned-' + randomUUID());
-  }
-  const handle = await open(file, 'wx');
-  await handle.writeFile(JSON.stringify({ pid: process.pid }));
-  return async () => {
-    await handle.close();
-    await unlink(file);
-  };
-}
 
 /** Repair only an owned, incomplete installation; platform effects remain injectable. */
 export async function repair({ app, data, source }, platform) {
   [app, data, source] = [app, data, source].map((p) => path.resolve(p));
   await platform.authorize();
-  for (const directory of [app, data, source]) await ordinary(directory);
+  for (const directory of [data, source]) await ordinary(directory);
   if (
     !separate(app, data) ||
     !separate(data, app) ||
@@ -107,12 +85,20 @@ export async function repair({ app, data, source }, platform) {
   if (record.product !== 'MetaExam' || !same(record.app, app) || !same(record.data, data))
     throw new Error('REPAIR_OWNERSHIP');
   const pending = path.join(data, 'upgrade-pending.json');
-  if (record.phase !== 'configuring' && !existsSync(pending))
+  const reinstalling = record.phase === 'uninstalled';
+  const snapshot = reinstalling ? await readUninstallSnapshot(data, record) : undefined;
+  if (reinstalling && !existsSync(app)) {
+    await ordinary(path.dirname(app));
+    await mkdir(app);
+  }
+  await ordinary(app);
+  const trustRoot = snapshot?.directory ?? app;
+  if (!['configuring', 'uninstalled'].includes(record.phase) && !existsSync(pending))
     throw new Error('REPAIR_NOT_INCOMPLETE');
   if (existsSync(path.join(data, 'runtime/maintenance.json')))
     throw new Error('MAINTENANCE_REQUIRED');
   await platform.validate();
-  const unlock = await lock(data);
+  const unlock = await lockInstallation(data);
   let state,
     work,
     stopped = false;
@@ -135,22 +121,27 @@ export async function repair({ app, data, source }, platform) {
         throw new Error('REPAIR_STATE_INVALID');
       state.resumed = true;
     } else {
-      const old = await readRelease(app, false);
-      if (record.phase !== 'configuring' || compareVersions(release.version, old.version) < 0)
+      const old = snapshot?.release ?? (await readRelease(app, false));
+      if (
+        !['configuring', 'uninstalled'].includes(record.phase) ||
+        compareVersions(release.version, old.version) < 0
+      )
         throw new Error('REPAIR_NOT_INCOMPLETE');
       if (JSON.stringify(old.migrations) !== JSON.stringify(release.migrations))
         throw new Error('REPAIR_SCHEMA_MISMATCH');
       // No runtime replacement or database downgrade during incomplete-install repair.
       for (const [name, hash] of Object.entries(release.files)) {
         if (!/^(runtime|postgres|vendor)\//.test(name)) continue;
-        await ordinary(path.join(app, name));
-        if ((await hashFile(path.join(app, name))) !== hash)
+        if (!reinstalling) await ordinary(path.join(app, name));
+        if (
+          reinstalling ? old.files[name] !== hash : (await hashFile(path.join(app, name))) !== hash
+        )
           throw new Error('REPAIR_RUNTIME_MISMATCH');
       }
       const preserve = ['config.json', 'secrets/database.dpapi', 'secrets/owner.dpapi'];
       const preserved = {};
       for (const name of preserve) preserved[name] = await hashFile(path.join(data, name));
-      preserved['public-keys.json'] = await hashFile(path.join(app, 'public-keys.json'));
+      preserved['public-keys.json'] = await hashFile(path.join(trustRoot, 'public-keys.json'));
       let required = 256 * 1024 * 1024;
       for (const name of Object.keys(release.files))
         required += (await stat(path.join(source, name))).size * 3;
@@ -191,7 +182,9 @@ export async function repair({ app, data, source }, platform) {
     };
     await readRelease(path.join(work, 'candidate'));
     for (const [name, hash] of Object.entries(state.preserved)) {
-      if ((await hashFile(path.join(name === 'public-keys.json' ? app : data, name))) !== hash)
+      if (
+        (await hashFile(path.join(name === 'public-keys.json' ? trustRoot : data, name))) !== hash
+      )
         throw new Error('REPAIR_CONFIGURATION_CHANGED');
     }
     stopped = true;
@@ -231,7 +224,21 @@ export async function repair({ app, data, source }, platform) {
         JSON.stringify(state.backupFiles)
     )
       throw new Error('REPAIR_BACKUP_INVALID');
-    for (const part of programParts) {
+    // A removed installation reconstructs only the pinned runtime; data stays in place.
+    if (reinstalling) {
+      const trust = path.join(app, 'public-keys.json');
+      if (existsSync(trust) && (await hashFile(trust)) !== state.preserved['public-keys.json'])
+        throw new Error('REPAIR_CONFIGURATION_CHANGED');
+      if (!existsSync(trust))
+        await cp(path.join(trustRoot, 'public-keys.json'), trust, {
+          errorOnExist: true,
+          force: false,
+        });
+    }
+    for (const part of [
+      ...programParts,
+      ...(reinstalling ? ['runtime', 'postgres', 'vendor'] : []),
+    ]) {
       const live = path.join(app, part),
         previous = path.join(work, 'previous', part);
       if (existsSync(previous) && (await matches(app, part, release))) continue;

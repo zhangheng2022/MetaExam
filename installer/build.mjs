@@ -335,6 +335,10 @@ for (const name of [
   'upgrade-windows.mjs',
   'repair-engine.mjs',
   'repair-windows.mjs',
+  'operation-lock.mjs',
+  'uninstall-state.mjs',
+  'install-health.mjs',
+  'restart-database.mjs',
   'release.mjs',
 ])
   copyFileSync(path.join(root, 'installer', name), path.join(payload, 'maintenance', name));

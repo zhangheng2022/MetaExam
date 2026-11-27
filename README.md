@@ -1,10 +1,10 @@
 # 元考 / MetaExam
 
-客户 0.1.13／供应方 0.1.6 的安装运行目标为 Windows 10 22H2、Windows 11、Windows Server 2022／2025（桌面体验），均为原生 x64。目标与实测状态分开记录，见 [Windows 兼容目标](docs/windows-compatibility.md) 和 [本批验证记录](docs/windows-compatibility-validation.md)。
+客户 0.1.16／供应方 0.1.6 的安装运行目标为 Windows 10 22H2、Windows 11、Windows Server 2022／2025（桌面体验），均为原生 x64。目标与实测状态分开记录，见 [Windows 兼容目标](docs/windows-compatibility.md) 和 [本批验证记录](docs/windows-compatibility-validation.md)。
 
 客户 0.1.9 修复首次安装的数据库驱动遗漏、初始化令牌锁冲突和静默安装误报成功；[故障与验证记录](docs/server2025-installation-fix.md) 区分本机回归和仍待完成的独立安装验收。
 
-客户 0.1.13 支持覆盖修复未完成的首次安装：保留已有配置、密码、授权和数据库，先保存旧程序及数据副本，再恢复服务；中断后使用同一包续修复。适用边界及验收见 [首次安装修复](docs/install-repair.md)。
+客户 0.1.16 支持覆盖修复未完成的首次安装：保留已有配置、密码、授权和数据库，先保存旧程序及数据副本，再恢复服务；中断后使用同一包续修复。适用边界及验收见 [首次安装修复](docs/install-repair.md)。
 
 M2 第七批已实现已发布成绩的全场统计、逐题分析、名单筛选与 Excel 导出，验收见 [成绩统计与导出](docs/m2-reports.md)。数据库保持 V10，无新增迁移。沿用 [阅卷与成绩发布](docs/m2-grading.md)、[答题会话](docs/m2-attempts.md)、[考试发布与名单](docs/m2-exams.md)、[组卷与冻结](docs/m2-papers.md)、[Excel 导入与图片](docs/m2-imports.md) 和 [题库基础](docs/m2-questions.md)；跨考试分析、复核改分和补考尚未交付。
 
@@ -130,7 +130,7 @@ $env:LICENSE_SEQUENCE = '1'
 
 安装版维护命令：管理员终端设置 `METAEXAM_CONFIG=C:\ProgramData\MetaExam\config.json`，然后使用 `C:\Program Files\MetaExam\runtime\node.exe --use-system-ca C:\Program Files\MetaExam\server\cli.cjs license-request <输出路径>` 等同名命令。含空格路径需 PowerShell 的 `&` 与引号。
 
-已有数据库禁止重新 initdb；安装器对受支持的旧版进入独立升级流程，见 [M3 离线升级](docs/m3-upgrade.md)。当前迁移为 V10，维护命令见 [M2 阅卷与成绩说明](docs/m2-grading.md)。卸载删除应用服务和应用文件、保留 ProgramData 数据。同机业务数据恢复见下文；保留数据的重新安装仍需人工维护，不提供净机或跨机恢复入口。当前仍为内部测试包，正式发布尚未交付；后续变更按影响范围回归。
+已有数据库禁止重新 initdb；安装器对受支持的旧版进入独立升级流程，见 [M3 离线升级](docs/m3-upgrade.md)。当前迁移为 V10，维护命令见 [M2 阅卷与成绩说明](docs/m2-grading.md)。卸载删除应用服务和应用文件、保留 ProgramData 数据。同机业务数据恢复见下文；0.1.16 起卸载保留受保护的版本清单和原授权公钥，可在原目录、同运行库和同迁移集合下重装；已被旧卸载器删除的公钥不能从新包猜测恢复。详见 [0.1.16 修复记录](docs/reliability-016.md)。不提供跨机恢复入口。当前仍为内部测试包，正式发布尚未交付；后续变更按影响范围回归。
 
 ## 本地备份与恢复
 
@@ -142,7 +142,7 @@ $env:LICENSE_SEQUENCE = '1'
 
 0.1.2 历史安装包摘要及验收清单见 [0.1.2 交付记录](docs/m3-release-012.md)；历史 0.1.3 客户包与独立签发器交付见 [供应方签发器](docs/provider-issuer.md)。
 
-当前客户 0.1.4、供应方签发器 0.1.3 安装包、证书指纹及验证结果见 [自签名交付记录](docs/release-self-signed.md)。
+历史客户 0.1.4、供应方签发器 0.1.3 安装包、证书指纹及验证结果见 [自签名交付记录](docs/release-self-signed.md)。
 
 GitHub 云端交付从客户 0.1.5、签发器 0.1.4 开始；两种安装包放在同一公开预发行版。手动发版、证书管理和验证范围见 [GitHub 构建与发布](docs/github-release.md)。
 

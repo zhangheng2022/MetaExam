@@ -13,6 +13,7 @@ import {
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
+import { setTimeout } from 'node:timers/promises';
 
 const repository = 'zhangheng2022/MetaExam';
 const directory = path.resolve('artifacts/release');
@@ -28,13 +29,26 @@ export function validateVersions(customer, issuer, expectedCustomer, expectedIss
     throw new Error('RELEASE_VERSION_MISMATCH');
 }
 export function validateDraft(release, sha, tag) {
+  if (!release) throw new Error('RELEASE_DRAFT_NOT_VISIBLE');
   if (!release.draft) throw new Error('RELEASE_ALREADY_PUBLISHED');
   if (
     release.tag_name !== tag ||
     release.target_commitish !== sha ||
+    typeof release.body !== 'string' ||
     !release.body.includes(`<!-- metaexam-commit:${sha} -->`)
   )
     throw new Error('RELEASE_DRAFT_COMMIT_MISMATCH');
+}
+export async function waitForDraft(find, sha, tag, pause = setTimeout) {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const release = await find(tag);
+    if (release) {
+      validateDraft(release, sha, tag);
+      return release;
+    }
+    if (attempt < 7) await pause(2000);
+  }
+  throw new Error('RELEASE_DRAFT_NOT_VISIBLE');
 }
 export function assetNames(customer, issuer) {
   return [
@@ -161,7 +175,7 @@ function sourceRun() {
   appendFileSync(process.env.GITHUB_ENV, `RELEASE_SOURCE_SHA=${sha}\n`);
   console.log(`Validated successful build ${id} at ${sha}`);
 }
-function publish() {
+async function publish() {
   const c = context(),
     manifest = json(path.join(directory, 'release-manifest.json'));
   for (const key of ['customer', 'issuer', 'sha', 'tag', 'thumbprint'])
@@ -210,8 +224,7 @@ function publish() {
       '--notes-file',
       path.join(directory, 'RELEASE-NOTES.md'),
     ]);
-    release = findRelease(c.tag);
-    validateDraft(release, c.sha, c.tag);
+    release = await waitForDraft(findRelease, c.sha, c.tag);
   }
   const all = [...names, 'release-manifest.json'];
   if (release.assets.some((a) => !all.includes(a.name)))
@@ -241,7 +254,7 @@ function publish() {
     const currentTag = api(`git/ref/tags/${c.tag}`);
     if (currentTag.object.type !== 'commit' || currentTag.object.sha !== c.sha)
       throw new Error('RELEASE_TAG_COMMIT_MISMATCH');
-    validateDraft(findRelease(c.tag), c.sha, c.tag);
+    await waitForDraft(findRelease, c.sha, c.tag);
     gh([
       'release',
       'edit',
@@ -263,7 +276,7 @@ function publish() {
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   if (process.argv[2] === 'prepare') prepare();
-  else if (process.argv[2] === 'publish') publish();
+  else if (process.argv[2] === 'publish') await publish();
   else if (process.argv[2] === 'source-run') sourceRun();
   else throw new Error('RELEASE_COMMAND_INVALID');
 }

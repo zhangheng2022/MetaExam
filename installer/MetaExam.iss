@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-#define MyAppVersion "0.1.13"
+#define MyAppVersion "0.1.16"
 #endif
 [Setup]
 SetupIconFile=..\packages\ui\public\brand\icon.ico
@@ -36,6 +36,10 @@ Type: files; Name: "{app}\maintenance\upgrade-engine.mjs"
 Type: files; Name: "{app}\maintenance\upgrade-windows.mjs"
 Type: files; Name: "{app}\maintenance\repair-engine.mjs"
 Type: files; Name: "{app}\maintenance\repair-windows.mjs"
+Type: files; Name: "{app}\maintenance\operation-lock.mjs"
+Type: files; Name: "{app}\maintenance\uninstall-state.mjs"
+Type: files; Name: "{app}\maintenance\install-health.mjs"
+Type: files; Name: "{app}\maintenance\restart-database.mjs"
 Type: files; Name: "{app}\maintenance\bootstrap-database.mjs"
 Type: files; Name: "{app}\maintenance\service-config.mjs"
 Type: files; Name: "{app}\maintenance\postgres-shutdown.mjs"
@@ -76,7 +80,7 @@ end;
 procedure InitializeWizard;
 begin
   Upgrading := FileExists(ExpandConstant('{commonappdata}\MetaExam\installation.json'));
-  LocalOnlyPage := CreateInputOptionPage(wpSelectDir, 'Internal test deployment', 'Choose the access mode', 'This package is unsigned and is for phase 1 technical validation.', True, False);
+  LocalOnlyPage := CreateInputOptionPage(wpSelectDir, 'Internal test deployment', 'Choose the access mode', 'This package is internally self-signed and is for technical validation.', True, False);
   LocalOnlyPage.Add('Local computer only (HTTP loopback)');
   LocalOnlyPage.Add('LAN access with HTTPS certificate');
   LocalOnlyPage.SelectedValueIndex := 0;
@@ -110,7 +114,7 @@ end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
  Result := '';
- if Upgrading and (not FileExists(ExpandConstant('{app}\release.json')) or not FileExists(ExpandConstant('{app}\runtime\node.exe'))) then
+ if Upgrading and not DirExists(ExpandConstant('{commonappdata}\MetaExam\reinstall')) and (not FileExists(ExpandConstant('{app}\release.json')) or not FileExists(ExpandConstant('{app}\runtime\node.exe'))) then
    Result := 'Select the existing MetaExam installation directory. Existing data will not be initialized again.';
 end;
 procedure CurStepChanged(CurStep: TSetupStep);
@@ -131,7 +135,7 @@ begin
        RaiseException('Visual C++ runtime installation failed.');
    Cert := ''; Key := '';
    if LocalOnlyPage.SelectedValueIndex = 1 then begin Cert := CertPage.Values[0]; Key := CertPage.Values[1]; end;
-   Args := '"' + ExpandConstant('{app}\maintenance\setup.mjs') + '" install "' + ExpandConstant('{app}') + '" "' + ExpandConstant('{commonappdata}\MetaExam') + '" "' + Cert + '" "' + Key + '" "' + NetworkPage.Values[0] + '" "' + NetworkPage.Values[1] + '" "' + NetworkPage.Values[2] + '"';
+    Args := '--use-system-ca "' + ExpandConstant('{app}\maintenance\setup.mjs') + '" install "' + ExpandConstant('{app}') + '" "' + ExpandConstant('{commonappdata}\MetaExam') + '" "' + Cert + '" "' + Key + '" "' + NetworkPage.Values[0] + '" "' + NetworkPage.Values[1] + '" "' + NetworkPage.Values[2] + '"';
    if not Exec(ExpandConstant('{app}\runtime\node.exe'), Args, ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
      RaiseException('Service configuration failed. Inspect installer and service logs. Existing data has been retained.');
    CompletePostInstall;

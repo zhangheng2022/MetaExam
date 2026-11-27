@@ -64,6 +64,18 @@ try {
       await page.getByLabel('简答题答案', { exact: true }).inputValue(),
       '断网时保留的输入',
     );
+    const answerUrl = page.url();
+    await page.getByRole('link', { name: '返回我的考试', exact: true }).click();
+    await page.getByRole('dialog').getByText('放弃尚未保存的修改？', { exact: true }).waitFor();
+    assert.equal(page.url(), answerUrl);
+    await page.getByRole('dialog').getByRole('button', { name: '继续编辑', exact: true }).click();
+    assert.equal(
+      await page.getByLabel('简答题答案', { exact: true }).inputValue(),
+      '断网时保留的输入',
+    );
+    await page.goBack();
+    await page.getByRole('dialog').getByRole('button', { name: '继续编辑', exact: true }).click();
+    assert.equal(page.url(), answerUrl);
     await page.unroute(saveUrl);
     await page.getByRole('button', { name: '重试保存', exact: true }).click();
     await page.getByText(/已保存 ·/).waitFor();
@@ -120,6 +132,7 @@ try {
             'autosave+refresh',
             'safe image',
             'offline retry',
+            'unsaved route/back navigation blocked; cancellation preserves input',
             'other-tab conflict',
             'mobile',
             'submit+receipt',

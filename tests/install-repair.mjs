@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtemp, mkdir, writeFile, readFile, cp, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, cp, rm, rename, symlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { repair } from '../installer/repair-engine.mjs';
 import { inventory, buildId, programParts } from '../installer/release.mjs';
+import { prepareUninstall } from '../installer/uninstall-state.mjs';
 
 const json = async (file) => JSON.parse(await readFile(file, 'utf8'));
 async function fixture(t) {
@@ -101,6 +102,120 @@ async function fixture(t) {
     starts: () => starts,
     stops: () => stops,
   };
+}
+
+async function removedInstallation(t) {
+  const f = await fixture(t);
+  await mkdir(path.join(f.data, 'postgres/data'));
+  await writeFile(path.join(f.data, 'postgres/data/PG_VERSION'), '18');
+  await writeFile(f.marker, JSON.stringify({ ...f.record, phase: 'installed' }));
+  const complete = await prepareUninstall(f, f.platform);
+  assert.equal(
+    (await json(f.marker)).phase,
+    'installed',
+    'prepare does not claim services removed',
+  );
+  await complete();
+  assert.equal((await json(f.marker)).phase, 'uninstalled');
+  assert.equal(path.dirname(f.app), path.dirname(f.data));
+  await rm(f.app, { recursive: true });
+  return f;
+}
+test('repair rejects a runtime directory junction even when file hashes match', async (t) => {
+  const f = await fixture(t);
+  const runtime = path.join(f.app, 'runtime');
+  const moved = path.join(path.dirname(f.app), 'linked-runtime');
+  await rename(runtime, moved);
+  await symlink(moved, runtime, 'junction');
+  await assert.rejects(repair(f, f.platform), /UNSAFE_PATH/);
+  assert.equal(f.stops(), 0);
+});
+test('uninstall refuses an outstanding maintenance operation and preserves the installation', async (t) => {
+  const f = await fixture(t);
+  await writeFile(f.pending, '{}');
+  await assert.rejects(prepareUninstall(f, f.platform), /MAINTENANCE_REQUIRED/);
+  assert.equal((await json(f.marker)).phase, 'configuring');
+});
+test('uninstall retains the existing firewall scope and is idempotent before file removal', async (t) => {
+  const f = await fixture(t);
+  const platform = { ...f.platform, firewallSubnet: async () => '192.168.5.0/24' };
+  await (
+    await prepareUninstall(f, platform)
+  )();
+  const record = await json(f.marker);
+  assert.equal(record.reinstall.subnet, '192.168.5.0/24');
+  await (
+    await prepareUninstall(f, platform)
+  )();
+  assert.deepEqual(await json(f.marker), record);
+});
+
+test('uninstall then reinstall restores pinned programs and original trust without resetting data', async (t) => {
+  const f = await removedInstallation(t);
+  const result = await repair(f, f.platform);
+  assert.equal((await json(f.marker)).phase, 'installed');
+  assert.equal(
+    await readFile(path.join(f.app, 'public-keys.json'), 'utf8'),
+    'existing customer keys',
+  );
+  for (const part of ['runtime', 'postgres', 'vendor'])
+    assert.equal(await readFile(path.join(f.app, part, 'content'), 'utf8'), part + '-old');
+  assert.equal(await readFile(path.join(f.data, 'postgres/data/PG_VERSION'), 'utf8'), '18');
+  assert.equal(
+    await readFile(path.join(result.backup, 'data-backup/config.json'), 'utf8'),
+    'preserved:config.json',
+  );
+});
+
+for (const phase of [
+  'switching',
+  'switched-server',
+  'switched-runtime',
+  'configuring',
+  'healthy',
+]) {
+  test('reinstall resumes the same package after ' + phase, async (t) => {
+    const f = await removedInstallation(t);
+    const fail = async (step) => {
+      if (step === phase) throw new Error('INTERRUPTED');
+    };
+    const p = { ...f.platform, checkpoint: fail, healthy: async () => fail('healthy') };
+    await assert.rejects(repair(f, p), /INTERRUPTED/);
+    const result = await repair(f, f.platform);
+    assert.equal(result.resumed, true);
+    assert.equal((await json(f.marker)).phase, 'installed');
+    assert.equal(
+      await readFile(path.join(f.app, 'public-keys.json'), 'utf8'),
+      'existing customer keys',
+    );
+  });
+}
+
+for (const defect of ['trust', 'runtime', 'database', 'downgrade', 'schema']) {
+  test('reinstall rejects ' + defect + ' before service mutations', async (t) => {
+    const f = await removedInstallation(t);
+    const record = await json(f.marker);
+    if (defect === 'trust')
+      await writeFile(
+        path.join(f.data, 'reinstall', record.reinstall.id, 'public-keys.json'),
+        'tampered',
+      );
+    if (defect === 'database') await rm(path.join(f.data, 'postgres/data/PG_VERSION'));
+    if (defect === 'runtime') {
+      await writeFile(path.join(f.source, 'runtime/content'), 'different');
+      await f.makeRelease(f.source, f.release.version);
+    }
+    if (defect === 'downgrade') await f.makeRelease(f.source, '0.1.1');
+    if (defect === 'schema') {
+      const r = await json(path.join(f.source, 'release.json'));
+      r.migrations[0].checksum = 'b'.repeat(64);
+      r.buildId = buildId(r);
+      await writeFile(path.join(f.source, 'release.json'), JSON.stringify(r));
+    }
+    await assert.rejects(repair(f, f.platform));
+    assert.equal(f.stops(), 0);
+    assert.equal((await json(f.marker)).phase, 'uninstalled');
+  });
 }
 
 test('repair preserves credentials, keys, database, attachments and previous programs', async (t) => {

@@ -34,3 +34,9 @@ Release 只接收白名单：两种 EXE、各自 SHA256、公开 CER、签名说
 首次上线还需下载云端载荷，在本机用真实 0.1.4 基线验证升级；该结果与云端测试分开记录。云端成功不代表目标机器已完成证书信任、实际 Windows 服务安装、卸载和重启验收。
 
 官方资料：[手动工作流](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)、[Actions Secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)、[GitHub Release CLI](https://cli.github.com/manual/gh_release_create)、[Windows 受限令牌](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-createrestrictedtoken)、[子进程安全上下文](https://learn.microsoft.com/en-us/windows/win32/secauthz/processes-in-the-client-security-context)、[对象默认 DACL](https://learn.microsoft.com/en-us/windows/win32/secauthz/dacl-for-a-new-object)。
+
+## 0.1.16 发布回归补充
+
+发布和续发布新增必填输入 `upgrade_baseline_run_id`，指定真实旧客户构建的 customer-payload 资产。下载前核对本仓库 master 手动发布工作流及成功 build job，下载后验证完整载荷清单、buildId 和旧版本。默认 45983115933 对应 0.1.13 的原始构建；Actions 资产有保留期限，过期必须选用仍可下载的真实旧构建，不能跳过或伪造基线。
+
+普通权限验证增加 test:install-repair、test:upgrade 和 test:attempts。创建 Release 草稿后允许短暂列表不可见，最多查询八次；发现错误提交、重复草稿或已发布版本仍立即拒绝，不覆盖资产。
