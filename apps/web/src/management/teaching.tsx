@@ -103,13 +103,13 @@ export function AssignmentsPage() {
           save={(v) => api('/admin/assignments', 'POST', v)}
         >
           <Form.Item name="courseId" label="课程" rules={[{ required: true }]}>
-            <RemotePicker endpoint="/admin/organizations/courses" />
+            <RemotePicker placeholder="搜索并选择课程" endpoint="/admin/organizations/courses" />
           </Form.Item>
           <Form.Item name="classId" label="班级" rules={[{ required: true }]}>
-            <RemotePicker endpoint="/admin/organizations/classes" />
+            <RemotePicker placeholder="搜索并选择班级" endpoint="/admin/organizations/classes" />
           </Form.Item>
           <Form.Item name="teacherId" label="教师" rules={[{ required: true }]}>
-            <RemotePicker endpoint="/admin/users?role=teacher" />
+            <RemotePicker placeholder="搜索并选择教师" endpoint="/admin/users?role=teacher" />
           </Form.Item>
         </Editor>
       )}
@@ -139,6 +139,7 @@ export function AuditPage() {
         ))}
         <Form.Item name="outcome" label="结果">
           <Select
+            placeholder="全部结果"
             allowClear
             className="filter-select"
             options={[

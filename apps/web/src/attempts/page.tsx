@@ -429,6 +429,7 @@ function QuestionEditor({
                   <label htmlFor={'blank-' + b.id}>第 {i + 1} 空</label>
                   <Input
                     id={'blank-' + b.id}
+                    placeholder={`请输入第 ${i + 1} 空答案`}
                     maxLength={200}
                     value={
                       answer?.type === 'blank'
@@ -451,6 +452,7 @@ function QuestionEditor({
             {q.content.type === 'essay' && (
               <Input.TextArea
                 aria-label="简答题答案"
+                placeholder="请在此输入答案"
                 rows={8}
                 maxLength={8000}
                 showCount

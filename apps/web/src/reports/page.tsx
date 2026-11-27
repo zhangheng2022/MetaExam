@@ -178,13 +178,21 @@ export function ReportPage() {
               label="合格比例（满分百分比）"
               rules={[{ required: true, message: '请输入 0～100 的整数' }]}
             >
-              <InputNumber min={0} max={100} step={1} precision={0} suffix="%" />
+              <InputNumber
+                min={0}
+                max={100}
+                step={1}
+                precision={0}
+                suffix="%"
+                placeholder="0～100"
+              />
             </Form.Item>
             <Form.Item name="q" label="用户名或姓名">
-              <Input maxLength={100} allowClear />
+              <Input maxLength={100} allowClear placeholder="请输入用户名或姓名" />
             </Form.Item>
             <Form.Item name="status" label="成绩状态">
               <Select
+                placeholder="请选择成绩状态"
                 options={[
                   { value: 'all', label: '全部' },
                   { value: 'passed', label: '合格' },
@@ -195,6 +203,7 @@ export function ReportPage() {
             </Form.Item>
             <Form.Item name="sort" label="名单排序">
               <Select
+                placeholder="请选择排序方式"
                 options={[
                   { value: 'username', label: '用户名' },
                   { value: 'score_desc', label: '分数从高到低' },

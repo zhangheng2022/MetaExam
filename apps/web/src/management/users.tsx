@@ -110,7 +110,11 @@ export function UsersPage({
                 },
               ]}
             >
-              <Input maxLength={64} autoComplete="off" />
+              <Input
+                maxLength={64}
+                autoComplete="off"
+                placeholder="3～64 位字母、数字、点、下划线或连字符"
+              />
             </Form.Item>
           ) : (
             <Alert
@@ -124,14 +128,14 @@ export function UsersPage({
             label="姓名"
             rules={[{ required: true, whitespace: true }, { max: 100 }]}
           >
-            <Input maxLength={100} />
+            <Input maxLength={100} placeholder="请输入姓名" />
           </Form.Item>
           <Form.Item
             name="roles"
             label="角色"
             rules={[{ required: true, type: 'array', min: 1, message: '至少选择一个角色' }]}
           >
-            <Select mode="multiple" options={roleOptions} />
+            <Select mode="multiple" options={roleOptions} placeholder="请选择角色，可多选" />
           </Form.Item>
           {editing === 'new' ? (
             <>
@@ -186,7 +190,11 @@ function PasswordInput() {
         { min: 12, max: 128, message: '密码长度为 12～128 个字符' },
       ]}
     >
-      <Input.Password maxLength={128} autoComplete="new-password" />
+      <Input.Password
+        maxLength={128}
+        autoComplete="new-password"
+        placeholder="请输入 12～128 个字符的临时密码"
+      />
     </Form.Item>
   );
 }

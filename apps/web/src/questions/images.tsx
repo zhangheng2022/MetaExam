@@ -84,6 +84,7 @@ export function ImageEditor({
           <Space.Compact block>
             <Input
               aria-label={`图片 ${i + 1} 说明`}
+              placeholder="请输入图片内容说明"
               value={item.alt}
               maxLength={200}
               onChange={(e) =>

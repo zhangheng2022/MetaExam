@@ -363,10 +363,20 @@ function Marking({
                 label="本题得分"
                 rules={[{ required: true, message: '请填写得分' }]}
               >
-                <InputNumber min={0} max={item.maxScore} step={0.5} />
+                <InputNumber
+                  min={0}
+                  max={item.maxScore}
+                  step={0.5}
+                  placeholder={`0～${item.maxScore} 分`}
+                />
               </Form.Item>
               <Form.Item name="comment" label="评语（发布后学生可见）">
-                <Input.TextArea maxLength={2000} rows={3} showCount />
+                <Input.TextArea
+                  maxLength={2000}
+                  rows={3}
+                  showCount
+                  placeholder="选填，输入给考生的评语"
+                />
               </Form.Item>
               <Button type="primary" htmlType="submit" loading={busy}>
                 保存评分

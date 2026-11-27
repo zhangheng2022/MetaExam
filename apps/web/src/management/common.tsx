@@ -102,7 +102,11 @@ export function Filters({
         <Input />
       </Form.Item>
       <Form.Item name="q" label="搜索">
-        <Input allowClear placeholder="输入名称或编码" maxLength={100} />
+        <Input
+          allowClear
+          placeholder={users ? '输入用户名或姓名' : '输入名称或编码'}
+          maxLength={100}
+        />
       </Form.Item>
       {users && (
         <Form.Item name="role" label="角色">
@@ -288,12 +292,14 @@ export function RemotePicker({
   onChange,
   id,
   enabledOnly = true,
+  placeholder = '搜索并选择',
 }: {
   endpoint: string;
   value?: string;
   onChange?: (value: string) => void;
   id?: string;
   enabledOnly?: boolean;
+  placeholder?: string;
 }) {
   const [search, setSearch] = useState(''),
     [page, setPage] = useState(1),
@@ -363,7 +369,7 @@ export function RemotePicker({
           setPage(1);
         },
       }}
-      placeholder="搜索并选择"
+      placeholder={placeholder}
       loading={busy}
       options={options}
       onSelect={(_, option) => setSelected(option)}

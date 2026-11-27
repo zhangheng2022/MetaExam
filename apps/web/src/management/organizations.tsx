@@ -110,14 +110,14 @@ function OrganizationList({ kind }: { kind: 'classes' | 'courses' }) {
               },
             ]}
           >
-            <Input maxLength={64} />
+            <Input maxLength={64} placeholder="1～64 位字母、数字、点、下划线或连字符" />
           </Form.Item>
           <Form.Item
             name="name"
             label={`${noun}名称`}
             rules={[{ required: true, whitespace: true }, { max: 100 }]}
           >
-            <Input maxLength={100} />
+            <Input maxLength={100} placeholder={`请输入${noun}名称`} />
           </Form.Item>
           {editing !== 'new' && (
             <Form.Item name="enabled" label={`启用${noun}`} valuePropName="checked">
@@ -223,7 +223,7 @@ function MembersPage({ id }: { id: string }) {
             label="学生"
             rules={[{ required: true, message: '请选择学生' }]}
           >
-            <RemotePicker endpoint="/admin/users?role=student" />
+            <RemotePicker placeholder="搜索并选择学生" endpoint="/admin/users?role=student" />
           </Form.Item>
         </Editor>
       )}

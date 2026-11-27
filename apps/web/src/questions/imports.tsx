@@ -251,6 +251,7 @@ export function ImportManager({
               <Space wrap>
                 <Select
                   aria-label="重复题处理"
+                  placeholder="请选择重复题处理方式"
                   value={policy}
                   onChange={setPolicy}
                   options={[

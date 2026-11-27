@@ -52,12 +52,13 @@ export function DrawEditor({
       />
       <Form.Item name="bankId" label="来源题库" rules={[{ required: true }]}>
         <RemotePicker
+          placeholder="搜索并选择题库"
           endpoint={`/question-banks?courseId=${paper.courseId}&archived=false`}
           enabledOnly={false}
         />
       </Form.Item>
       <Form.Item name="type" label="题型" rules={[{ required: true }]}>
-        <Select options={typeOptions} />
+        <Select options={typeOptions} placeholder="请选择题型" />
       </Form.Item>
       <Form.Item name="difficulty" label="难度">
         <Select
@@ -73,10 +74,15 @@ export function DrawEditor({
         <Input maxLength={80} placeholder="完整匹配，可留空" />
       </Form.Item>
       <Form.Item name="count" label="抽题数量" rules={[{ required: true }]}>
-        <InputNumber min={1} max={Math.min(100, 200 - paper.items.length)} precision={0} />
+        <InputNumber
+          min={1}
+          max={Math.min(100, 200 - paper.items.length)}
+          precision={0}
+          placeholder="请输入题数"
+        />
       </Form.Item>
       <Form.Item name="score" label="每题分值" rules={[{ required: true }]}>
-        <InputNumber min={0.5} max={1000} step={0.5} />
+        <InputNumber min={0.5} max={1000} step={0.5} placeholder="请输入分值" />
       </Form.Item>
     </Editor>
   );
@@ -193,6 +199,7 @@ export function ManualPicker({
         <Form.Item label="来源题库" htmlFor="paper-bank">
           <RemotePicker
             id="paper-bank"
+            placeholder="搜索并选择题库"
             endpoint={`/question-banks?courseId=${paper.courseId}&archived=false`}
             enabledOnly={false}
             value={bank}
@@ -206,6 +213,7 @@ export function ManualPicker({
         </Form.Item>
         <Form.Item label="所选题目分值">
           <InputNumber
+            placeholder="请输入分值"
             aria-label="所选题目分值"
             min={0.5}
             max={1000}
@@ -231,7 +239,7 @@ export function ManualPicker({
         disabled={busy}
       >
         <Form.Item name="q" label="题干搜索">
-          <Input maxLength={100} />
+          <Input maxLength={100} placeholder="请输入题干关键词" />
         </Form.Item>
         <Form.Item name="type" label="题型">
           <Select className="filter-select" allowClear options={typeOptions} placeholder="全部" />

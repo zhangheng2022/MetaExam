@@ -68,7 +68,7 @@ function BankEditor({
         label="题库名称"
         rules={[{ required: true, whitespace: true, message: '请填写名称' }]}
       >
-        <Input maxLength={100} />
+        <Input maxLength={100} placeholder="请输入题库名称" />
       </Form.Item>
       {!bank && (
         <>
@@ -77,7 +77,11 @@ function BankEditor({
             label="所属课程"
             rules={[{ required: true, message: '请选择课程' }]}
           >
-            <RemotePicker endpoint="/question-banks/courses" enabledOnly={false} />
+            <RemotePicker
+              placeholder="搜索并选择课程"
+              endpoint="/question-banks/courses"
+              enabledOnly={false}
+            />
           </Form.Item>
           <Form.Item
             name="visibility"
@@ -85,6 +89,7 @@ function BankEditor({
             extra="公共题库对该课程任课教师可读；个人题库由本人维护，管理员可管理。"
           >
             <Select
+              placeholder="请选择可见范围"
               options={[
                 ...(user.roles.includes('admin') ? [{ value: 'public', label: '公共题库' }] : []),
                 { value: 'private', label: '个人题库' },
@@ -94,7 +99,7 @@ function BankEditor({
         </>
       )}
       <Form.Item name="description" label="说明">
-        <Input.TextArea maxLength={500} rows={3} />
+        <Input.TextArea maxLength={500} rows={3} placeholder="选填，说明题库用途或适用范围" />
       </Form.Item>
       {bank && (
         <Form.Item

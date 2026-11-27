@@ -41,7 +41,11 @@ export function PasswordField({
           : []),
       ]}
     >
-      <Input.Password autoComplete="new-password" maxLength={128} />
+      <Input.Password
+        autoComplete="new-password"
+        maxLength={128}
+        placeholder={confirmation ? '请再次输入密码' : '请输入 12～128 个字符的密码'}
+      />
     </Form.Item>
   );
 }
@@ -105,7 +109,7 @@ export function IdentityForm({
             },
           ]}
         >
-          <Input autoComplete="username" maxLength={70} />
+          <Input autoComplete="username" maxLength={70} placeholder="请输入用户名" />
         </Form.Item>
       )}
       {mode === 'setup' && (
@@ -114,12 +118,16 @@ export function IdentityForm({
           label="姓名"
           rules={[{ required: true, whitespace: true, message: '请输入姓名' }, { max: 100 }]}
         >
-          <Input maxLength={100} autoComplete="name" />
+          <Input maxLength={100} autoComplete="name" placeholder="请输入管理员姓名" />
         </Form.Item>
       )}
       {mode === 'login' ? (
         <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入密码' }]}>
-          <Input.Password autoComplete="current-password" maxLength={128} />
+          <Input.Password
+            autoComplete="current-password"
+            maxLength={128}
+            placeholder="请输入密码"
+          />
         </Form.Item>
       ) : (
         <>
@@ -129,7 +137,11 @@ export function IdentityForm({
               label="原密码"
               rules={[{ required: true, message: '请输入原密码' }]}
             >
-              <Input.Password autoComplete="current-password" maxLength={128} />
+              <Input.Password
+                autoComplete="current-password"
+                maxLength={128}
+                placeholder="请输入原密码"
+              />
             </Form.Item>
           )}
           <PasswordField

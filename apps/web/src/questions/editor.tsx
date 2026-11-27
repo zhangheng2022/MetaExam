@@ -65,6 +65,7 @@ function ContentEditor({
         <Typography.Paragraph>题型</Typography.Paragraph>
         <Select
           aria-label="题型"
+          placeholder="请选择题型"
           value={value.type}
           options={typeOptions}
           className="question-type"
@@ -134,6 +135,7 @@ function ContentEditor({
             <Typography.Paragraph>正确答案</Typography.Paragraph>
             <Select
               aria-label="正确答案"
+              placeholder={value.type === 'multiple' ? '请选择至少两个正确答案' : '请选择正确答案'}
               className="question-answer"
               mode={value.type === 'multiple' ? 'multiple' : undefined}
               value={value.type === 'multiple' ? value.answer : value.answer[0]}
@@ -149,6 +151,7 @@ function ContentEditor({
       {value.type === 'boolean' && (
         <Select
           aria-label="判断答案"
+          placeholder="请选择判断答案"
           value={value.answer ? 'true' : 'false'}
           options={[
             { value: 'true', label: '正确' },
@@ -288,6 +291,7 @@ export function QuestionEditor({
       </Form.Item>
       <Form.Item name="difficulty" label="难度" rules={[{ required: true }]}>
         <Select
+          placeholder="请选择难度"
           options={[1, 2, 3, 4, 5].map((value) => ({
             value,
             label: `${value} · ${['容易', '较易', '中等', '较难', '困难'][value - 1]}`,
@@ -295,13 +299,13 @@ export function QuestionEditor({
         />
       </Form.Item>
       <Form.Item name="knowledgePoints" label="知识点" extra="输入后按回车添加，最多 10 个。">
-        <Select mode="tags" maxCount={10} options={[]} />
+        <Select mode="tags" maxCount={10} options={[]} placeholder="输入后按回车添加，最多 10 个" />
       </Form.Item>
       <Form.Item name="tags" label="标签" extra="输入后按回车添加，最多 10 个。">
-        <Select mode="tags" maxCount={10} options={[]} />
+        <Select mode="tags" maxCount={10} options={[]} placeholder="输入后按回车添加，最多 10 个" />
       </Form.Item>
       <Form.Item name="explanation" label="解析">
-        <Input.TextArea rows={3} maxLength={8000} />
+        <Input.TextArea rows={3} maxLength={8000} placeholder="选填，输入解题思路或答案解析" />
       </Form.Item>
     </Editor>
   );

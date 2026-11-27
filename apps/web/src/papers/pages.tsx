@@ -108,13 +108,21 @@ function List() {
             label="试卷名称"
             rules={[{ required: true, whitespace: true, max: 100 }]}
           >
-            <Input maxLength={100} />
+            <Input maxLength={100} placeholder="请输入试卷名称" />
           </Form.Item>
           <Form.Item name="courseId" label="所属课程" rules={[{ required: true }]}>
-            <RemotePicker endpoint="/question-banks/courses" enabledOnly={false} />
+            <RemotePicker
+              placeholder="搜索并选择课程"
+              endpoint="/question-banks/courses"
+              enabledOnly={false}
+            />
           </Form.Item>
           <Form.Item name="instructions" label="作答说明">
-            <Input.TextArea maxLength={2000} rows={4} />
+            <Input.TextArea
+              maxLength={2000}
+              rows={4}
+              placeholder="选填，输入考生作答时需遵守的说明"
+            />
           </Form.Item>
         </Editor>
       )}
@@ -323,6 +331,7 @@ function Workspace({ paper, reload }: { paper: PaperDetail; reload: () => void }
             <Form.Item label="试卷名称" htmlFor="paper-name" required>
               <Input
                 id="paper-name"
+                placeholder="请输入试卷名称"
                 value={name}
                 maxLength={100}
                 onChange={(e) => setName(e.target.value)}
@@ -331,6 +340,7 @@ function Workspace({ paper, reload }: { paper: PaperDetail; reload: () => void }
             <Form.Item label="作答说明" htmlFor="paper-instructions">
               <Input.TextArea
                 id="paper-instructions"
+                placeholder="选填，输入考生作答时需遵守的说明"
                 value={instructions}
                 maxLength={2000}
                 rows={3}
@@ -446,6 +456,7 @@ function Workspace({ paper, reload }: { paper: PaperDetail; reload: () => void }
                 writable ? (
                   <InputNumber
                     aria-label={`第 ${items.indexOf(r) + 1} 题分值`}
+                    placeholder="分值"
                     min={0.5}
                     max={1000}
                     step={0.5}
@@ -530,7 +541,7 @@ function Workspace({ paper, reload }: { paper: PaperDetail; reload: () => void }
             name="name"
             rules={[{ required: true, whitespace: true, max: 100 }]}
           >
-            <Input maxLength={100} />
+            <Input maxLength={100} placeholder="请输入试卷名称" />
           </Form.Item>
           <Alert
             type="info"

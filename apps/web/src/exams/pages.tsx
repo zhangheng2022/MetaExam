@@ -337,7 +337,7 @@ function ExamEditor({
         label="考试名称"
         rules={[{ required: true, whitespace: true, max: 100 }]}
       >
-        <Input maxLength={100} />
+        <Input maxLength={100} placeholder="请输入考试名称" />
       </Form.Item>
       <Form.Item label="所属课程" htmlFor="exam-course" required>
         {exam ? (
@@ -345,6 +345,7 @@ function ExamEditor({
         ) : (
           <RemotePicker
             id="exam-course"
+            placeholder="搜索并选择课程"
             endpoint="/question-banks/courses"
             enabledOnly={false}
             value={course || undefined}
@@ -362,6 +363,7 @@ function ExamEditor({
             <RemotePicker
               key={course}
               id="exam-paper"
+              placeholder="搜索并选择冻结试卷"
               endpoint={'/exams/choices/papers?courseId=' + course}
               enabledOnly={false}
               value={paper}
@@ -386,7 +388,7 @@ function ExamEditor({
         <Input type="datetime-local" step={60} />
       </Form.Item>
       <Form.Item name="durationMinutes" label="答题时长（分钟）" rules={[{ required: true }]}>
-        <InputNumber min={1} max={480} precision={0} />
+        <InputNumber min={1} max={480} precision={0} placeholder="1～480 分钟" />
       </Form.Item>
       <Typography.Paragraph type="secondary">
         考试窗口须覆盖答题时长，最长 7
@@ -594,7 +596,7 @@ function Detail({ id }: { id: string }) {
                   label="取消原因"
                   rules={[{ required: true, whitespace: true, max: 500 }]}
                 >
-                  <Input.TextArea rows={3} maxLength={500} />
+                  <Input.TextArea rows={3} maxLength={500} placeholder="请输入取消原因，考生可见" />
                 </Form.Item>
               </Editor>
             )}
