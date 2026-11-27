@@ -9,6 +9,11 @@ $admin=([Security.Principal.WindowsPrincipal]::new($identity)).IsInRole([Securit
 if (-not $Child) {
   $env:METAEXAM_CI_EXPECTED_SID=$identity.User.Value
   if ($admin) {
+    if ($env:GITHUB_ACTIONS -ne 'true') { throw 'ELEVATED_CI_ONLY' }
+    # Runner workspaces can inherit only the Administrators ACL; grant this same user
+    # access before removing its admin group from the test token. No product ACL changes.
+    & icacls.exe $root /grant:r ('*'+$identity.User.Value+':(OI)(CI)M') | Out-Null
+    if ($LASTEXITCODE) { throw 'CI_WORKSPACE_ACL_FAILED' }
     Add-Type -Path (Join-Path $PSScriptRoot 'RestrictedProcess.cs')
     $exe=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
     $command='"'+$exe+'" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$PSCommandPath+'" -Child'
@@ -29,7 +34,7 @@ if (-not $Child) {
   }
   try {
     Task @('db:start')
-    Task @('exec','playwright','install','chromium')
+    Task -Arguments @('exec','playwright','install','chromium')
     foreach ($task in @('test:integration','test:issuer','test:signing','test:package','test:issuer:package')) { Task @($task) }
   } finally { Task @('db:stop') }
 } *> $log
