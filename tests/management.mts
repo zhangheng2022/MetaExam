@@ -63,7 +63,7 @@ try {
     const r = await request(
       '/admin/users',
       'POST',
-      { username, displayName: username, roles, password: 'temporary password phrase' },
+      { username, displayName: username, roles, password: '234567' },
       admin.cookie,
     );
     assert.equal(r.statusCode, 201, r.body);
@@ -73,17 +73,17 @@ try {
   const studentId = await create('student', ['student']);
   await create('outsider', ['student']);
   const otherAdminId = await create('admin2', ['admin']);
-  const force = await login('teacher', 'temporary password phrase');
+  const force = await login('teacher', '234567');
   assert.equal(force.user.mustChangePassword, true);
   assert.equal((await request('/teaching/me', 'GET', undefined, force.cookie)).statusCode, 403);
   const activate = async (username: string) => {
-    const temp = await login(username, 'temporary password phrase');
+    const temp = await login(username, '234567');
     assert.equal(
       (
         await request(
           '/auth/change-password',
           'POST',
-          { oldPassword: 'temporary password phrase', newPassword: 'personal password phrase' },
+          { oldPassword: '234567', newPassword: 'personal password phrase' },
           temp.cookie,
         )
       ).statusCode,
@@ -117,7 +117,7 @@ try {
           username: 'TEACHER',
           displayName: '重复',
           roles: ['teacher'],
-          password: 'temporary password phrase',
+          password: '234567',
         },
         admin.cookie,
       )
@@ -213,14 +213,14 @@ try {
       await request(
         '/admin/users/' + teacherId + '/reset-password',
         'POST',
-        { password: 'reset password phrase', revision: beforeReset.revision },
+        { password: '345678', revision: beforeReset.revision },
         admin.cookie,
       )
     ).statusCode,
     204,
   );
   assert.equal((await request('/auth/me', 'GET', undefined, teacher.cookie)).statusCode, 401);
-  assert.equal((await login('teacher', 'reset password phrase')).user.mustChangePassword, true);
+  assert.equal((await login('teacher', '345678')).user.mustChangePassword, true);
   assert.equal((await edit(await userRow(studentId), { enabled: false })).statusCode, 204);
   assert.equal((await request('/auth/me', 'GET', undefined, student.cookie)).statusCode, 401);
   assert.equal(
@@ -252,12 +252,7 @@ try {
   assert.equal(logs.statusCode, 200);
   assert.ok(logs.json().items.some((e: { targetId: string }) => e.targetId === teacherId));
   const serialized = JSON.stringify((await t.db.pool.query('SELECT * FROM audit_events')).rows);
-  for (const secret of [
-    'temporary password phrase',
-    'reset password phrase',
-    'password_hash',
-    admin.cookie,
-  ])
+  for (const secret of ['234567', '345678', 'password_hash', admin.cookie])
     assert.ok(!serialized.includes(secret));
   assert.equal(
     (await request('/admin/assignments', 'DELETE', assignment, admin.cookie)).statusCode,

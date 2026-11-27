@@ -28,7 +28,7 @@ export function PasswordField({
       dependencies={confirmation ? ['password', 'newPassword'] : undefined}
       rules={[
         { required: true, message: '请输入' + label },
-        { min: 12, max: 128, message: '密码长度为 12～128 个字符' },
+        { min: 6, max: 128, message: '密码长度为 6～128 个字符' },
         ...(confirmation
           ? [
               ({ getFieldValue }: { getFieldValue: (name: string) => string }) => ({
@@ -44,7 +44,7 @@ export function PasswordField({
       <Input.Password
         autoComplete="new-password"
         maxLength={128}
-        placeholder={confirmation ? '请再次输入密码' : '请输入 12～128 个字符的密码'}
+        placeholder={confirmation ? '请再次输入密码' : '请输入 6～128 个字符的密码'}
       />
     </Form.Item>
   );
@@ -150,7 +150,7 @@ export function IdentityForm({
           />
           <PasswordField name="confirm" label="确认密码" confirmation />
           <Typography.Paragraph type="secondary">
-            密码支持短语，长度为 12～128 个字符。
+            密码支持短语，长度为 6～128 个字符。
           </Typography.Paragraph>
         </>
       )}

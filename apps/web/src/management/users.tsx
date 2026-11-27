@@ -187,13 +187,13 @@ function PasswordInput() {
       label="临时密码"
       rules={[
         { required: true, message: '请设置临时密码' },
-        { min: 12, max: 128, message: '密码长度为 12～128 个字符' },
+        { min: 6, max: 128, message: '密码长度为 6～128 个字符' },
       ]}
     >
       <Input.Password
         maxLength={128}
         autoComplete="new-password"
-        placeholder="请输入 12～128 个字符的临时密码"
+        placeholder="请输入 6～128 个字符的临时密码"
       />
     </Form.Item>
   );

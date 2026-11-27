@@ -22,7 +22,7 @@ try {
     body: JSON.stringify({
       username: 'admin',
       displayName: '验收管理员',
-      password: 'administrator phrase',
+      password: '123456',
     }),
   });
   assert.equal(initialized.status, 201);
@@ -56,7 +56,7 @@ try {
       .first()
       .click();
   };
-  await login('admin', 'administrator phrase');
+  await login('admin', '123456');
   await page.getByRole('heading', { name: '个人信息', exact: true }).waitFor();
   await page.getByRole('menuitem', { name: '账号管理' }).click();
   for (const [username, displayName, role] of [
@@ -71,7 +71,7 @@ try {
       await choose('角色', role);
       await dialog().getByLabel('姓名', { exact: true }).click();
     }
-    await dialog().getByLabel('临时密码', { exact: true }).fill('temporary account phrase');
+    await dialog().getByLabel('临时密码', { exact: true }).fill('234567');
     await save();
     await page.getByRole('cell', { name: displayName!, exact: true }).waitFor();
   }
@@ -118,12 +118,12 @@ try {
   await page.getByRole('menuitem', { name: '操作日志' }).click();
   await page.getByRole('cell', { name: 'assignment.add', exact: true }).waitFor();
   await page.getByRole('button', { name: '退出登录', exact: true }).click();
-  await login('student01', 'temporary account phrase');
+  await login('student01', '234567');
   await page.getByText('首次登录或密码被重置，请先修改密码', { exact: true }).waitFor();
   await page.goto(base + '/users');
   await page.getByRole('heading', { name: '修改密码', exact: true }).waitFor();
   assert.equal(await page.getByRole('menuitem', { name: '账号管理' }).count(), 0);
-  await page.getByLabel('原密码', { exact: true }).fill('temporary account phrase');
+  await page.getByLabel('原密码', { exact: true }).fill('234567');
   await page.getByLabel('新密码', { exact: true }).fill('student personal phrase');
   await page.getByLabel('确认密码', { exact: true }).fill('student personal phrase');
   await page.getByRole('button', { name: '保存新密码' }).click();

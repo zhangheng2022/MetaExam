@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { passwordSchema } from './password';
 export const roleSchema = z.enum(['admin', 'teacher', 'student']);
 export const idSchema = z.string().uuid();
 const name = z.string().trim().min(1).max(100);
@@ -16,16 +17,14 @@ export const userCreateSchema = z
       .toLowerCase()
       .regex(/^[a-z0-9._-]{3,64}$/),
     displayName: name,
-    password: z.string().min(12).max(128),
+    password: passwordSchema,
     roles,
   })
   .strict();
 export const userEditSchema = z
   .object({ displayName: name, enabled: z.boolean(), roles, revision })
   .strict();
-export const resetPasswordSchema = z
-  .object({ password: z.string().min(12).max(128), revision })
-  .strict();
+export const resetPasswordSchema = z.object({ password: passwordSchema, revision }).strict();
 export const organizationSchema = z
   .object({
     code: z

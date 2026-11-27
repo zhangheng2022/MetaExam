@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { passwordSchema } from './password';
+export * from './password';
 export * from './exams';
 export * from './attempts';
 export * from './grading';
@@ -75,7 +77,6 @@ export const usernameSchema = z
   .trim()
   .toLowerCase()
   .regex(/^[a-z0-9._-]{3,64}$/);
-export const passwordSchema = z.string().min(12).max(128);
 export const administratorSchema = z
   .object({
     username: usernameSchema,
