@@ -29,13 +29,14 @@ public static class MetaExamRestrictedProcess {
     public static int Run(string executable,string command,string cwd,string outputFile) {
         IntPtr original=IntPtr.Zero, restricted=IntPtr.Zero;
         IntPtr input=IntPtr.Zero, output=IntPtr.Zero;
-        var admin=AllocateSid("S-1-5-32-544"); var medium=AllocateSid("S-1-16-8192");
+        var admin=AllocateSid("S-1-5-32-544");
         try {
             if(!OpenProcessToken(GetCurrentProcess(),0xF01FF,out original)) throw new Win32Exception();
             var disabled=new Sid{Pointer=admin};
-            if(!CreateRestrictedToken(original,5,1,ref disabled,0,IntPtr.Zero,0,IntPtr.Zero,out restricted)) throw new Win32Exception();
-            var integrity=new Sid{Pointer=medium,Attributes=0x20};
-            if(!SetTokenInformation(restricted,25,ref integrity,Marshal.SizeOf(typeof(Sid))+new SecurityIdentifier("S-1-16-8192").BinaryLength)) throw new Win32Exception();
+            // Disable the Administrators SID and all privileges except traversal.
+            // Retain the runner desktop's integrity level: UAC-disabled hosted desktops
+            // reject medium-integrity GUI startup with STATUS_DLL_INIT_FAILED.
+            if(!CreateRestrictedToken(original,1,1,ref disabled,0,IntPtr.Zero,0,IntPtr.Zero,out restricted)) throw new Win32Exception();
             var security=new SecurityAttributes{Size=Marshal.SizeOf(typeof(SecurityAttributes)),Inherit=true};
             input=CreateFileW("NUL",0x80000000,3,ref security,3,0,IntPtr.Zero);
             output=CreateFileW(outputFile,0x40000000,3,ref security,2,0,IntPtr.Zero);
@@ -48,6 +49,6 @@ public static class MetaExamRestrictedProcess {
                 if(WaitForSingleObject(child.Process,0xffffffff)!=0) throw new Win32Exception();
                 uint code; if(!GetExitCodeProcess(child.Process,out code)) throw new Win32Exception(); return (int)code;
             } finally {CloseHandle(child.Thread);CloseHandle(child.Process);}
-        } finally {if(input!=IntPtr.Zero&&input!=new IntPtr(-1))CloseHandle(input);if(output!=IntPtr.Zero&&output!=new IntPtr(-1))CloseHandle(output);if(original!=IntPtr.Zero)CloseHandle(original);if(restricted!=IntPtr.Zero)CloseHandle(restricted);Marshal.FreeHGlobal(admin);Marshal.FreeHGlobal(medium);}
+        } finally {if(input!=IntPtr.Zero&&input!=new IntPtr(-1))CloseHandle(input);if(output!=IntPtr.Zero&&output!=new IntPtr(-1))CloseHandle(output);if(original!=IntPtr.Zero)CloseHandle(original);if(restricted!=IntPtr.Zero)CloseHandle(restricted);Marshal.FreeHGlobal(admin);}
     }
 }

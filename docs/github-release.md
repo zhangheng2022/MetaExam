@@ -20,7 +20,7 @@
 - Environment `windows-signing` 仅允许 master；Secrets 为 `METAEXAM_SIGNING_PFX_BASE64` 和 `METAEXAM_SIGNING_PFX_PASSWORD`。公开证书指纹固定在 `installer/signing-certificate.json`。不使用软件授权 Ed25519 私钥。
 - 导入步骤临时读取 Secrets，把 PFX 导入当前用户 My 库；临时文件位于 RUNNER_TEMP，流程结束无论成功失败都清理本次导入证书和私钥。不会写入 Root/TrustedPublisher。开发机仍使用 OneDrive 加密备份，不把 DPAPI 文件上传到 GitHub。
 - 客户测试授权公钥、指纹位于 installer/test-trust.json，构建自动关联目标版本；正式信任仍必须显式提供，不能回退测试配置。
-- Windows runner 默认管理员。测试父进程创建当前用户的受限令牌，关闭管理员组能力并降低到中完整性，子进程再次断言身份未变且不是管理员。PostgreSQL、Electron 和原有权限拒绝断言实际运行，不跳过测试，不增加产品权限绕过开关。
+- Windows runner 默认管理员且关闭 UAC。测试父进程创建当前用户的受限令牌，禁用管理员组并移除提升权限；保留宿主桌面的完整性等级以允许 GUI 启动。子进程断言身份未变、不是管理员，并实际验证无法读取仅 Administrators/SYSTEM 可读的探针文件。PostgreSQL、Electron 和原有权限拒绝断言实际运行，不跳过测试，不增加产品权限绕过开关。该令牌测试不替代目标机器的普通登录/UAC 与真实安装 ACL 验收。
 - 受限子进程使用显式文件/NUL 标准句柄和隐藏启动，直接调用锁定 Node/pnpm；父进程同时核对退出码、完成标记与真实测试输出。退出码为零但缺少实际测试输出同样失败，不能把空执行当作通过。原生 stderr 保留为日志，不能把正常诊断文本误当作失败或丢弃真正非零退出。
 
 ## 资产与验收

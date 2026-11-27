@@ -15,6 +15,15 @@ if (-not $Child) {
     # access before removing its admin group from the test token. No product ACL changes.
     & icacls.exe $root /grant:r ('*'+$identity.User.Value+':(OI)(CI)M') | Out-Null
     if ($LASTEXITCODE) { throw 'CI_WORKSPACE_ACL_FAILED' }
+    $probe=Join-Path $root '.local/ci-admin-only.txt'
+    [IO.File]::WriteAllText($probe,'CI permission probe; no secrets')
+    $acl=[Security.AccessControl.FileSecurity]::new()
+    $acl.SetAccessRuleProtection($true,$false)
+    foreach($sid in @('S-1-5-32-544','S-1-5-18')) {
+      $acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new([Security.Principal.SecurityIdentifier]::new($sid),[Security.AccessControl.FileSystemRights]::FullControl,[Security.AccessControl.AccessControlType]::Allow))
+    }
+    Set-Acl -LiteralPath $probe -AclObject $acl
+    $env:METAEXAM_CI_ADMIN_PROBE=$probe
     Add-Type -Path (Join-Path $PSScriptRoot 'RestrictedProcess.cs')
     $exe=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
     $command='"'+$exe+'" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$PSCommandPath+'" -Child'
@@ -22,6 +31,8 @@ if (-not $Child) {
     $code=[MetaExamRestrictedProcess]::Run($exe,$command,$root,($log+'.native'))
     Write-Output ('CI_RESTRICTED_CHILD_EXIT='+$code)
     if (Test-Path ($log+'.native')) { Get-Content ($log+'.native') }
+    Remove-Item -LiteralPath $probe -Force
+    Remove-Item Env:METAEXAM_CI_ADMIN_PROBE
   } else {
     & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $PSCommandPath -Child
     $code=$LASTEXITCODE
@@ -38,6 +49,13 @@ if (-not $Child) {
 & {
   if ($admin -or $identity.User.Value -ne $env:METAEXAM_CI_EXPECTED_SID) { throw 'CI_RESTRICTED_IDENTITY_REQUIRED' }
   Write-Output 'PASS real non-administrator token, original Windows user preserved'
+  if ($env:METAEXAM_CI_ADMIN_PROBE) {
+    $denied=$false
+    try { [IO.File]::ReadAllText($env:METAEXAM_CI_ADMIN_PROBE) | Out-Null }
+    catch [UnauthorizedAccessException] { $denied=$true }
+    if(-not $denied){throw 'CI_ADMIN_FILE_ACCESS_NOT_REVOKED'}
+    Write-Output 'PASS actual administrator-only file access denied'
+  }
   $env:PATH=(Join-Path $root '.tools/node')+';'+(Join-Path $root '.tools/pnpm')+';'+$env:PATH
   function Task([string[]]$Arguments) {
     Write-Output ('TASK_START: '+($Arguments -join ' '))
