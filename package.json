@@ -17,6 +17,7 @@
     "test": "tsx --test tests/*.test.ts",
     "test:integration": "tsx tests/integration.ts",
     "test:ui": "node tests/ui.mjs",
+    "test:form-experience": "tsx tests/form-experience.mts",
     "test:desktop": "tsx tests/desktop-setup.mts && node tests/desktop-manager.mjs",
     "test:license-manager": "tsx tests/license-maintenance.mts && node tests/license-manager-ui.mjs",
     "test:backup": "tsx tests/backup.mts && tsx tests/backup-active.mts && node tests/backup-ui.mjs",

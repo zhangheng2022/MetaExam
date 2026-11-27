@@ -1,6 +1,14 @@
 import { createRoot } from 'react-dom/client';
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Link, useNavigate } from 'react-router';
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Routes,
+  Route,
+  Navigate,
+  Link,
+  useNavigate,
+} from 'react-router';
 import {
   Dashboard,
   MetaExamProvider,
@@ -415,13 +423,12 @@ function Business() {
     </AuthProvider>
   );
 }
+const router = createBrowserRouter([
+  { path: '/status', element: <Dashboard loadStatus={loadStatus} /> },
+  { path: '*', element: <Business /> },
+]);
 createRoot(document.getElementById('root')!).render(
   <MetaExamProvider>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/status" element={<Dashboard loadStatus={loadStatus} />} />
-        <Route path="*" element={<Business />} />
-      </Routes>
-    </BrowserRouter>
+    <RouterProvider router={router} />
   </MetaExamProvider>,
 );

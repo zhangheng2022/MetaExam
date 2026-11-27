@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Button, Input, Space, Typography, Upload } from '@metaexam/ui';
+import { Alert, Button, ConfigProvider, Input, Space, Typography, Upload } from '@metaexam/ui';
 import type { ImageAttachment, QuestionInput } from '@metaexam/contracts';
 import { api } from '../api';
 export const imageUrl = (bankId: string, id: string) =>
@@ -34,11 +34,13 @@ export function QuestionImage({ bankId, id, alt }: { bankId: string; id: string;
   );
 }
 export function ImageEditor({
+  id,
   bankId,
   value = [],
   onChange,
   onBusy,
 }: {
+  id?: string;
   bankId: string;
   value?: QuestionInput['images'];
   onChange?: (v: QuestionInput['images']) => void;
@@ -46,8 +48,9 @@ export function ImageEditor({
 }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
+  const { componentDisabled } = ConfigProvider.useConfig();
   const upload = async (file: File) => {
-    if (busy) return;
+    if (busy || componentDisabled) return;
     if (
       value.length >= 6 ||
       file.size > 2 * 1024 * 1024 ||
@@ -76,7 +79,7 @@ export function ImageEditor({
     }
   };
   return (
-    <div className="question-fields">
+    <div id={id} tabIndex={-1} className="question-fields">
       {error && <Alert type="error" title={error} showIcon />}
       {value.map((item, i) => (
         <div className="question-image-editor" key={item.id}>
@@ -90,10 +93,10 @@ export function ImageEditor({
               onChange={(e) =>
                 onChange?.(value.map((v) => (v.id === item.id ? { ...v, alt: e.target.value } : v)))
               }
-              disabled={busy}
+              disabled={busy || componentDisabled}
             />
             <Button
-              disabled={busy}
+              disabled={busy || componentDisabled}
               danger
               onClick={() => onChange?.(value.filter((v) => v.id !== item.id))}
             >
@@ -106,13 +109,13 @@ export function ImageEditor({
         accept="image/png,image/jpeg"
         showUploadList={false}
         maxCount={1}
-        disabled={busy || value.length >= 6}
+        disabled={busy || componentDisabled || value.length >= 6}
         beforeUpload={(file) => {
           void upload(file);
           return false;
         }}
       >
-        <Button loading={busy} disabled={value.length >= 6}>
+        <Button loading={busy} disabled={componentDisabled || value.length >= 6}>
           上传题目图片
         </Button>
       </Upload>

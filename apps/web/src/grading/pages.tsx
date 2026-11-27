@@ -155,7 +155,13 @@ export function GradingPage() {
         </Card>
       )}
       <Card title="考生与评分" className="question-history">
-        <Form layout="inline" onFinish={list.filter} className="management-filters">
+        <Form
+          key={list.params.toString()}
+          initialValues={Object.fromEntries(list.params)}
+          layout="inline"
+          onFinish={list.filter}
+          className="management-filters"
+        >
           <Form.Item name="q" label="考生">
             <Input placeholder="用户名或姓名" maxLength={100} />
           </Form.Item>

@@ -24,6 +24,7 @@ import {
   type PaperItem,
 } from '@metaexam/contracts';
 import { api } from '../api';
+import { UnsavedChangesGuard } from '../unsaved-changes';
 import { DataTable, Editor, RemotePicker, dateText, usePaged } from '../management/common';
 import { QuestionPreview, typeOptions } from '../questions/editor';
 import { DrawEditor, ManualPicker } from './picker';
@@ -219,14 +220,6 @@ function Workspace({ paper, reload }: { paper: PaperDetail; reload: () => void }
     instructions !== paper.instructions ||
     JSON.stringify(selection(items)) !== JSON.stringify(selection(paper.items));
   const writable = paper.status === 'draft' && paper.courseEnabled;
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-    };
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
   const total = items.reduce((n, i) => n + i.score * 2, 0) / 2;
   const act = async (action: () => Promise<unknown>) => {
     if (busy) return;
@@ -254,21 +247,9 @@ function Workspace({ paper, reload }: { paper: PaperDetail; reload: () => void }
   return (
     <>
       {holder}
+      <UnsavedChangesGuard dirty={dirty} busy={busy} />
       <Space wrap className="management-toolbar">
-        <Button
-          disabled={busy}
-          onClick={() => {
-            const leave = () => navigate('/papers');
-            if (dirty)
-              modal.confirm({
-                title: '放弃尚未保存的修改？',
-                okText: '放弃修改',
-                cancelText: '继续编辑',
-                onOk: leave,
-              });
-            else leave();
-          }}
-        >
+        <Button disabled={busy} onClick={() => navigate('/papers')}>
           返回试卷列表
         </Button>
         <Button disabled={dirty || busy} onClick={() => setPanel('preview')}>

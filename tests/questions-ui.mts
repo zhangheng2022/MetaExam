@@ -107,7 +107,8 @@ try {
     await dialog()
       .getByRole('button', { name: /保\s*存/ })
       .click();
-    await dialog().getByRole('alert').waitFor();
+    await dialog().getByText('选项 A：内容不能为空', { exact: true }).waitFor();
+    assert.ok((await dialog().locator('.ant-form-item-has-error').count()) > 0);
     await dialog()
       .getByRole('button', { name: /取\s*消/ })
       .click();

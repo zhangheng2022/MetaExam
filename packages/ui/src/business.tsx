@@ -15,6 +15,7 @@ import {
 
 export { Card, Skeleton, Statistic, Tag, Space } from 'antd';
 export {
+  ConfigProvider,
   Table,
   Form,
   Input,

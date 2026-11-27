@@ -3,6 +3,7 @@ import {
   Alert,
   Button,
   Card,
+  ConfigProvider,
   Form,
   Input,
   Modal,
@@ -18,7 +19,7 @@ import {
   type QuestionDetail,
   type QuestionInput,
 } from '@metaexam/contracts';
-import { Editor } from '../management/common';
+import { Editor, FormValidationError } from '../management/common';
 import { api } from '../api';
 import { ImageEditor, QuestionImage } from './images';
 export const typeOptions = [
@@ -50,16 +51,21 @@ function initialContent(type: QuestionContent['type']): QuestionContent {
   return { type, referenceAnswer: '' };
 }
 function ContentEditor({
+  id,
   value,
   onChange,
 }: {
+  id?: string;
   value: QuestionContent;
   onChange?: (v: QuestionContent) => void;
 }) {
   const [modal, holder] = Modal.useModal();
-  const change = (v: QuestionContent) => onChange?.(v);
+  const { componentDisabled } = ConfigProvider.useConfig();
+  const change = (v: QuestionContent) => {
+    if (!componentDisabled) onChange?.(v);
+  };
   return (
-    <div className="question-fields">
+    <div id={id} tabIndex={-1} className="question-fields">
       {holder}
       <div>
         <Typography.Paragraph>题型</Typography.Paragraph>
@@ -107,7 +113,7 @@ function ContentEditor({
               <Button
                 danger
                 aria-label={`移除选项 ${String.fromCharCode(65 + i)}`}
-                disabled={value.options.length <= 2}
+                disabled={componentDisabled || value.options.length <= 2}
                 onClick={() =>
                   change({
                     ...value,
@@ -121,7 +127,7 @@ function ContentEditor({
             </div>
           ))}
           <Button
-            disabled={value.options.length >= 8}
+            disabled={componentDisabled || value.options.length >= 8}
             onClick={() =>
               change({
                 ...value,
@@ -186,7 +192,7 @@ function ContentEditor({
               />
               <Button
                 danger
-                disabled={value.blanks.length <= 1}
+                disabled={componentDisabled || value.blanks.length <= 1}
                 onClick={() =>
                   change({ ...value, blanks: value.blanks.filter((x) => x.id !== b.id) })
                 }
@@ -196,7 +202,7 @@ function ContentEditor({
             </div>
           ))}
           <Button
-            disabled={value.blanks.length >= 20}
+            disabled={componentDisabled || value.blanks.length >= 20}
             onClick={() =>
               change({
                 ...value,
@@ -268,7 +274,21 @@ export function QuestionEditor({
       done={done}
       save={async (values) => {
         const parsed = questionInputSchema.safeParse(values);
-        if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('；'));
+        if (!parsed.success) {
+          const fields = new Map<string, string[]>();
+          for (const issue of parsed.error.issues) {
+            const name = String(issue.path[0] ?? 'stem');
+            const path = issue.path;
+            const prefix =
+              path[1] === 'options' && typeof path[2] === 'number'
+                ? `选项 ${String.fromCharCode(65 + path[2])}：`
+                : path[1] === 'blanks' && typeof path[2] === 'number'
+                  ? `第 ${path[2] + 1} 空：`
+                  : '';
+            fields.set(name, [...(fields.get(name) ?? []), prefix + issue.message]);
+          }
+          throw new FormValidationError([...fields].map(([name, errors]) => ({ name, errors })));
+        }
         if (new TextEncoder().encode(JSON.stringify(parsed.data)).length > 48000)
           throw new Error('题目内容过长，请缩短题干、选项或解析（总计不超过 48 KB）。');
         const url = `/question-banks/${bankId}/questions`;
@@ -283,7 +303,7 @@ export function QuestionEditor({
       <Form.Item name="stem" label="题干" rules={[{ required: true, message: '请填写题干' }]}>
         <Input.TextArea rows={4} maxLength={8000} showCount placeholder="输入题目正文" />
       </Form.Item>
-      <Form.Item name="content">
+      <Form.Item name="content" label="题型与答案">
         <ContentEditor value={initial.content} />
       </Form.Item>
       <Form.Item name="images" label="题目图片">

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useParams, useLocation } from 'react-router';
 import {
   Alert,
   Button,
@@ -24,6 +24,10 @@ const names = { passed: '合格', failed: '不合格', absent: '缺考' };
 const types = { single: '单选', multiple: '多选', boolean: '判断', blank: '填空', essay: '简答' };
 const number = (v: number | null) => (v === null ? '—' : v);
 export function ReportPage() {
+  const location = useLocation();
+  return <ReportContent key={location.key} />;
+}
+function ReportContent() {
   const { examId: id } = useParams(),
     base = '/reports/exams/' + id;
   const list = usePaged<ResultRecord>(base + '/records');

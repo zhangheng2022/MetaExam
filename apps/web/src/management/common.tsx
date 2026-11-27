@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import {
   Alert,
@@ -184,6 +184,11 @@ export function DataTable<T extends object>({
     </>
   );
 }
+export class FormValidationError extends Error {
+  constructor(readonly fields: { name: string; errors: string[] }[]) {
+    super('请检查标红的字段后重新保存。');
+  }
+}
 export function Editor({
   title,
   initialValues,
@@ -193,6 +198,7 @@ export function Editor({
   close,
   size = 480,
   externalBusy = false,
+  externalDirty = false,
   submitText = '保存',
 }: {
   title: string;
@@ -203,6 +209,7 @@ export function Editor({
   close: () => void;
   size?: number;
   externalBusy?: boolean;
+  externalDirty?: boolean;
   submitText?: string;
 }) {
   const [form] = Form.useForm(),
@@ -211,9 +218,16 @@ export function Editor({
     [error, setError] = useState(''),
     [conflict, setConflict] = useState(false),
     [dirty, setDirty] = useState(false);
+  const errorSummary = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (error) {
+      errorSummary.current?.scrollIntoView({ block: 'nearest' });
+      errorSummary.current?.focus({ preventScroll: true });
+    }
+  }, [error]);
   const cancel = () => {
     if (busy || externalBusy) return;
-    if (dirty)
+    if (dirty || externalDirty)
       modal.confirm({
         title: '放弃尚未保存的修改？',
         content: '关闭后需要重新填写。',
@@ -246,14 +260,16 @@ export function Editor({
         }
       >
         {error && (
-          <Alert
-            type="error"
-            showIcon
-            role="alert"
-            title={error}
-            className="identity-alert"
-            action={conflict ? <Button onClick={done}>关闭并重新加载</Button> : undefined}
-          />
+          <div ref={errorSummary} tabIndex={-1}>
+            <Alert
+              type="error"
+              showIcon
+              role="alert"
+              title={error}
+              className="identity-alert"
+              action={conflict ? <Button onClick={done}>关闭并重新加载</Button> : undefined}
+            />
+          </div>
         )}
         <Form
           form={form}
@@ -262,6 +278,7 @@ export function Editor({
           initialValues={initialValues}
           disabled={busy || externalBusy}
           clearOnDestroy
+          scrollToFirstError={{ focus: true }}
           onValuesChange={() => setDirty(true)}
           onFinish={async (values) => {
             if (externalBusy || busy) return;
@@ -272,7 +289,21 @@ export function Editor({
               await save(values);
               done();
             } catch (e) {
-              setError((e as Error).message);
+              if (e instanceof FormValidationError) {
+                form.setFields(e.fields);
+                requestAnimationFrame(() => {
+                  const name = e.fields[0]!.name;
+                  form.scrollToField(name, { block: 'center' });
+                  const field = document.getElementById('management-editor_' + name);
+                  field
+                    ?.closest('.ant-form-item')
+                    ?.querySelector('.ant-form-item-explain-error')
+                    ?.scrollIntoView({ block: 'center' });
+                  field?.focus({ preventScroll: true });
+                });
+              } else {
+                setError((e as Error).message);
+              }
               setConflict(e instanceof RequestError && e.code === 'EDIT_CONFLICT');
             } finally {
               form.setFieldValue('password', undefined);
@@ -293,6 +324,7 @@ export function RemotePicker({
   id,
   enabledOnly = true,
   placeholder = '搜索并选择',
+  initialOption,
 }: {
   endpoint: string;
   value?: string;
@@ -300,6 +332,7 @@ export function RemotePicker({
   id?: string;
   enabledOnly?: boolean;
   placeholder?: string;
+  initialOption?: { value: string; label: string };
 }) {
   const [search, setSearch] = useState(''),
     [page, setPage] = useState(1),
@@ -355,8 +388,14 @@ export function RemotePicker({
       clearTimeout(timer);
     };
   }, [endpoint, search, page, enabledOnly]);
+  const retained =
+    selected?.value === value
+      ? selected
+      : initialOption?.value === value
+        ? initialOption
+        : undefined;
   const options =
-    selected && !items.some((i) => i.value === selected.value) ? [selected, ...items] : items;
+    retained && !items.some((i) => i.value === retained.value) ? [retained, ...items] : items;
   return (
     <Select
       id={id}

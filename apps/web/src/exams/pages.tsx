@@ -299,6 +299,12 @@ function ExamEditor({
     <Editor
       title={exam ? '编辑考试与刷新名单' : '创建考试'}
       size={680}
+      externalDirty={
+        course !== (exam?.courseId ?? '') ||
+        paper !== exam?.paperVersionId ||
+        JSON.stringify(classes.map((v) => v.id).sort()) !==
+          JSON.stringify((exam?.classes ?? []).map((v) => v.id).sort())
+      }
       close={close}
       done={() => (savedId.current ? done(savedId.current) : close())}
       initialValues={{
@@ -367,6 +373,9 @@ function ExamEditor({
               endpoint={'/exams/choices/papers?courseId=' + course}
               enabledOnly={false}
               value={paper}
+              initialOption={
+                exam ? { value: exam.paperVersionId, label: exam.paperName } : undefined
+              }
               onChange={setPaper}
             />
           </Form.Item>
@@ -544,7 +553,13 @@ function Detail({ id }: { id: string }) {
               )}
             </Card>
             <Card title="考生名单" className="question-history">
-              <Form layout="inline" className="management-filters" onFinish={roster.filter}>
+              <Form
+                key={roster.params.toString()}
+                initialValues={Object.fromEntries(roster.params)}
+                layout="inline"
+                className="management-filters"
+                onFinish={roster.filter}
+              >
                 <Form.Item name="q" label="考生搜索">
                   <Input maxLength={100} placeholder="用户名或姓名" />
                 </Form.Item>
