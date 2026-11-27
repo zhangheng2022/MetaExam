@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-#define MyAppVersion "0.1.19"
+#define MyAppVersion "0.1.20"
 #endif
 [Setup]
 SetupIconFile=..\packages\ui\public\brand\icon.ico

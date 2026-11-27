@@ -1,8 +1,10 @@
 # 元考 / MetaExam
 
-客户 0.1.19／供应方 0.1.6 的安装运行目标为 Windows 10 22H2、Windows 11、Windows Server 2022／2025（桌面体验），均为原生 x64。目标与实测状态分开记录，见 [Windows 兼容目标](docs/windows-compatibility.md) 和 [本批验证记录](docs/windows-compatibility-validation.md)。
+客户 0.1.20／供应方 0.1.7 的安装运行目标为 Windows 10 22H2、Windows 11、Windows Server 2022／2025（桌面体验），均为原生 x64。目标与实测状态分开记录，见 [Windows 兼容目标](docs/windows-compatibility.md) 和 [本批验证记录](docs/windows-compatibility-validation.md)。
 
 客户 0.1.19 优化 Web 登录、分组导航、筛选表格与考试作答布局，保持默认蓝色及现有业务流程；范围与验证见 [Web 界面优化](docs/web-019.md)。
+
+客户 0.1.20 汇总发布 Web 美化、管理器托盘及精简文案，并将账号密码要求统一为 6～128 个字符，允许纯数字；已有密码保持有效。供应方 0.1.7 随同构建，密钥库口令要求不变。
 
 客户 0.1.9 修复首次安装的数据库驱动遗漏、初始化令牌锁冲突和静默安装误报成功；[故障与验证记录](docs/server2025-installation-fix.md) 区分本机回归和仍待完成的独立安装验收。
 
