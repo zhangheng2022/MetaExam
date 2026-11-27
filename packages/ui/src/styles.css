@@ -602,10 +602,6 @@ body {
   flex-wrap: wrap;
   gap: var(--manager-small-gap);
 }
-.local-manager-brand h1 {
-  font-size: var(--manager-heading);
-  margin: 0;
-}
 .local-manager-main {
   width: 100%;
   max-width: 1120px;
@@ -672,9 +668,6 @@ body {
   .local-manager-main,
   .local-manager-footer {
     padding: var(--manager-gap);
-  }
-  .local-manager-brand h1 {
-    font-size: var(--manager-card-heading);
   }
   .local-manager-summary {
     align-items: flex-start;

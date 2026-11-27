@@ -220,7 +220,6 @@ export function LocalManager({ bridge }: { bridge: LocalManagerBridge }) {
     '--manager-padding': `${token.paddingSM}px`,
     '--manager-gap': `${token.marginXS}px`,
     '--manager-small-gap': `${token.marginXS}px`,
-    '--manager-heading': `${token.fontSizeHeading4}px`,
     '--manager-card-heading': `${token.fontSizeLG}px`,
   } as CSSProperties;
 
@@ -234,7 +233,6 @@ export function LocalManager({ bridge }: { bridge: LocalManagerBridge }) {
         <header className="local-manager-header">
           <div className="local-manager-brand">
             <ProductBrand />
-            <Typography.Title level={1}>本地管理</Typography.Title>
           </div>
           <div className="local-manager-header-actions">
             <Button

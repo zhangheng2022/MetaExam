@@ -1,6 +1,6 @@
 # 元考 / MetaExam
 
-客户 0.1.17／供应方 0.1.6 的安装运行目标为 Windows 10 22H2、Windows 11、Windows Server 2022／2025（桌面体验），均为原生 x64。目标与实测状态分开记录，见 [Windows 兼容目标](docs/windows-compatibility.md) 和 [本批验证记录](docs/windows-compatibility-validation.md)。
+客户 0.1.18／供应方 0.1.6 的安装运行目标为 Windows 10 22H2、Windows 11、Windows Server 2022／2025（桌面体验），均为原生 x64。目标与实测状态分开记录，见 [Windows 兼容目标](docs/windows-compatibility.md) 和 [本批验证记录](docs/windows-compatibility-validation.md)。
 
 客户 0.1.9 修复首次安装的数据库驱动遗漏、初始化令牌锁冲突和静默安装误报成功；[故障与验证记录](docs/server2025-installation-fix.md) 区分本机回归和仍待完成的独立安装验收。
 

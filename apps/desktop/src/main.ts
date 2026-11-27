@@ -79,6 +79,7 @@ async function main() {
       sandbox: true,
     },
   });
+  window.removeMenu();
   const businessAddress = () => {
     const webPort = Number(process.env.METAEXAM_WEB_PORT);
     const business =
