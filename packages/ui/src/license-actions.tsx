@@ -7,7 +7,7 @@ import type {
 } from '@metaexam/contracts';
 
 const messages: Record<string, string> = {
-  ADMINISTRATOR_REQUIRED: '请关闭客户端，右键选择“以管理员身份运行”后重试。',
+  ADMINISTRATOR_REQUIRED: '请从系统托盘退出管理器，再右键选择“以管理员身份运行”后重试。',
   BAD_FORMAT: '授权文件格式不正确，请重新选择。',
   UNKNOWN_KEY: '无法确认授权签发方，请联系供应方。',
   BAD_SIGNATURE: '授权签名校验失败，请重新获取授权文件。',

@@ -652,7 +652,9 @@ try {
     (error) => error.stderr.trim() === 'ADMINISTRATOR_REQUIRED',
   );
   env.METAEXAM_DESKTOP_SMOKE = '1';
-  const manager = start(path.join(payload, 'manager/MetaExam.Manager.exe'), []);
+  const manager = start(path.join(payload, 'manager/MetaExam.Manager.exe'), [
+    '--user-data-dir=' + path.join(isolated, 'manager-profile'),
+  ]);
   await new Promise((resolve, reject) => {
     const t = setTimeout(() => reject(new Error('MANAGER_TIMEOUT ' + manager.log())), 20000);
     manager.once('error', reject);

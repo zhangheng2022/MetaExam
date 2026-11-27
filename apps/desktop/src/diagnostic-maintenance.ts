@@ -3,7 +3,11 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { collectDiagnostics, DiagnosticOperations, saveDiagnostics } from './diagnostics';
 
-export function createDiagnosticOperations(window: BrowserWindow, endpoint: () => string) {
+export function createDiagnosticOperations(
+  window: BrowserWindow,
+  endpoint: () => string,
+  nativeDialog: <T>(action: () => Promise<T>) => Promise<T>,
+) {
   const root = app.isPackaged
     ? path.resolve(path.dirname(app.getPath('exe')), '..')
     : path.resolve(__dirname, '../../..');
@@ -41,13 +45,15 @@ export function createDiagnosticOperations(window: BrowserWindow, endpoint: () =
         },
       }),
     choose: async () => {
-      const result = await dialog.showSaveDialog(window, {
-        title: '导出诊断报告',
-        defaultPath:
-          'MetaExam-diagnostics-' + new Date().toISOString().replaceAll(':', '-') + '.json',
-        filters: [{ name: '诊断报告', extensions: ['json'] }],
-        properties: ['dontAddToRecent'],
-      });
+      const result = await nativeDialog(() =>
+        dialog.showSaveDialog(window, {
+          title: '导出诊断报告',
+          defaultPath:
+            'MetaExam-diagnostics-' + new Date().toISOString().replaceAll(':', '-') + '.json',
+          filters: [{ name: '诊断报告', extensions: ['json'] }],
+          properties: ['dontAddToRecent'],
+        }),
+      );
       return result.canceled ? undefined : result.filePath;
     },
     save: (file, report) =>

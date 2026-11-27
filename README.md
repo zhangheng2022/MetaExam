@@ -1,6 +1,6 @@
 # 元考 / MetaExam
 
-客户 0.1.16／供应方 0.1.6 的安装运行目标为 Windows 10 22H2、Windows 11、Windows Server 2022／2025（桌面体验），均为原生 x64。目标与实测状态分开记录，见 [Windows 兼容目标](docs/windows-compatibility.md) 和 [本批验证记录](docs/windows-compatibility-validation.md)。
+客户 0.1.17／供应方 0.1.6 的安装运行目标为 Windows 10 22H2、Windows 11、Windows Server 2022／2025（桌面体验），均为原生 x64。目标与实测状态分开记录，见 [Windows 兼容目标](docs/windows-compatibility.md) 和 [本批验证记录](docs/windows-compatibility-validation.md)。
 
 客户 0.1.9 修复首次安装的数据库驱动遗漏、初始化令牌锁冲突和静默安装误报成功；[故障与验证记录](docs/server2025-installation-fix.md) 区分本机回归和仍待完成的独立安装验收。
 
@@ -35,14 +35,14 @@ Web 与 Electron 共用 packages/ui 的 Ant Design 组件；MetaExamProvider 统
 
 ```powershell
 ./tools/run.ps1 db:stop
-# 窗口关闭后需要重新打开时，另开终端执行（API/Worker 需已启动）
+# 从托盘退出管理器后，需要重新启动时执行（API/Worker 需已启动）
 $env:METAEXAM_CONFIG = (Resolve-Path .local/config.json).Path
 ./tools/run.ps1 --filter @metaexam/desktop start
 ```
 
-关闭 Electron 不停止独立 API/Worker。开发环境无 Windows 服务注册。
+关闭 Electron 窗口进入系统托盘；双击托盘图标或重复启动恢复窗口，右键“退出管理器”才结束管理器进程。隐藏或退出均不停止独立 API/Worker。开发环境无 Windows 服务注册。
 
-本地管理器首次进入管理员设置，完成后默认显示服务与授权概览；点击“打开考试系统”进入浏览器。运行详情中可复制本机登录地址。修改管理器后运行 `./tools/run.ps1 test:desktop`，实现与验收范围见 [本地管理器改版记录](docs/local-manager.md)。
+客户 0.1.17 的本地管理器采用 760×560 精简总览，维护区按需展开；仅手动启动，不增加登录自启动。首次进入管理员设置，完成后默认显示服务与授权概览；点击“打开考试系统”进入浏览器。运行详情中可复制本机登录地址。修改管理器后运行 `./tools/run.ps1 test:desktop`，实现与验收范围见 [本地管理器改版记录](docs/local-manager.md)。
 
 ## 工程与命令
 
@@ -81,7 +81,7 @@ AI 开发先读取 [AGENTS.md](AGENTS.md) 和 [官方工具与资料](docs/ai-de
 
 ## 本地授权
 
-本地管理器已支持授权文件操作：以 Windows 管理员身份启动 → 在“软件授权”卡片导出 `.mreq` 申请 → 将供应方签发的 `.mlic` 文件导入 → 核对期限、同时作答人数和功能变更 → 确认导入。整个验签过程不需要联网，取消或无效文件不会覆盖原授权。文件预览有效期 10 分钟，确认时再次校验。操作及验收详见 [本地授权维护](docs/m3-license-manager.md)，回归命令为 `./tools/run.ps1 test:license-manager`。
+本地管理器已支持授权文件操作：以 Windows 管理员身份启动 → 展开“授权维护”导出 `.mreq` 申请 → 将供应方签发的 `.mlic` 文件导入 → 核对期限、同时作答人数和功能变更 → 确认导入。整个验签过程不需要联网，取消或无效文件不会覆盖原授权。文件预览有效期 10 分钟，确认时再次校验。操作及验收详见 [本地授权维护](docs/m3-license-manager.md)，回归命令为 `./tools/run.ps1 test:license-manager`。
 
 授权格式为 JSON：`{protected, payload, signature}`，三部分均为无填充规范 base64url。签名原文固定为 ASCII `MetaExam-License-v1.<protected>.<payload>`。protected 中固定 typ、alg=Ed25519 和可信 kid；payload 字段见 [协议实现](packages/contracts/src/index.ts)。
 

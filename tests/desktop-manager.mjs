@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
+import { spawn } from 'node:child_process';
+import { setTimeout as delay } from 'node:timers/promises';
 import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -15,6 +17,7 @@ let failure = true,
   setupFailure = false,
   hold = true;
 const waiting = [];
+let requests = 0;
 const status = {
   product: 'MetaExam',
   version: '0.1.0',
@@ -28,6 +31,7 @@ const status = {
   stage: 'phase1',
 };
 const server = createServer((request, response) => {
+  requests++;
   const respond = () => {
     const isSetup = request.url === '/api/v1/setup/status';
     response.writeHead(failure || (isSetup && setupFailure) ? 503 : 200, {
@@ -54,7 +58,7 @@ let desktop;
 try {
   desktop = await electron.launch({
     executablePath: path.resolve('apps/desktop/node_modules/electron/dist/electron.exe'),
-    args: ['apps/desktop', '--user-data-dir=' + path.join(home, 'profile')],
+    args: ['tests/fixtures/manager-entry.mjs', '--user-data-dir=' + path.join(home, 'profile')],
     env: {
       ...process.env,
       METAEXAM_CONFIG: path.join(home, 'config.json'),
@@ -90,7 +94,9 @@ try {
   await page.screenshot({ path: path.join(output, 'unavailable.png') });
   const refresh = async () => {
     await page.getByRole('button', { name: '检查状态', exact: true }).click();
-    await page.locator('.local-manager-header button:not([disabled])').waitFor();
+    await page
+      .locator('.local-manager-header button[aria-label="检查状态"]:not([disabled])')
+      .waitFor();
   };
   failure = false;
   status.database = 'unavailable';
@@ -103,6 +109,49 @@ try {
   await refresh();
   await page.getByRole('heading', { name: '初始化管理员', exact: true }).waitFor();
   await page.screenshot({ path: path.join(output, 'setup.png'), fullPage: true });
+  await page.getByLabel('用户名', { exact: true }).fill('preserved_input');
+  await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].close());
+  assert.equal(
+    await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()),
+    false,
+  );
+  await delay(100); // Allow the main-process visibility notification to reach preload.
+  const hiddenRequests = requests;
+  await delay(16000);
+  assert.equal(requests, hiddenRequests, 'hidden window pauses automatic status polling');
+  const second = spawn(
+    path.resolve('apps/desktop/node_modules/electron/dist/electron.exe'),
+    ['tests/fixtures/manager-entry.mjs', '--user-data-dir=' + path.join(home, 'profile')],
+    {
+      env: {
+        ...process.env,
+        METAEXAM_CONFIG: path.join(home, 'config.json'),
+        METAEXAM_DESKTOP_SMOKE: '',
+      },
+      windowsHide: true,
+      stdio: 'ignore',
+    },
+  );
+  try {
+    const exit = once(second, 'exit');
+    const timeout = setTimeout(() => second.kill(), 15000);
+    const [code] = await exit;
+    clearTimeout(timeout);
+    assert.equal(code, 0, 'second instance exits normally');
+    assert.equal(
+      await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()),
+      true,
+    );
+    assert.equal(await page.getByLabel('用户名', { exact: true }).inputValue(), 'preserved_input');
+    assert.equal(
+      await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length),
+      1,
+    );
+  } finally {
+    second.kill();
+  }
+  await page.getByRole('button', { name: '检查状态' }).waitFor({ state: 'visible' });
+  assert.ok(requests > hiddenRequests, 'restoring refreshes status immediately');
 
   // Simulate creation outcomes for UI only; do not elevate or generate a token.
   await desktop.evaluate(({ ipcMain, shell, clipboard }) => {
@@ -138,7 +187,9 @@ try {
     await page.getByRole('button', { name: '创建管理员', exact: true }).click();
   };
   await fillAndSubmit();
-  await page.getByText('初始化已过期，请重新打开客户端。', { exact: true }).waitFor();
+  await page
+    .getByText('初始化已过期，请从系统托盘退出管理器后重新打开。', { exact: true })
+    .waitFor();
   await desktop.evaluate(() => {
     globalThis.managerTest.setupCode = '';
   });
@@ -164,6 +215,128 @@ try {
     'normal overview fits default window',
   );
   await page.screenshot({ path: path.join(output, 'overview.png') });
+  assert.deepEqual(
+    await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getSize()),
+    [760, 560],
+  );
+  assert.deepEqual(
+    await desktop.evaluate(() =>
+      globalThis.managerMenu.items
+        .filter((item) => item.type !== 'separator')
+        .map((item) => item.label),
+    ),
+    ['打开管理器', '打开考试系统', '退出管理器'],
+  );
+  await page.getByRole('button', { name: '运行详情' }).click();
+  await page.getByRole('button', { name: '后台运行', exact: true }).click();
+  assert.equal(
+    await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()),
+    false,
+  );
+  await desktop.evaluate(() => globalThis.managerTray.emit('double-click'));
+  await page.getByText('已完成', { exact: true }).waitFor();
+  await page.getByRole('button', { name: '运行详情' }).click();
+  assert.equal(
+    await desktop.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0];
+      try {
+        globalThis.managerHideHandler({ senderFrame: window.webContents.mainFrame }, 'unexpected');
+        return 'ALLOWED';
+      } catch {
+        return 'DENIED';
+      }
+    }),
+    'DENIED',
+    'hide IPC rejects arguments',
+  );
+  assert.equal(
+    await desktop.evaluate(() => {
+      try {
+        globalThis.managerHideHandler({ senderFrame: null });
+        return 'ALLOWED';
+      } catch {
+        return 'DENIED';
+      }
+    }),
+    'DENIED',
+    'hide IPC rejects foreign frames',
+  );
+  await desktop.evaluate(() => {
+    globalThis.managerPending = globalThis.managerLifecycle.run(
+      () =>
+        new Promise((resolve) => {
+          globalThis.finishManagerOperation = resolve;
+        }),
+    );
+    globalThis.managerMenu.items.find((item) => item.label === '退出管理器').click();
+  });
+  assert.ok(
+    (await desktop.evaluate(() => globalThis.managerNotices)).some((text) =>
+      text.includes('操作正在进行'),
+    ),
+  );
+  await page.getByRole('button', { name: '后台运行', exact: true }).click();
+  assert.equal(
+    await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()),
+    false,
+    'maintenance continues hidden',
+  );
+  await desktop.evaluate(async () => {
+    globalThis.finishManagerOperation();
+    await globalThis.managerPending;
+    globalThis.managerMenu.items.find((item) => item.label === '打开管理器').click();
+    globalThis.dialogPending = globalThis.managerLifecycle.nativeDialog(
+      () =>
+        new Promise((resolve) => {
+          globalThis.finishManagerDialog = resolve;
+        }),
+    );
+  });
+  assert.equal(
+    await page.evaluate(() => window.metaexam.hideToTray()),
+    false,
+    'file dialog prevents hiding',
+  );
+  await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].close());
+  assert.equal(
+    await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()),
+    true,
+  );
+  await desktop.evaluate(async () => {
+    globalThis.finishManagerDialog();
+    await globalThis.dialogPending;
+  });
+  // Actual diagnostic-export IPC and native chooser use the same lifecycle guard.
+  await desktop.evaluate(({ dialog }) => {
+    let opened;
+    globalThis.nativeChooserOpened = new Promise((resolve) => {
+      opened = resolve;
+    });
+    dialog.showSaveDialog = () =>
+      new Promise((resolve) => {
+        globalThis.cancelNativeChooser = () => resolve({ canceled: true });
+        opened();
+      });
+  });
+  await page.evaluate(() => {
+    window.pendingDiagnosticExport = window.metaexam.exportDiagnostics();
+  });
+  await desktop.evaluate(() => globalThis.nativeChooserOpened);
+  assert.equal(await page.evaluate(() => window.metaexam.hideToTray()), false);
+  await desktop.evaluate(({ app }) => app.quit());
+  assert.equal(
+    await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()),
+    true,
+  );
+  await desktop.evaluate(() => globalThis.cancelNativeChooser());
+  assert.equal((await page.evaluate(() => window.pendingDiagnosticExport)).status, 'cancelled');
+  await desktop.evaluate(({ app }) => app.emit('second-instance', {}, [], '', { elevated: true }));
+  assert.ok(
+    (await desktop.evaluate(() => globalThis.managerNotices)).some((text) =>
+      text.includes('如需管理员权限'),
+    ),
+  );
+
   await page.getByRole('button', { name: '打开考试系统', exact: true }).click();
   await page.getByText('无法打开浏览器，请复制登录地址后手动访问。', { exact: true }).waitFor();
   await page.getByRole('button', { name: '复制登录地址', exact: true }).click();
@@ -230,7 +403,7 @@ try {
   await refresh();
   assert.equal(await page.getByRole('alert').count(), 0);
 
-  await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(380, 600));
+  await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(380, 480));
   await page.waitForFunction(() => innerWidth < 400);
   assert.ok(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
@@ -239,7 +412,7 @@ try {
   await page.screenshot({ path: path.join(output, 'narrow.png'), fullPage: true });
   await desktop.evaluate(({ BrowserWindow }) => {
     const window = BrowserWindow.getAllWindows()[0];
-    window.setSize(1000, 720);
+    window.setSize(760, 560);
     window.webContents.setZoomFactor(1.5);
   });
   await page.waitForFunction(() => innerWidth > 400 && innerWidth < 700);
@@ -280,9 +453,59 @@ try {
   await desktop.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].webContents.setZoomFactor(1),
   );
-  await desktop.close();
+  const exited = desktop.waitForEvent('close');
+  await desktop.evaluate(() =>
+    globalThis.managerMenu.items.find((item) => item.label === '退出管理器').click(),
+  );
+  await exited;
   desktop = undefined;
   assert.equal((await fetch(`http://127.0.0.1:${port}/api/v1/system/status`)).status, 200);
+  desktop = await electron.launch({
+    executablePath: path.resolve('apps/desktop/node_modules/electron/dist/electron.exe'),
+    args: [
+      'tests/fixtures/manager-entry.mjs',
+      '--fixture-tray-failure',
+      '--user-data-dir=' + path.join(home, 'fallback-profile'),
+    ],
+    env: {
+      ...process.env,
+      METAEXAM_CONFIG: path.join(home, 'config.json'),
+      METAEXAM_DESKTOP_SMOKE: '',
+    },
+  });
+  const fallbackPage = await desktop.firstWindow();
+  await fallbackPage.getByText('服务正常', { exact: true }).waitFor();
+  assert.equal(await fallbackPage.evaluate(() => window.metaexam.hideToTray()), false);
+  assert.equal(
+    await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()),
+    true,
+  );
+  const fallbackExited = desktop.waitForEvent('close');
+  await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].close());
+  await fallbackExited;
+  desktop = undefined;
+  assert.equal((await fetch(`http://127.0.0.1:${port}/api/v1/system/status`)).status, 200);
+  desktop = await electron.launch({
+    executablePath: path.resolve('apps/desktop/node_modules/electron/dist/electron.exe'),
+    args: [
+      'tests/fixtures/manager-entry.mjs',
+      '--user-data-dir=' + path.join(home, 'session-profile'),
+    ],
+    env: {
+      ...process.env,
+      METAEXAM_CONFIG: path.join(home, 'config.json'),
+      METAEXAM_DESKTOP_SMOKE: '',
+    },
+  });
+  await desktop.firstWindow();
+  const sessionExited = desktop.waitForEvent('close');
+  await desktop.evaluate(({ BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0];
+    window.emit('session-end', {});
+    window.close();
+  });
+  await sessionExited;
+  desktop = undefined;
   writeFileSync(
     path.join(output, 'results.json'),
     JSON.stringify(
@@ -299,11 +522,17 @@ try {
           'stale data and recovery',
           'default/narrow/scaled layouts',
           'restricted IPC and sandbox',
-          'window exit leaves server alive',
+          'tray close/hide/restore, same-user single instance and retained form/expansion',
+          'hidden polling pause and immediate restore refresh',
+          'maintenance exit guard and native-dialog visibility guard',
+          'explicit tray exit leaves server alive',
+          'tray failure keeps window reachable and close exits',
+          'session-end lifecycle does not hide instead of exiting',
         ],
         limitations: [
           'setup success simulated; real elevation/ACL remains an independent environment check',
           '150% Electron content zoom is not a physical Windows DPI check',
+          'tray events and session-end synthesized; actual shell clicks and OS shutdown remain separate',
         ],
       },
       null,
@@ -314,10 +543,22 @@ try {
     'PASS Electron manager states, fixed-address IPC, responsive layouts and server survival',
   );
 } catch (error) {
+  console.error(error);
+  await desktop
+    ?.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.show())
+    .catch(() => {});
   const page = desktop && (await desktop.firstWindow());
   if (page) {
-    await page.screenshot({ path: path.join(output, 'failure.png'), fullPage: true });
-    writeFileSync(path.join(output, 'failure.txt'), await page.locator('body').innerText());
+    await page
+      .screenshot({ path: path.join(output, 'failure.png'), fullPage: true })
+      .catch(() => {});
+    writeFileSync(
+      path.join(output, 'failure.txt'),
+      await page
+        .locator('body')
+        .innerText()
+        .catch(() => 'window closed'),
+    );
   }
   throw error;
 } finally {

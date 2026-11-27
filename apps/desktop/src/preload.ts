@@ -1,7 +1,22 @@
 import { contextBridge, ipcRenderer } from 'electron';
+let visible = true;
+const visibilityListeners = new Set<(visible: boolean) => void>();
+ipcRenderer.on('manager:visibility', (_event, value: unknown) => {
+  if (typeof value !== 'boolean') return;
+  visible = value;
+  for (const listener of visibilityListeners) listener(visible);
+});
 contextBridge.exposeInMainWorld(
   'metaexam',
   Object.freeze({
+    hideToTray: () => ipcRenderer.invoke('manager:hide'),
+    onVisibilityChanged: (listener: (visible: boolean) => void) => {
+      visibilityListeners.add(listener);
+      listener(visible);
+      return () => {
+        visibilityListeners.delete(listener);
+      };
+    },
     status: () => ipcRenderer.invoke('system:status'),
     setupStatus: () => ipcRenderer.invoke('setup:status'),
     createAdministrator: (input: unknown) => ipcRenderer.invoke('setup:create', input),

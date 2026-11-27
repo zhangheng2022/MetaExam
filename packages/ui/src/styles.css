@@ -594,6 +594,7 @@ body {
   background: var(--mx-surface);
   border-bottom: 1px solid var(--mx-border);
 }
+.local-manager-header-actions,
 .local-manager-brand,
 .local-manager-actions {
   display: flex;

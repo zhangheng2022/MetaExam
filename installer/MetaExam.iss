@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-#define MyAppVersion "0.1.16"
+#define MyAppVersion "0.1.17"
 #endif
 [Setup]
 SetupIconFile=..\packages\ui\public\brand\icon.ico
@@ -126,7 +126,7 @@ begin
    if Upgrading then begin
      Args := '--use-system-ca "' + ExpandConstant('{tmp}\upgrade-payload\maintenance\upgrade.mjs') + '" apply "' + ExpandConstant('{app}') + '" "' + ExpandConstant('{commonappdata}\MetaExam') + '"';
      if not Exec(ExpandConstant('{tmp}\upgrade-payload\runtime\node.exe'), Args, ExpandConstant('{tmp}\upgrade-payload'), SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
-       RaiseException('Upgrade or incomplete-install repair did not complete. Close the manager, inspect ProgramData\MetaExam\upgrade.log and rerun the SAME package to resume. Existing data and recovery records are retained. Do not remove maintenance markers or install an older version.');
+       RaiseException('Upgrade or incomplete-install repair did not complete. Exit the manager from the system tray, inspect ProgramData\MetaExam\upgrade.log and rerun the SAME package to resume. Existing data and recovery records are retained. Do not remove maintenance markers or install an older version.');
      CompletePostInstall;
      Exit;
    end;

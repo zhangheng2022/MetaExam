@@ -4,7 +4,10 @@ import path from 'node:path';
 import { LicenseOperations, type MaintenancePreview } from './license-operations';
 import type { LicenseDetails } from '@metaexam/contracts';
 
-export function createLicenseOperations(window: BrowserWindow) {
+export function createLicenseOperations(
+  window: BrowserWindow,
+  nativeDialog: <T>(action: () => Promise<T>) => Promise<T>,
+) {
   const root = app.isPackaged
     ? path.resolve(path.dirname(app.getPath('exe')), '..')
     : path.resolve(__dirname, '../../..');
@@ -81,20 +84,24 @@ export function createLicenseOperations(window: BrowserWindow) {
         );
       }),
     chooseSave: async () => {
-      const result = await dialog.showSaveDialog(window, {
-        title: '导出授权申请',
-        defaultPath: 'MetaExam-授权申请.mreq',
-        filters: [{ name: 'MetaExam 授权申请', extensions: ['mreq'] }],
-        properties: ['dontAddToRecent'],
-      });
+      const result = await nativeDialog(() =>
+        dialog.showSaveDialog(window, {
+          title: '导出授权申请',
+          defaultPath: 'MetaExam-授权申请.mreq',
+          filters: [{ name: 'MetaExam 授权申请', extensions: ['mreq'] }],
+          properties: ['dontAddToRecent'],
+        }),
+      );
       return result.canceled ? null : (result.filePath ?? null);
     },
     chooseOpen: async () => {
-      const result = await dialog.showOpenDialog(window, {
-        title: '选择授权文件',
-        filters: [{ name: 'MetaExam 授权文件', extensions: ['mlic'] }],
-        properties: ['openFile', 'dontAddToRecent'],
-      });
+      const result = await nativeDialog(() =>
+        dialog.showOpenDialog(window, {
+          title: '选择授权文件',
+          filters: [{ name: 'MetaExam 授权文件', extensions: ['mlic'] }],
+          properties: ['openFile', 'dontAddToRecent'],
+        }),
+      );
       return result.canceled ? null : (result.filePaths[0] ?? null);
     },
     request: () => run({ operation: 'request' }),

@@ -36,10 +36,11 @@ try {
   page.setDefaultTimeout(15000);
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
+  await page.getByRole('button', { name: '授权维护', exact: true }).click();
   await page.getByRole('button', { name: '导入授权文件', exact: true }).waitFor();
   await page.getByRole('button', { name: '导出授权申请', exact: true }).click();
   await page
-    .getByText('请关闭客户端，右键选择“以管理员身份运行”后重试。', { exact: true })
+    .getByText('请从系统托盘退出管理器，再右键选择“以管理员身份运行”后重试。', { exact: true })
     .waitFor();
   // Exercise the production origin guard for every new IPC before replacing test adapters.
   assert.deepEqual(
@@ -160,6 +161,7 @@ try {
   await page.screenshot({ path: path.join(output, 'imported.png'), fullPage: true });
   assert.equal((await licenseStatus(t.db)).state, 'valid');
   await page.reload();
+  await page.getByRole('button', { name: '授权维护', exact: true }).click();
   await page.getByText('100 人', { exact: true }).waitFor();
   writeFileSync(source, t.issue(2, { deviceHash: 'a'.repeat(64) }));
   await page.getByRole('button', { name: '导入授权文件', exact: true }).click();

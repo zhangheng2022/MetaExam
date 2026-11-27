@@ -19,7 +19,7 @@ try {
   writeFileSync(config, JSON.stringify({ ...t.config, home, api: { ...t.config.api, port } }));
   desktop = await electron.launch({
     executablePath: path.resolve('apps/desktop/node_modules/electron/dist/electron.exe'),
-    args: ['apps/desktop'],
+    args: ['apps/desktop', '--user-data-dir=' + path.join(t.config.home, 'profile')],
     env: { ...process.env, METAEXAM_CONFIG: config, METAEXAM_DESKTOP_SMOKE: '' },
   });
   const page = await desktop.firstWindow();
@@ -38,6 +38,8 @@ try {
     'createBackup',
     'exportDiagnostics',
     'exportLicenseRequest',
+    'hideToTray',
+    'onVisibilityChanged',
     'openBusiness',
     'previewLicenseImport',
     'previewRestore',
@@ -77,7 +79,7 @@ try {
   await page.getByLabel('确认密码', { exact: true }).fill('desktop password phrase');
   await page.getByRole('button', { name: '创建管理员', exact: true }).click();
   await page
-    .getByText('请关闭客户端，右键选择“以管理员身份运行”后重试。', { exact: true })
+    .getByText('请从系统托盘退出管理器，再右键选择“以管理员身份运行”后重试。', { exact: true })
     .waitFor();
   assert.equal(existsSync(path.join(home, 'bootstrap/token.json')), false);
   assert.equal((await t.db.pool.query('SELECT count(*) FROM users')).rows[0].count, '0');

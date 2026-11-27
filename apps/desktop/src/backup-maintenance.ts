@@ -3,7 +3,10 @@ import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { BackupOperations } from './backup-operations';
 
-export function createBackupOperations(window: BrowserWindow) {
+export function createBackupOperations(
+  window: BrowserWindow,
+  nativeDialog: <T>(action: () => Promise<T>) => Promise<T>,
+) {
   const root = app.isPackaged
     ? path.resolve(path.dirname(app.getPath('exe')), '..')
     : path.resolve(__dirname, '../../..');
@@ -29,10 +32,12 @@ export function createBackupOperations(window: BrowserWindow) {
         );
       }),
     choose: async (operation) => {
-      const result = await dialog.showOpenDialog(window, {
-        title: operation === 'create' ? '选择备份保存位置' : '选择 MetaExam 备份文件夹',
-        properties: ['openDirectory', 'dontAddToRecent'],
-      });
+      const result = await nativeDialog(() =>
+        dialog.showOpenDialog(window, {
+          title: operation === 'create' ? '选择备份保存位置' : '选择 MetaExam 备份文件夹',
+          properties: ['openDirectory', 'dontAddToRecent'],
+        }),
+      );
       return result.canceled ? null : (result.filePaths[0] ?? null);
     },
     run: <T>(input: object) =>

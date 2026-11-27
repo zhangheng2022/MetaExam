@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   Collapse,
+  ConfigProvider,
   Descriptions,
   Result,
   Skeleton,
@@ -27,6 +28,8 @@ import { BackupActions } from './backup-actions';
 import { DiagnosticActions } from './diagnostic-actions';
 
 export interface LocalManagerBridge extends LicenseManagerBridge, BackupBridge, DiagnosticBridge {
+  hideToTray: () => Promise<boolean>;
+  onVisibilityChanged: (listener: (visible: boolean) => void) => () => void;
   status: () => Promise<SystemStatus>;
   setupStatus: () => Promise<SetupStatus>;
   createAdministrator: (input: AdministratorInput) => Promise<{ ok: boolean; code?: string }>;
@@ -35,8 +38,8 @@ export interface LocalManagerBridge extends LicenseManagerBridge, BackupBridge, 
 }
 
 const setupMessages: Record<string, string> = {
-  ADMINISTRATOR_REQUIRED: '请关闭客户端，右键选择“以管理员身份运行”后重试。',
-  SETUP_TOKEN_INVALID: '初始化已过期，请重新打开客户端。',
+  ADMINISTRATOR_REQUIRED: '请从系统托盘退出管理器，再右键选择“以管理员身份运行”后重试。',
+  SETUP_TOKEN_INVALID: '初始化已过期，请从系统托盘退出管理器后重新打开。',
   DATABASE_UNAVAILABLE: '数据库暂时不可用，请检查服务后重试。',
   RATE_LIMITED: '系统繁忙，请稍后重试。',
 };
@@ -106,13 +109,24 @@ export function LocalManager({ bridge }: { bridge: LocalManagerBridge }) {
   }, [bridge]);
 
   useEffect(() => {
-    void refresh();
-    const interval = setInterval(() => void refresh(), 15000);
+    let visible = true;
+    let disposed = false;
+    const refreshVisible = () => {
+      if (visible && !disposed) void refresh();
+    };
+    const unsubscribe = bridge.onVisibilityChanged((value) => {
+      visible = value;
+      // Finish an older check before refreshing a restored window.
+      if (value) void pendingCompletion.current.then(refreshVisible);
+    });
+    const interval = setInterval(refreshVisible, 15000);
     return () => {
+      disposed = true;
       clearInterval(interval);
+      unsubscribe();
       invalidateRequests();
     };
-  }, [refresh, invalidateRequests]);
+  }, [bridge, refresh, invalidateRequests]);
 
   const initialized = !!setup?.adminInitialized || !!status?.adminInitialized;
   const databaseUnavailable = !serviceError && status?.database === 'unavailable';
@@ -203,238 +217,263 @@ export function LocalManager({ bridge }: { bridge: LocalManagerBridge }) {
     },
   ];
   const style = {
-    '--manager-padding': `${token.paddingLG}px`,
-    '--manager-gap': `${token.margin}px`,
+    '--manager-padding': `${token.paddingSM}px`,
+    '--manager-gap': `${token.marginXS}px`,
     '--manager-small-gap': `${token.marginXS}px`,
-    '--manager-heading': `${token.fontSizeHeading3}px`,
+    '--manager-heading': `${token.fontSizeHeading4}px`,
     '--manager-card-heading': `${token.fontSizeLG}px`,
   } as CSSProperties;
 
   return (
-    <div className="local-manager" style={style}>
-      <header className="local-manager-header">
-        <div className="local-manager-brand">
-          <ProductBrand />
-          <Typography.Title level={1}>本地管理</Typography.Title>
-        </div>
-        <Button
-          icon={<ReloadOutlined />}
-          aria-label="检查状态"
-          loading={busy}
-          disabled={busy || saving}
-          onClick={() => void refresh()}
-        >
-          检查状态
-        </Button>
-      </header>
-      <main className="local-manager-main">
-        <div className="local-manager-summary">
-          <div aria-live="polite">
-            <Badge
-              status={
-                !checked
-                  ? 'processing'
-                  : unavailable
-                    ? 'error'
-                    : serviceReady && initialized
-                      ? 'success'
-                      : 'warning'
-              }
-              text={<Typography.Text strong>{headline}</Typography.Text>}
-            />
+    <ConfigProvider
+      theme={{
+        components: { Collapse: { headerPadding: `${token.paddingXS}px ${token.paddingSM}px` } },
+      }}
+    >
+      <div className="local-manager" style={style}>
+        <header className="local-manager-header">
+          <div className="local-manager-brand">
+            <ProductBrand />
+            <Typography.Title level={1}>本地管理</Typography.Title>
           </div>
-          {initialized && !created && openButton}
-        </div>
-        {errorText && (
-          <Alert
-            type="error"
-            showIcon
-            role="alert"
-            title={errorText}
-            description={serviceError && status ? '以下为上次检查结果，可能已过时。' : undefined}
-          />
-        )}
-        {actionError && (
-          <Alert type="error" showIcon role="alert" title={actionError} action={copyButton} />
-        )}
-        {!checked ? (
-          <Card>
-            <Skeleton active paragraph={{ rows: 4 }} />
-          </Card>
-        ) : created ? (
-          <Card className="local-manager-setup">
-            <Result
-              status="success"
-              title="管理员已创建"
-              extra={
-                <div className="local-manager-actions">
-                  {openButton}
-                  <Button onClick={() => setCreated(false)}>返回概览</Button>
-                </div>
-              }
-            />
-          </Card>
-        ) : needsSetup ? (
-          <Card
-            className="local-manager-setup"
-            title={<Typography.Title level={2}>初始化管理员</Typography.Title>}
-          >
-            <Typography.Paragraph type="secondary">
-              首次设置请以管理员身份运行；完成后可正常启动。
-            </Typography.Paragraph>
-            <IdentityForm
-              mode="setup"
-              onSubmit={async (input) => {
-                submitting.current = true;
-                invalidateRequests();
-                setSaving(true);
-                setBusy(false);
-                try {
-                  const result = await bridge.createAdministrator(input as AdministratorInput);
-                  if (!result.ok) {
-                    if (result.code === 'ALREADY_INITIALIZED') {
-                      setSetup({ database: 'ready', adminInitialized: true });
-                      return;
-                    }
-                    throw new Error(
-                      setupMessages[result.code ?? ''] ??
-                        '初始化失败，请检查管理员权限和服务状态后重试。',
-                    );
-                  }
-                  setSetup({ database: 'ready', adminInitialized: true });
-                  setCreated(true);
-                } finally {
-                  submitting.current = false;
-                  setSaving(false);
-                }
+          <div className="local-manager-header-actions">
+            <Button
+              icon={<ReloadOutlined />}
+              aria-label="检查状态"
+              loading={busy}
+              disabled={busy || saving}
+              onClick={() => void refresh()}
+            >
+              检查状态
+            </Button>
+            <Button
+              onClick={() => {
+                void bridge
+                  .hideToTray()
+                  .catch(() => setActionError('无法切换到后台，请稍后重试。'));
               }}
-            />
-          </Card>
-        ) : (
-          <div className="local-manager-grid">
-            <Card title={<Typography.Title level={2}>系统服务</Typography.Title>}>
-              {rows.map((row) => (
-                <div className="local-manager-service" key={row.name}>
-                  <Typography.Text>{row.name}</Typography.Text>
-                  <Badge
-                    status={!status || serviceError ? 'default' : row.ok ? 'success' : 'error'}
-                    text={row.value}
-                  />
-                </div>
-              ))}
-            </Card>
-            <Card title={<Typography.Title level={2}>软件授权</Typography.Title>}>
-              <Descriptions
-                size="small"
-                column={1}
-                items={[
-                  {
-                    key: 'state',
-                    label: '授权状态',
-                    children: (
-                      <Badge
-                        status={
-                          !status || serviceError
-                            ? 'default'
-                            : status.license.state === 'valid'
-                              ? 'success'
-                              : 'warning'
-                        }
-                        text={status ? licenseLabels[status.license.state] : '无法获取'}
-                      />
-                    ),
-                  },
-                  ...(status?.license.state === 'valid'
-                    ? [
-                        {
-                          key: 'expiry',
-                          label: '有效期',
-                          children: status.license.expiresAt
-                            ? time(status.license.expiresAt)
-                            : '永久授权',
-                        },
-                        {
-                          key: 'capacity',
-                          label: '同时作答',
-                          children: `${status.license.maxConcurrentAttempts} 人`,
-                        },
-                      ]
-                    : []),
-                ]}
+            >
+              后台运行
+            </Button>
+          </div>
+        </header>
+        <main className="local-manager-main">
+          <div className="local-manager-summary">
+            <div aria-live="polite">
+              <Badge
+                status={
+                  !checked
+                    ? 'processing'
+                    : unavailable
+                      ? 'error'
+                      : serviceReady && initialized
+                        ? 'success'
+                        : 'warning'
+                }
+                text={<Typography.Text strong>{headline}</Typography.Text>}
               />
-              {status && !serviceError && status.license.state !== 'valid' && (
-                <Typography.Paragraph type="secondary" className="local-manager-license-help">
-                  请导入有效授权文件。
-                </Typography.Paragraph>
-              )}
-              <LicenseActions
-                bridge={bridge}
-                onImported={async () => {
-                  // Do not let a poll started before import overwrite the new license.
-                  await pendingCompletion.current;
-                  await refresh();
+            </div>
+            {initialized && !created && openButton}
+          </div>
+          {errorText && (
+            <Alert
+              type="error"
+              showIcon
+              role="alert"
+              title={errorText}
+              description={serviceError && status ? '以下为上次检查结果，可能已过时。' : undefined}
+            />
+          )}
+          {actionError && (
+            <Alert type="error" showIcon role="alert" title={actionError} action={copyButton} />
+          )}
+          {!checked ? (
+            <Card>
+              <Skeleton active paragraph={{ rows: 4 }} />
+            </Card>
+          ) : created ? (
+            <Card className="local-manager-setup">
+              <Result
+                status="success"
+                title="管理员已创建"
+                extra={
+                  <div className="local-manager-actions">
+                    {openButton}
+                    <Button onClick={() => setCreated(false)}>返回概览</Button>
+                  </div>
+                }
+              />
+            </Card>
+          ) : needsSetup ? (
+            <Card
+              className="local-manager-setup"
+              title={<Typography.Title level={2}>初始化管理员</Typography.Title>}
+            >
+              <Typography.Paragraph type="secondary">
+                首次设置请以管理员身份运行；完成后可正常启动。
+              </Typography.Paragraph>
+              <IdentityForm
+                mode="setup"
+                onSubmit={async (input) => {
+                  submitting.current = true;
+                  invalidateRequests();
+                  setSaving(true);
+                  setBusy(false);
+                  try {
+                    const result = await bridge.createAdministrator(input as AdministratorInput);
+                    if (!result.ok) {
+                      if (result.code === 'ALREADY_INITIALIZED') {
+                        setSetup({ database: 'ready', adminInitialized: true });
+                        return;
+                      }
+                      throw new Error(
+                        setupMessages[result.code ?? ''] ??
+                          '初始化失败，请检查管理员权限和服务状态后重试。',
+                      );
+                    }
+                    setSetup({ database: 'ready', adminInitialized: true });
+                    setCreated(true);
+                  } finally {
+                    submitting.current = false;
+                    setSaving(false);
+                  }
                 }}
               />
             </Card>
-          </div>
-        )}
-        {checked && !needsSetup && !created && (
-          <Collapse
-            items={[
-              { key: 'backup', label: '备份与恢复', children: <BackupActions bridge={bridge} /> },
-              {
-                key: 'diagnostics',
-                label: '故障诊断',
-                children: (
-                  <DiagnosticActions
-                    bridge={bridge}
-                    onChecked={async () => {
-                      await pendingCompletion.current;
-                      await refresh();
-                    }}
-                  />
-                ),
-              },
-              {
-                key: 'details',
-                label: '运行详情',
-                children: (
-                  <>
-                    <Descriptions
-                      column={1}
-                      size="small"
-                      items={[
-                        {
-                          key: 'version',
-                          label: '程序版本',
-                          children: status ? `v${status.version}` : '无法获取',
-                        },
-                        {
-                          key: 'checked',
-                          label: '最近检查',
-                          children: status ? time(status.checkedAt) : '尚未获取检查结果',
-                        },
-                        {
-                          key: 'setup',
-                          label: '管理员设置',
-                          children: initialized ? '已完成' : unavailable ? '无法确认' : '未完成',
-                        },
-                      ]}
+          ) : (
+            <div className="local-manager-grid">
+              <Card size="small" aria-label="系统服务">
+                {rows.map((row) => (
+                  <div className="local-manager-service" key={row.name}>
+                    <Typography.Text>{row.name}</Typography.Text>
+                    <Badge
+                      status={!status || serviceError ? 'default' : row.ok ? 'success' : 'error'}
+                      text={row.value}
                     />
-                    {!actionError && <div className="local-manager-actions">{copyButton}</div>}
-                  </>
-                ),
-              },
-            ]}
-          />
-        )}
-      </main>
-      <footer className="local-manager-footer">
-        <Typography.Text type="secondary">
-          {status ? `v${status.version} · 最近检查 ${time(status.checkedAt)}` : '尚未获取检查结果'}
-        </Typography.Text>
-        <Typography.Text type="secondary">关闭窗口后服务继续运行</Typography.Text>
-      </footer>
-    </div>
+                  </div>
+                ))}
+              </Card>
+              <Card size="small" aria-label="软件授权">
+                <Descriptions
+                  size="small"
+                  column={1}
+                  items={[
+                    {
+                      key: 'state',
+                      label: '授权状态',
+                      children: (
+                        <Badge
+                          status={
+                            !status || serviceError
+                              ? 'default'
+                              : status.license.state === 'valid'
+                                ? 'success'
+                                : 'warning'
+                          }
+                          text={status ? licenseLabels[status.license.state] : '无法获取'}
+                        />
+                      ),
+                    },
+                    ...(status?.license.state === 'valid'
+                      ? [
+                          {
+                            key: 'expiry',
+                            label: '有效期',
+                            children: status.license.expiresAt
+                              ? time(status.license.expiresAt)
+                              : '永久授权',
+                          },
+                          {
+                            key: 'capacity',
+                            label: '同时作答',
+                            children: `${status.license.maxConcurrentAttempts} 人`,
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
+                {status && !serviceError && status.license.state !== 'valid' && (
+                  <Typography.Paragraph type="secondary" className="local-manager-license-help">
+                    请导入有效授权文件。
+                  </Typography.Paragraph>
+                )}
+              </Card>
+            </div>
+          )}
+          {checked && !needsSetup && !created && (
+            <Collapse
+              items={[
+                {
+                  key: 'license',
+                  label: '授权维护',
+                  children: (
+                    <LicenseActions
+                      bridge={bridge}
+                      onImported={async () => {
+                        // Do not let a poll started before import overwrite the new license.
+                        await pendingCompletion.current;
+                        await refresh();
+                      }}
+                    />
+                  ),
+                },
+                { key: 'backup', label: '备份与恢复', children: <BackupActions bridge={bridge} /> },
+                {
+                  key: 'diagnostics',
+                  label: '故障诊断',
+                  children: (
+                    <DiagnosticActions
+                      bridge={bridge}
+                      onChecked={async () => {
+                        await pendingCompletion.current;
+                        await refresh();
+                      }}
+                    />
+                  ),
+                },
+                {
+                  key: 'details',
+                  label: '运行详情',
+                  children: (
+                    <>
+                      <Descriptions
+                        column={1}
+                        size="small"
+                        items={[
+                          {
+                            key: 'version',
+                            label: '程序版本',
+                            children: status ? `v${status.version}` : '无法获取',
+                          },
+                          {
+                            key: 'checked',
+                            label: '最近检查',
+                            children: status ? time(status.checkedAt) : '尚未获取检查结果',
+                          },
+                          {
+                            key: 'setup',
+                            label: '管理员设置',
+                            children: initialized ? '已完成' : unavailable ? '无法确认' : '未完成',
+                          },
+                        ]}
+                      />
+                      {!actionError && <div className="local-manager-actions">{copyButton}</div>}
+                    </>
+                  ),
+                },
+              ]}
+            />
+          )}
+        </main>
+        <footer className="local-manager-footer">
+          <Typography.Text type="secondary">
+            {status
+              ? `v${status.version} · 最近检查 ${time(status.checkedAt)}`
+              : '尚未获取检查结果'}
+          </Typography.Text>
+          <Typography.Text type="secondary">关闭到系统托盘 · 服务持续运行</Typography.Text>
+        </footer>
+      </div>
+    </ConfigProvider>
   );
 }

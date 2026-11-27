@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Alert, Button, Descriptions, Modal, Space, Typography } from 'antd';
 import type { BackupBridge, BackupInfo, BackupResult } from '@metaexam/contracts';
 const messages: Record<string, string> = {
-  ADMINISTRATOR_REQUIRED: '请以管理员身份运行本地管理器。',
+  ADMINISTRATOR_REQUIRED: '请从系统托盘退出管理器，再以管理员身份运行。',
   SERVICES_RUNNING: '请先停止考试服务、后台任务及其他维护命令，再重试。数据库需保持运行。',
   EXAMS_ACTIVE: '当前有进行中的考试，结束后才能备份或恢复。',
   BACKUP_UNTRUSTED: '无法验证备份来源。请选择本机创建的完整备份。',

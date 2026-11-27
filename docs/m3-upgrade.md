@@ -13,7 +13,7 @@
 ## 安装环境操作
 
 1. 安排没有进行中考试的维护窗口，记录当前版本、管理员登录、授权、题目图片、课程和成绩。完整保存现有安装和数据；保证程序与数据磁盘都有足够空间。
-2. 关闭本地管理器。保持 PostgreSQL 服务运行；升级器检查服务归属，通过原 API 维护入口排空入场请求，再停止 API 和 Worker。存在进行中考试或有效答题时拒绝升级。
+2. 从系统托盘选择“退出管理器”（仅关闭窗口会后台运行）。保持 PostgreSQL 服务运行；升级器检查服务归属，通过原 API 维护入口排空入场请求，再停止 API 和 Worker。存在进行中考试或有效答题时拒绝升级。
 3. 在独立 Windows 11 x64 测试机以管理员身份运行 `MetaExam-Setup-0.1.2-win-x64-internal.exe`，选择原程序目录。安装器检测安装记录并跳过网络／证书配置页，不重新初始化数据库。
 4. 升级器先调用旧版工具创建并校验完整数据库及历史附件备份，再保存旧程序，替换应用，使用维护身份执行有序迁移并恢复运行角色 DML 权限。
 5. API、Worker 重启后先进入升级检查状态。健康接口可访问，业务接口返回 `503 UPGRADE_IN_PROGRESS`，Worker 只更新心跳。版本、迁移与心跳全部通过且成功记录已写入，才恢复业务。
@@ -33,7 +33,7 @@
 
 旧版本备份继续由 previous/server 中的旧工具验证；新版管理器的同版本恢复不能直接导入旧版备份。本批没有通用跨版本回滚入口。迁移 SQL 失败或数据库损坏须保留现场排查；同包续升级不能修复所有数据库错误。
 
-常见错误：`UPGRADE_CLOSE_MANAGER` 关闭管理器；`EXAMS_ACTIVE` 等考试结束；`UPGRADE_SERVICE_OWNERSHIP` 核对服务归属；`UPGRADE_RUNTIME_INCOMPATIBLE` 核对原运行时，不能强行覆盖；`UPGRADE_RESUME_PACKAGE_REQUIRED` 使用原始 EXE；`UPGRADE_SAME_VOLUME_REQUIRED` 当前跨卷安装不在支持范围；`UPGRADE_START_FAILED` 排查服务日志与证书，修复后同包重试。
+常见错误：`UPGRADE_CLOSE_MANAGER` 从系统托盘退出管理器；`EXAMS_ACTIVE` 等考试结束；`UPGRADE_SERVICE_OWNERSHIP` 核对服务归属；`UPGRADE_RUNTIME_INCOMPATIBLE` 核对原运行时，不能强行覆盖；`UPGRADE_RESUME_PACKAGE_REQUIRED` 使用原始 EXE；`UPGRADE_SAME_VOLUME_REQUIRED` 当前跨卷安装不在支持范围；`UPGRADE_START_FAILED` 排查服务日志与证书，修复后同包重试。
 
 ## 验证与独立环境回归
 
@@ -57,6 +57,6 @@
 
 # 未完成的首次安装
 
-客户 0.1.13 起，安装记录为 `phase=configuring` 时，安装器自动进入首次安装修复，正常 `installed` 记录仍走上述升级协议。关闭管理器，选择原安装目录，直接运行新修复包即可。程序替换前先停止本产品服务，保存旧程序及数据冷副本到 `ProgramData\MetaExam\repairs\<ID>`；保留配置、DPAPI 凭据、公钥和已有 PostgreSQL 数据。配置或凭据缺失、归属不明、运行库或迁移清单不匹配时拒绝，不猜测密码或删除数据库。
+客户 0.1.13 起，安装记录为 `phase=configuring` 时，安装器自动进入首次安装修复，正常 `installed` 记录仍走上述升级协议。从系统托盘退出管理器，选择原安装目录，直接运行新修复包即可。程序替换前先停止本产品服务，保存旧程序及数据冷副本到 `ProgramData\MetaExam\repairs\<ID>`；保留配置、DPAPI 凭据、公钥和已有 PostgreSQL 数据。配置或凭据缺失、归属不明、运行库或迁移清单不匹配时拒绝，不猜测密码或删除数据库。
 
 修复中断保留 `upgrade-pending.json`（`kind=install-repair`），只能用相同 buildId 的包续跑。完成服务、API 版本、schema 和 Worker 心跳检查后才标记 installed、解除业务阻断。已有业务管理员不会被覆盖，不提供默认密码；Windows Administrator 密码也不属于安装器修改范围。详见 [修复与验收记录](install-repair.md)。

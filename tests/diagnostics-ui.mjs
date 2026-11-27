@@ -152,6 +152,20 @@ try {
   await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(380, 720));
   await page.screenshot({ path: path.join(output, 'offline-narrow.png'), fullPage: true });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  assert.equal(
+    await page.evaluate(() => window.metaexam.hideToTray()),
+    true,
+    'real tray available',
+  );
+  assert.equal(
+    await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()),
+    false,
+  );
+  await desktop.evaluate(({ app }) => app.emit('second-instance', {}, [], '', { elevated: false }));
+  assert.equal(
+    await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()),
+    true,
+  );
   assert.deepEqual(errors, []);
   console.log(
     `PASS ${packaged ? 'packaged' : 'development'} Electron diagnostic check/export/cancel/offline/503, redaction, overwrite refusal, foreign-frame denial and narrow layout`,

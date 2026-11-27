@@ -42,7 +42,7 @@ try {
   page.on('pageerror', (error) => errors.push(error.message));
   await page.getByText('备份与恢复', { exact: true }).click();
   await page.getByRole('button', { name: '创建备份', exact: true }).click();
-  await page.getByText('请以管理员身份运行本地管理器。', { exact: true }).waitFor();
+  await page.getByText('请从系统托盘退出管理器，再以管理员身份运行。', { exact: true }).waitFor();
   assert.deepEqual(
     await desktop.evaluate(async ({ BrowserWindow }, preload) => {
       const other = new BrowserWindow({
