@@ -1,5 +1,5 @@
 name: 锁定工具链与依赖
-description: 缓存下载内容，校验工具链并执行冻结依赖安装
+description: 缓存锁定工具下载包，校验工具链并执行冻结依赖安装
 inputs:
   packaging:
     description: 是否准备安装包工具
@@ -16,13 +16,11 @@ runs:
           .tools/innosetup.exe
           .tools/WinSW.NET462.exe
           .tools/vc_redist.x64.exe
-          .tools/pnpm-store
-        key: downloads-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.packaging }}-${{ hashFiles('toolchain.lock.json', 'pnpm-lock.yaml', 'package.json', '.npmrc') }}
+        key: tools-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.packaging }}-${{ hashFiles('toolchain.lock.json') }}
     - name: 校验工具链并安装依赖
       shell: powershell
       env:
         PREPARE_PACKAGING: ${{ inputs.packaging }}
-        npm_config_store_dir: ${{ github.workspace }}/.tools/pnpm-store
       run: |
         if ($env:PREPARE_PACKAGING -notin @('true','false')) { throw 'PACKAGING_INPUT_INVALID' }
-        ./tools/bootstrap.ps1 -Packaging:($env:PREPARE_PACKAGING -eq 'true')
+        ./tools/bootstrap.ps1 -Packaging:($env:PREPARE_PACKAGING -eq 'true') -SkipDatabase:($env:PREPARE_PACKAGING -eq 'false')

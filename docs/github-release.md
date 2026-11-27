@@ -53,4 +53,6 @@ Release 只接收白名单：两种 EXE、各自 SHA256、公开 CER、签名说
 
 最近一次旧流水线成功运行 46031757389 约 10 分钟，其中打包 127 秒、成品验证 264 秒。缓存冷／热运行和 Ubuntu CodeQL 的实际收益须在新云端运行后记录，不以本机验证推算提速比例。
 
+第一轮云端实测（46036917583／46037364340）发现工具下载与 pnpm 存储混合缓存约 550 MiB，准备步骤从未命中的 40 秒变成命中后的 57 秒。因此移除 pnpm 存储缓存，只保留经过 SHA256 复核的锁定工具下载包，普通项目检查不再准备 PostgreSQL；不将缓存命中本身当作性能提升。
+
 本机已通过 build、typecheck、零警告 lint、format:check、32 项单元测试和 test:ci。独立工作区使用仅验证用的客户 0.1.21／供应方 0.1.8 构建两种签名包，确认两次 BUILD_REUSED，以及 test:package、test:issuer:package、test:signing --packages 通过；主工作区版本及已发布资产不变。实际云端缓存、Ubuntu 扫描和受限 runner 的结果以对应 Actions 运行为准，独立系统安装验收不在本轮范围内。

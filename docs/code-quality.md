@@ -13,7 +13,7 @@ CodeQL 另在每周一北京时间 10:23（UTC 02:23）计划执行，实际开�
 
 沿用锁定 Node、pnpm、TypeScript、ESLint 和 Prettier。CodeQL 为静态扫描，不安装项目依赖、不执行产品构建；真实编译和单元测试由 Windows 项目检查完成。官方 Actions 固定完整提交 SHA，升级需审查上游版本和提交。检查任务不访问签名 Environment、私钥或业务数据；仅 CodeQL 分析 job 获得上传扫描结果所需的 `security-events: write`，不具有 Release 写权限。不使用 `pull_request_target` 执行 PR 代码。
 
-CodeQL 的两种语言扫描使用固定 `ubuntu-24.04`；项目构建与产品测试继续使用 `windows-2025`。项目检查和发布复用 `.github/actions/setup`：缓存锁定工具下载文件及 pnpm 内容存储，按系统、架构、打包模式和锁文件摘要精确匹配，不使用宽泛回退键。每次仍校验工具 SHA256 并执行 `--frozen-lockfile` 安装；不缓存已解压工具、node_modules、编译产物、签名证书或运行数据。新增 Actions YAML 也纳入格式检查。
+CodeQL 的两种语言扫描使用固定 `ubuntu-24.04`；项目构建与产品测试继续使用 `windows-2025`。项目检查和发布复用 `.github/actions/setup`：只缓存锁定工具下载文件，按系统、架构、打包模式和工具链锁文件摘要精确匹配，不使用宽泛回退键。每次仍校验工具 SHA256 并执行 `--frozen-lockfile` 安装。普通项目检查通过 `-SkipDatabase` 跳过无用途的 PostgreSQL 下载／解压；开发默认入口与发布仍完整准备数据库工具，打包模式拒绝跳过数据库。不缓存 pnpm 存储、已解压工具、node_modules、编译产物、签名证书或运行数据。新增 Actions YAML 也纳入格式检查。
 
 ## 处理检查结果
 

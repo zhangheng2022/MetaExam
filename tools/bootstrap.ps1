@@ -1,5 +1,6 @@
-param([string]$Proxy='', [switch]$Packaging, [switch]$SkipDependencies)
+param([string]$Proxy='', [switch]$Packaging, [switch]$SkipDependencies, [switch]$SkipDatabase)
 $ErrorActionPreference='Stop'
+if($Packaging -and $SkipDatabase){throw 'Packaging requires the locked PostgreSQL runtime'}
 $projectRoot=Split-Path $PSScriptRoot -Parent
 Set-Location $projectRoot
 New-Item -ItemType Directory -Force '.tools','.tools/node' | Out-Null
@@ -11,6 +12,7 @@ function Download([string]$Url,[string]$Destination) {
   if($LASTEXITCODE -ne 0){throw "Download failed: $Url"}
 }
 foreach($entry in $toolchain.files){
+  if($SkipDatabase -and $entry.file -eq '.tools/postgres.zip'){continue}
   if(-not $Packaging -and $entry.file -notin @('.tools/node-official.zip','.tools/postgres.zip')){continue}
   if(-not(Test-Path -LiteralPath $entry.file)){Download $entry.url $entry.file}
   if((Get-FileHash -LiteralPath $entry.file -Algorithm SHA256).Hash -ne $entry.sha256){throw "Checksum mismatch: $($entry.file). Do not automatically rewrite toolchain.lock.json."}
@@ -23,7 +25,7 @@ if(-not(Test-Path '.tools/node/node.exe')){
   Copy-Item ".tools/node-v$nodeVersion-win-x64/LICENSE" '.tools/node/LICENSE'
 }
 if((& .tools/node/node.exe --version) -ne "v$nodeVersion"){throw 'Project Node version differs from toolchain.lock.json'}
-if(-not(Test-Path '.tools/pgsql/bin/postgres.exe')){
+if(-not $SkipDatabase -and -not(Test-Path '.tools/pgsql/bin/postgres.exe')){
   & tar.exe -xf .tools/postgres.zip -C .tools
   if($LASTEXITCODE -ne 0){throw 'PostgreSQL extraction failed'}
 }
