@@ -53,19 +53,6 @@ export function loadBuildTrust(root, version, profile, manifestFile) {
       version,
     );
   if (profile === 'production') throw new Error('PRODUCTION_TRUST_MANIFEST_REQUIRED');
-  const publicKeys = JSON.parse(
-    readFileSync(path.join(root, '.local/provider/public-keys.json'), 'utf8'),
-  );
-  const keys = Object.entries(publicKeys).map(([kid, publicKey]) => ({
-    kid,
-    publicKey,
-    fingerprint: createHash('sha256')
-      .update(createPublicKey(publicKey).export({ type: 'spki', format: 'der' }))
-      .digest('hex'),
-  }));
-  return validateTrust(
-    { schemaVersion: 1, product: 'MetaExam', environment: 'test', version, keys },
-    'test',
-    version,
-  );
+  const trust = JSON.parse(readFileSync(path.join(root, 'installer/test-trust.json'), 'utf8'));
+  return validateTrust({ ...trust, version }, 'test', version);
 }

@@ -1,0 +1,25 @@
+name: 项目检查
+on:
+  push:
+    branches: [master]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: windows-2025
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: 准备锁定工具链
+        shell: powershell
+        run: ./tools/bootstrap.ps1
+      - name: 检查与构建
+        shell: powershell
+        run: |
+          foreach ($task in @('typecheck','lint','format:check','test','test:ci','build')) {
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/run.ps1 $task
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }

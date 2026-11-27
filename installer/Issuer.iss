@@ -1,5 +1,5 @@
 #ifndef IssuerVersion
-  #define IssuerVersion "0.1.3"
+  #define IssuerVersion "0.1.4"
 #endif
 [Setup]
 SignTool=metaexam

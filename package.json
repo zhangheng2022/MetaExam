@@ -1,6 +1,6 @@
 {
   "name": "metaexam",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "packageManager": "pnpm@10.24.0",
   "engines": {
@@ -12,8 +12,8 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
-    "format": "prettier --write \"{apps,packages,tests,tools,installer,provider,docs}/**/*\" \"*.{json,md,yaml,mjs,js,cjs}\" \".playwright/*.json\" --ignore-unknown",
-    "format:check": "prettier --check \"{apps,packages,tests,tools,installer,provider,docs}/**/*\" \"*.{json,md,yaml,mjs,js,cjs}\" \".playwright/*.json\" --ignore-unknown",
+    "format": "prettier --write \"{apps,packages,tests,tools,installer,provider,docs}/**/*\" \"*.{json,md,yaml,mjs,js,cjs}\" \".playwright/*.json\" --ignore-unknown \".github/workflows/*.yml\"",
+    "format:check": "prettier --check \"{apps,packages,tests,tools,installer,provider,docs}/**/*\" \"*.{json,md,yaml,mjs,js,cjs}\" \".playwright/*.json\" --ignore-unknown \".github/workflows/*.yml\"",
     "test": "tsx --test tests/*.test.ts",
     "test:integration": "tsx tests/integration.ts",
     "test:ui": "node tests/ui.mjs",
@@ -53,7 +53,8 @@
     "test:installer": "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tests/installer-acl.ps1",
     "test:grading": "tsx tests/grading.mts && tsx tests/grading-ui.mts",
     "test:reports": "tsx tests/reports.mts && tsx tests/reports-ui.mts",
-    "test:signing": "node tests/signing.mjs"
+    "test:signing": "node tests/signing.mjs",
+    "test:ci": "node tests/ci.mjs"
   },
   "devDependencies": {
     "@ant-design/cli": "6.7.2",

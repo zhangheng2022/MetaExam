@@ -1,0 +1,108 @@
+name: Windows 预发行
+on:
+  workflow_dispatch:
+    inputs:
+      customer_version:
+        description: 客户版本（必须与源码一致）
+        required: true
+        type: string
+      issuer_version:
+        description: 签发器版本（必须与源码一致）
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: metaexam-release
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.ref == 'refs/heads/master' && github.repository == 'zhangheng2022/MetaExam'
+    runs-on: windows-2025
+    environment: windows-signing
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: 校验版本
+        shell: powershell
+        env:
+          CUSTOMER_VERSION: ${{ inputs.customer_version }}
+          ISSUER_VERSION: ${{ inputs.issuer_version }}
+        run: |
+          $customer=(Get-Content package.json -Raw | ConvertFrom-Json).version
+          $issuer=(Get-Content apps/issuer/package.json -Raw | ConvertFrom-Json).version
+          if ($env:CUSTOMER_VERSION -cne $customer -or $env:ISSUER_VERSION -cne $issuer -or $customer -notmatch '^\d+\.\d+\.\d+$' -or $issuer -notmatch '^\d+\.\d+\.\d+$') { throw 'RELEASE_VERSION_MISMATCH' }
+      - name: 准备锁定工具链
+        shell: powershell
+        run: ./tools/bootstrap.ps1 -Packaging
+      - name: 检查与构建
+        shell: powershell
+        run: |
+          foreach ($task in @('typecheck','lint','format:check','test','test:ci','build')) {
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/run.ps1 $task
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+      - name: 导入签名证书
+        shell: powershell
+        env:
+          METAEXAM_SIGNING_PFX_BASE64: ${{ secrets.METAEXAM_SIGNING_PFX_BASE64 }}
+          METAEXAM_SIGNING_PFX_PASSWORD: ${{ secrets.METAEXAM_SIGNING_PFX_PASSWORD }}
+        run: ./tools/ci/signing.ps1 -Action Import
+      - name: 顺序构建两种安装包
+        shell: powershell
+        run: |
+          foreach ($task in @('package:win','package:issuer')) {
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/run.ps1 $task
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+      - name: 普通权限集成与成品验证
+        shell: powershell
+        run: ./tools/ci/verify.ps1
+      - name: 准备白名单发布资产
+        shell: powershell
+        run: |
+          & ./.tools/node/node.exe tools/ci/release.mjs prepare
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          & tar.exe -czf artifacts/customer-payload.tgz -C artifacts/payload .
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: 清理证书私钥
+        if: always()
+        shell: powershell
+        run: ./tools/ci/signing.ps1 -Action Clean
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-assets
+          path: artifacts/release/*
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: customer-payload
+          path: artifacts/customer-payload.tgz
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+  publish:
+    needs: build
+    runs-on: windows-2025
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-assets
+          path: artifacts/release
+      - name: 核对资产并发布预发行
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/ci/release.mjs publish

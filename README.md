@@ -138,6 +138,8 @@ $env:LICENSE_SEQUENCE = '1'
 
 当前客户 0.1.4、供应方签发器 0.1.3 安装包、证书指纹及验证结果见 [自签名交付记录](docs/release-self-signed.md)。
 
+GitHub 云端交付从客户 0.1.5、签发器 0.1.4 开始；两种安装包放在同一公开预发行版。手动发版、证书管理和验证范围见 [GitHub 构建与发布](docs/github-release.md)。
+
 ## 供应方授权签发器
 
 独立 Windows 签发器已接入工程，运行 `./tools/run.ps1 dev:issuer`。支持客户申请、口令保护密钥、限期／永久授权、序号台账、续期扩容和加密备份恢复。使用与信任配置见 [供应方操作手册](docs/provider-issuer.md)。供应方包通过 `package:issuer` 生成；客户 `package:win` 明确使用测试公钥，正式信任构建使用 `package:win:production` 并设置 `METAEXAM_TRUST_MANIFEST`，不回退测试配置。客户包不包含签发器或私钥。

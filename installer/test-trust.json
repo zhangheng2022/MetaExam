@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "product": "MetaExam",
+  "environment": "test",
+  "keys": [
+    {
+      "kid": "internal-test",
+      "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAOeTtfOErP5/vYIFSXUgR10uGU/jcXyBy+51LTAXkSUE=\n-----END PUBLIC KEY-----\n",
+      "fingerprint": "463736646e1f97a3118da3568180d10991d3bc63b019bfaa929262426b75786f"
+    }
+  ]
+}

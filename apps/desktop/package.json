@@ -3,7 +3,7 @@
   "productName": "MetaExam Manager",
   "description": "MetaExam local service manager",
   "author": "MetaExam",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "main": "dist/main.js",
   "scripts": {
