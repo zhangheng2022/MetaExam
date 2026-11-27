@@ -7,6 +7,7 @@ $log=Join-Path $root '.local/ci-verification.log'
 $identity=[Security.Principal.WindowsIdentity]::GetCurrent()
 $admin=([Security.Principal.WindowsPrincipal]::new($identity)).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $Child) {
+  Write-Output ('CI_PARENT_START admin='+$admin)
   $env:METAEXAM_CI_EXPECTED_SID=$identity.User.Value
   if ($admin) {
     if ($env:GITHUB_ACTIONS -ne 'true') { throw 'ELEVATED_CI_ONLY' }
@@ -17,7 +18,9 @@ if (-not $Child) {
     Add-Type -Path (Join-Path $PSScriptRoot 'RestrictedProcess.cs')
     $exe=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
     $command='"'+$exe+'" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$PSCommandPath+'" -Child'
+    Write-Output 'CI_RESTRICTED_CHILD_START'
     $code=[MetaExamRestrictedProcess]::Run($exe,$command,$root,($log+'.native'))
+    Write-Output ('CI_RESTRICTED_CHILD_EXIT='+$code)
     if (Test-Path ($log+'.native')) { Get-Content ($log+'.native') }
   } else {
     & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $PSCommandPath -Child

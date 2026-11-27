@@ -30,6 +30,11 @@ try {
     );
   writeFileSync(stub, "process.exit(process.argv.includes('db:start') ? 23 : 0);\n");
   let result = execute();
+  assert.equal(
+    result.error,
+    undefined,
+    JSON.stringify({ status: result.status, signal: result.signal, error: result.error?.message }),
+  );
   assert.notEqual(result.status, 0);
   assert.match(result.stderr + result.stdout, /CI_TASK_FAILED/);
   writeFileSync(stub, 'process.exit(0);\n');
