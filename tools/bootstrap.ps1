@@ -42,6 +42,8 @@ if(-not(Test-Path '.tools/pnpm/node_modules/pnpm/bin/pnpm.cjs')){
   & tar.exe -xf '.tools/pnpm.tgz' -C '.tools/pnpm/node_modules/pnpm' --strip-components=1
   if($LASTEXITCODE -ne 0){throw 'pnpm extraction failed'}
 }
+# Nested workspace scripts must resolve the pinned pnpm even on a clean machine.
+[IO.File]::WriteAllText((Join-Path $projectRoot '.tools/pnpm/pnpm.cmd'), "@echo off`r`n`"%~dp0..\node\node.exe`" `"%~dp0node_modules\pnpm\bin\pnpm.cjs`" %*`r`n", [Text.Encoding]::ASCII)
 if(-not $SkipDependencies){
   & tools/run.ps1 install --frozen-lockfile
   if($LASTEXITCODE -ne 0){throw 'Dependency installation failed'}

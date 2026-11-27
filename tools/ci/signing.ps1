@@ -15,7 +15,6 @@ if ($Action -eq 'Clean') {
   exit 0
 }
 if (Test-Path -LiteralPath $directory) { throw 'SIGNING_TEMP_EXISTS' }
-if (Test-Path "Cert:\CurrentUser\My\$pin") { throw 'SIGNING_CERTIFICATE_ALREADY_EXISTS' }
 if (-not $env:METAEXAM_SIGNING_PFX_BASE64 -or -not $env:METAEXAM_SIGNING_PFX_PASSWORD) { throw 'SIGNING_SECRETS_MISSING' }
 New-Item -ItemType Directory -Path $directory | Out-Null
 $sid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
@@ -27,8 +26,9 @@ $pfx=Join-Path $directory 'certificate.pfx'
 try {
   [IO.File]::WriteAllBytes($pfx,[Convert]::FromBase64String($env:METAEXAM_SIGNING_PFX_BASE64))
   $password=ConvertTo-SecureString $env:METAEXAM_SIGNING_PFX_PASSWORD -AsPlainText -Force
-  $data=Get-PfxData -FilePath $pfx -Password $password
+  try { $data=Get-PfxData -FilePath $pfx -Password $password } catch { throw 'SIGNING_PFX_DECODE_FAILED' }
   if (@($data.EndEntityCertificates).Count -ne 1 -or $data.EndEntityCertificates[0].Thumbprint -ne $pin -or @($data.OtherCertificates).Count -gt 0) { throw 'SIGNING_PFX_MISMATCH' }
+  if (Test-Path "Cert:\CurrentUser\My\$pin") { throw 'SIGNING_CERTIFICATE_ALREADY_EXISTS' }
   @{thumbprint=$pin;runId=$env:GITHUB_RUN_ID} | ConvertTo-Json | Set-Content $marker
   $cert=Import-PfxCertificate -FilePath $pfx -Password $password -CertStoreLocation Cert:\CurrentUser\My
   Export-Certificate -Cert $cert -FilePath (Join-Path $directory 'MetaExam-CodeSigning.cer') | Out-Null

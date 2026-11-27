@@ -19,7 +19,7 @@ jobs:
       - name: 检查与构建
         shell: powershell
         run: |
-          foreach ($task in @('typecheck','lint','format:check','test','test:ci','build')) {
+          foreach ($task in @('build','typecheck','lint','format:check','test','test:ci')) {
             & powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/run.ps1 $task
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
           }

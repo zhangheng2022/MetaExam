@@ -54,7 +54,7 @@
     "test:grading": "tsx tests/grading.mts && tsx tests/grading-ui.mts",
     "test:reports": "tsx tests/reports.mts && tsx tests/reports-ui.mts",
     "test:signing": "node tests/signing.mjs",
-    "test:ci": "node tests/ci.mjs"
+    "test:ci": "node tests/ci.mjs && powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tests/ci-signing.ps1"
   },
   "devDependencies": {
     "@ant-design/cli": "6.7.2",
