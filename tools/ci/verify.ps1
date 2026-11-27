@@ -7,13 +7,16 @@ $log=Join-Path $root '.local/ci-verification.log'
 $identity=[Security.Principal.WindowsIdentity]::GetCurrent()
 $admin=([Security.Principal.WindowsPrincipal]::new($identity)).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $Child) {
+  foreach($previousLog in @($log,($log+'.native'))) {
+    if(Test-Path -LiteralPath $previousLog){Remove-Item -LiteralPath $previousLog -Force}
+  }
   Write-Output ('CI_PARENT_START admin='+$admin)
   $env:METAEXAM_CI_EXPECTED_SID=$identity.User.Value
   if ($admin) {
     if ($env:GITHUB_ACTIONS -ne 'true') { throw 'ELEVATED_CI_ONLY' }
     # Runner workspaces can inherit only the Administrators ACL; grant this same user
     # access before removing its admin group from the test token. No product ACL changes.
-    & icacls.exe $root /grant:r ('*'+$identity.User.Value+':(OI)(CI)M') | Out-Null
+    & icacls.exe $root /grant:r ('*'+$identity.User.Value+':(OI)(CI)F') | Out-Null
     if ($LASTEXITCODE) { throw 'CI_WORKSPACE_ACL_FAILED' }
     $probe=Join-Path $root '.local/ci-admin-only.txt'
     [IO.File]::WriteAllText($probe,'CI permission probe; no secrets')
