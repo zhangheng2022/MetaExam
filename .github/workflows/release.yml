@@ -10,6 +10,10 @@ on:
         description: 签发器版本（必须与源码一致）
         required: true
         type: string
+      resume_run_id:
+        description: 可选：复用已成功构建的运行 ID，仅继续发布原资产
+        required: false
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -17,7 +21,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   build:
-    if: github.ref == 'refs/heads/master' && github.repository == 'zhangheng2022/MetaExam'
+    if: github.ref == 'refs/heads/master' && github.repository == 'zhangheng2022/MetaExam' && inputs.resume_run_id == ''
     runs-on: windows-2025
     environment: windows-signing
     timeout-minutes: 90
@@ -88,19 +92,35 @@ jobs:
           compression-level: 0
   publish:
     needs: build
+    if: always() && !cancelled() && github.ref == 'refs/heads/master' && github.repository == 'zhangheng2022/MetaExam' && (needs.build.result == 'success' || (inputs.resume_run_id != '' && needs.build.result == 'skipped'))
     runs-on: windows-2025
     timeout-minutes: 20
     permissions:
       contents: write
+      actions: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - name: 核对构建来源和版本
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_RUN_ID: ${{ inputs.resume_run_id || github.run_id }}
+          RELEASE_RESUME: ${{ inputs.resume_run_id != '' }}
+          CUSTOMER_VERSION: ${{ inputs.customer_version }}
+          ISSUER_VERSION: ${{ inputs.issuer_version }}
+        run: |
+          if ($env:CUSTOMER_VERSION -cne (Get-Content package.json -Raw | ConvertFrom-Json).version -or $env:ISSUER_VERSION -cne (Get-Content apps/issuer/package.json -Raw | ConvertFrom-Json).version) { throw 'RELEASE_VERSION_MISMATCH' }
+          node tools/ci/release.mjs source-run
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: release-assets
           path: artifacts/release
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.resume_run_id || github.run_id }}
       - name: 核对资产并发布预发行
         shell: powershell
         env:

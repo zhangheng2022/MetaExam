@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import {
   readFileSync,
+  appendFileSync,
   writeFileSync,
   mkdirSync,
   copyFileSync,
@@ -50,7 +51,7 @@ function context() {
   const customer = json('package.json').version,
     issuer = json('apps/issuer/package.json').version;
   validateVersions(customer, issuer, customer, issuer);
-  const sha = process.env.GITHUB_SHA;
+  const sha = process.env.RELEASE_SOURCE_SHA ?? process.env.GITHUB_SHA;
   if (
     !/^[a-f0-9]{40}$/.test(sha ?? '') ||
     process.env.GITHUB_REPOSITORY !== repository ||
@@ -120,6 +121,46 @@ function optionalApi(endpoint) {
     throw error;
   }
 }
+function findRelease(tag) {
+  // The tag endpoint excludes drafts. Authenticated listing includes our drafts.
+  const matches = JSON.parse(gh(['api', '--paginate', '--slurp', `repos/${repository}/releases`]))
+    .flat()
+    .filter((r) => r.tag_name === tag);
+  if (matches.length > 1) throw new Error('RELEASE_AMBIGUOUS_DRAFT');
+  return matches[0] ?? null;
+}
+export function validateSourceRun(run, jobs, currentSha, resume) {
+  if (
+    run.head_repository?.full_name !== repository ||
+    run.head_branch !== 'master' ||
+    run.event !== 'workflow_dispatch' ||
+    run.path !== '.github/workflows/release.yml' ||
+    !/^[a-f0-9]{40}$/.test(run.head_sha) ||
+    (!resume && run.head_sha !== currentSha) ||
+    !jobs.some((job) => job.name === 'build' && job.conclusion === 'success')
+  )
+    throw new Error('RELEASE_SOURCE_RUN_INVALID');
+  return run.head_sha;
+}
+function sourceRun() {
+  const id = process.env.CANDIDATE_RUN_ID;
+  if (
+    !/^[1-9][0-9]*$/.test(id ?? '') ||
+    process.env.GITHUB_REPOSITORY !== repository ||
+    process.env.GITHUB_REF !== 'refs/heads/master'
+  )
+    throw new Error('RELEASE_CONTEXT_INVALID');
+  const run = api(`actions/runs/${id}`),
+    jobs = api(`actions/runs/${id}/jobs?per_page=100`).jobs;
+  const sha = validateSourceRun(
+    run,
+    jobs,
+    process.env.GITHUB_SHA,
+    process.env.RELEASE_RESUME === 'true',
+  );
+  appendFileSync(process.env.GITHUB_ENV, `RELEASE_SOURCE_SHA=${sha}\n`);
+  console.log(`Validated successful build ${id} at ${sha}`);
+}
 function publish() {
   const c = context(),
     manifest = json(path.join(directory, 'release-manifest.json'));
@@ -138,7 +179,7 @@ function publish() {
   const tag = optionalApi(`git/ref/tags/${c.tag}`);
   if (tag && (tag.object.type !== 'commit' || tag.object.sha !== c.sha))
     throw new Error('RELEASE_TAG_COMMIT_MISMATCH');
-  let release = optionalApi(`releases/tags/${c.tag}`);
+  let release = findRelease(c.tag);
   if (release) validateDraft(release, c.sha, c.tag);
   if (!tag) {
     gh([
@@ -169,7 +210,7 @@ function publish() {
       '--notes-file',
       path.join(directory, 'RELEASE-NOTES.md'),
     ]);
-    release = api(`releases/tags/${c.tag}`);
+    release = findRelease(c.tag);
     validateDraft(release, c.sha, c.tag);
   }
   const all = [...names, 'release-manifest.json'];
@@ -200,7 +241,7 @@ function publish() {
     const currentTag = api(`git/ref/tags/${c.tag}`);
     if (currentTag.object.type !== 'commit' || currentTag.object.sha !== c.sha)
       throw new Error('RELEASE_TAG_COMMIT_MISMATCH');
-    validateDraft(api(`releases/tags/${c.tag}`), c.sha, c.tag);
+    validateDraft(findRelease(c.tag), c.sha, c.tag);
     gh([
       'release',
       'edit',
@@ -223,5 +264,6 @@ function publish() {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   if (process.argv[2] === 'prepare') prepare();
   else if (process.argv[2] === 'publish') publish();
+  else if (process.argv[2] === 'source-run') sourceRun();
   else throw new Error('RELEASE_COMMAND_INVALID');
 }

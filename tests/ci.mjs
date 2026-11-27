@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { validateVersions, validateDraft, assetNames } from '../tools/ci/release.mjs';
+import {
+  validateVersions,
+  validateDraft,
+  assetNames,
+  validateSourceRun,
+} from '../tools/ci/release.mjs';
 import { loadBuildTrust } from '../installer/trust.mjs';
 const sha = 'a'.repeat(40),
   tag = 'v0.1.5';
@@ -10,6 +15,36 @@ const draft = {
   target_commitish: sha,
   body: `<!-- metaexam-commit:${sha} -->`,
 };
+const run = {
+  head_repository: { full_name: 'zhangheng2022/MetaExam' },
+  head_branch: 'master',
+  event: 'workflow_dispatch',
+  path: '.github/workflows/release.yml',
+  head_sha: sha,
+};
+assert.equal(validateSourceRun(run, [{ name: 'build', conclusion: 'success' }], sha, false), sha);
+assert.equal(
+  validateSourceRun(run, [{ name: 'build', conclusion: 'success' }], 'b'.repeat(40), true),
+  sha,
+);
+assert.throws(
+  () =>
+    validateSourceRun(
+      { ...run, head_branch: 'feature' },
+      [{ name: 'build', conclusion: 'success' }],
+      sha,
+      true,
+    ),
+  /SOURCE_RUN_INVALID/,
+);
+assert.throws(
+  () => validateSourceRun(run, [{ name: 'build', conclusion: 'failure' }], sha, true),
+  /SOURCE_RUN_INVALID/,
+);
+assert.throws(
+  () => validateSourceRun(run, [{ name: 'build', conclusion: 'success' }], 'b'.repeat(40), false),
+  /SOURCE_RUN_INVALID/,
+);
 validateVersions('0.1.5', '0.1.4', '0.1.5', '0.1.4');
 assert.throws(() => validateVersions('0.1.5', '0.1.4', '0.1.4', '0.1.4'), /VERSION_MISMATCH/);
 assert.throws(
