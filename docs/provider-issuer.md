@@ -1,5 +1,7 @@
 # 供应方离线授权签发器
 
+当前客户 0.1.6／供应方 0.1.5 的系统范围与新增系统验收要求见 [Windows 兼容目标](windows-compatibility.md)。下文历史批次的版本与验收记录保持原意，不代表新增系统已验收。
+
 独立的 Windows 单人桌面工具。供应方数据存于当前 Windows 用户的 `AppData/Roaming/MetaExam.Issuer`；客户业务数据库、管理器与服务不参与签发。当前客户程序版本 0.1.4，签发器独立版本 0.1.3。两种 EXE 均使用自签名 Authenticode，见 [程序签名规范](code-signing.md)。下方 0.1.3 / 0.1.2 表格保留历史交付记录。
 
 ## 日常使用

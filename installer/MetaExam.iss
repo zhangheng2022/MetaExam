@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-#define MyAppVersion "0.1.5"
+#define MyAppVersion "0.1.6"
 #endif
 [Setup]
 SignTool=metaexam
@@ -13,7 +13,7 @@ OutputDir=..\artifacts
 OutputBaseFilename=MetaExam-Setup-{#MyAppVersion}-win-x64-internal
 ArchitecturesAllowed=x64compatible and not arm64
 ArchitecturesInstallIn64BitMode=x64compatible
-MinVersion=10.0.22000
+MinVersion=10.0
 PrivilegesRequired=admin
 Compression=lzma2/fast
 SolidCompression=yes
@@ -36,6 +36,13 @@ Type: files; Name: "{app}\maintenance\upgrade-windows.mjs"
 Type: files; Name: "{app}\maintenance\UPGRADE.md"
 Type: files; Name: "{app}\maintenance\DIAGNOSTICS.md"
 [Code]
+#include "windows-compatibility.iss"
+
+function InitializeSetup: Boolean;
+begin
+  Result := RequireCompatibleWindows(CurrentWindowsCompatibilityError);
+end;
+
 var
   NetworkPage: TInputQueryWizardPage;
   CertPage: TInputFileWizardPage;

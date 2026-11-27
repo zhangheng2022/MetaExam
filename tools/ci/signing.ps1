@@ -1,5 +1,6 @@
 param([ValidateSet('Import','Clean')][string]$Action)
 $ErrorActionPreference='Stop'
+Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1')
 if ($env:GITHUB_ACTIONS -ne 'true' -or -not $env:RUNNER_TEMP) { throw 'CI_ONLY' }
 $directory = Join-Path ([IO.Path]::GetFullPath($env:RUNNER_TEMP)) 'metaexam-signing'
 $pin = (Get-Content (Join-Path $PSScriptRoot '../../installer/signing-certificate.json') -Raw | ConvertFrom-Json).thumbprint

@@ -33,6 +33,8 @@
 
 ## 业务与运行约束
 
+- 两种安装包的系统目标统一为 Windows 10 22H2 x64、Windows 11 x64、Windows Server 2022/2025 x64（桌面体验），详见 docs/windows-compatibility.md。不支持 Server Core、ARM64、x86 或更早服务器；复用 installer/windows-compatibility.iss，不加入生产测试绕过参数。改动运行 test:compatibility，目标系统真实安装、ACL、服务与重启仍需独立验收；目标不等于已验证或上游支持承诺。
+
 - Nest 使用 Fastify adapter；不要直接套用 Express 请求类型、中间件或测试启动方式。外部输入须在服务端验证；当前协议使用 Zod。
 - 数据库迁移由 packages/db/src/migrations.ts 中的 V1～V10 注册表及 index.ts 中的逐版事务/连接咨询锁管理。schema.ts 声明现有表；仍禁止用 push 代替显式迁移。已执行迁移不可原地改写；新迁移需单独设计升级路径。
 - pg 事务必须使用同一 PoolClient 并释放连接；查询参数化。任务租约领取、幂等和重启恢复语义须保留。

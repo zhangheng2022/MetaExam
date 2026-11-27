@@ -62,6 +62,7 @@ for (const item of vendor.files.filter((item) => /node-official|innosetup/.test(
       .digest('hex') !== item.sha256
   )
     throw new Error('VENDOR_CHECKSUM_MISMATCH');
+run(['test:compatibility']);
 run(['--filter', '@metaexam/issuer...', 'build']);
 const electronDist = path.join(root, 'apps/desktop/node_modules/electron/dist');
 const electronVersion = JSON.parse(
@@ -100,6 +101,10 @@ await build({
   sourcemap: false,
 });
 copyFileSync(path.join(root, 'docs/provider-issuer.md'), path.join(payload, 'README.md'));
+copyFileSync(
+  path.join(root, 'docs/windows-compatibility.md'),
+  path.join(payload, 'WINDOWS-COMPATIBILITY.md'),
+);
 copyFileSync(path.join(root, 'pnpm-lock.yaml'), path.join(payload, 'pnpm-lock.yaml'));
 const builderRequire = createRequire(createRequire(import.meta.url).resolve('electron-builder'));
 const asar = createRequire(builderRequire.resolve('app-builder-lib'))('@electron/asar');

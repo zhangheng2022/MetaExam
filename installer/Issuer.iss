@@ -1,5 +1,5 @@
 #ifndef IssuerVersion
-  #define IssuerVersion "0.1.4"
+  #define IssuerVersion "0.1.5"
 #endif
 [Setup]
 SignTool=metaexam
@@ -10,8 +10,10 @@ AppVersion={#IssuerVersion}
 DefaultDirName={localappdata}\Programs\MetaExam.Issuer
 DefaultGroupName=MetaExam 授权签发器
 PrivilegesRequired=lowest
-ArchitecturesAllowed=x64compatible
+ArchitecturesAllowed=x64compatible and not arm64
 ArchitecturesInstallIn64BitMode=x64compatible
+MinVersion=10.0
+SetupLogging=yes
 OutputBaseFilename=MetaExam-Issuer-Setup-{#IssuerVersion}-win-x64-internal
 Compression=lzma2/fast
 SolidCompression=yes
@@ -25,3 +27,10 @@ Name: "{group}\MetaExam 授权签发器"; Filename: "{app}\MetaExam.Issuer.exe"
 [Run]
 Filename: "{app}\MetaExam.Issuer.exe"; Description: "打开授权签发器"; Flags: nowait postinstall skipifsilent
 ; User data is never listed in UninstallDelete. No service or firewall operations.
+[Code]
+#include "windows-compatibility.iss"
+
+function InitializeSetup: Boolean;
+begin
+  Result := RequireCompatibleWindows(CurrentWindowsCompatibilityError);
+end;

@@ -77,6 +77,7 @@ for (const item of lock.files) {
   )
     throw new Error('VENDOR_CHECKSUM_MISMATCH: ' + item.file);
 }
+run(['test:compatibility']);
 run(['build']);
 safeReset(payload);
 for (const d of [
@@ -349,6 +350,10 @@ writeFileSync(
 if (existsSync(path.join(root, 'docs/phase1-acceptance.md')))
   copyFileSync(path.join(root, 'docs/phase1-acceptance.md'), path.join(payload, 'ACCEPTANCE.md'));
 copyFileSync(path.join(root, 'docs/m1-acceptance.md'), path.join(payload, 'M1-ACCEPTANCE.md'));
+copyFileSync(
+  path.join(root, 'docs/windows-compatibility.md'),
+  path.join(payload, 'licenses/WINDOWS-COMPATIBILITY.md'),
+);
 copyFileSync(path.join(root, 'docs/m3-upgrade.md'), path.join(payload, 'maintenance/UPGRADE.md'));
 copyFileSync(
   path.join(root, 'docs/m3-diagnostics.md'),

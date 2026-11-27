@@ -1,4 +1,6 @@
 $ErrorActionPreference='Stop'
+# Match the product signer: fresh Windows PowerShell sessions may not autoload Cert:.
+Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1')
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $temporary=Join-Path $root ('.local/ci-signing-test-'+[Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $temporary -Force | Out-Null

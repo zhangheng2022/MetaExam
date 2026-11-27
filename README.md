@@ -1,5 +1,7 @@
 # MetaExam
 
+客户 0.1.6／供应方 0.1.5 的安装运行目标为 Windows 10 22H2、Windows 11、Windows Server 2022／2025（桌面体验），均为原生 x64。目标与实测状态分开记录，见 [Windows 兼容目标](docs/windows-compatibility.md) 和 [本批验证记录](docs/windows-compatibility-validation.md)。
+
 M2 第七批已实现已发布成绩的全场统计、逐题分析、名单筛选与 Excel 导出，验收见 [成绩统计与导出](docs/m2-reports.md)。数据库保持 V10，无新增迁移。沿用 [阅卷与成绩发布](docs/m2-grading.md)、[答题会话](docs/m2-attempts.md)、[考试发布与名单](docs/m2-exams.md)、[组卷与冻结](docs/m2-papers.md)、[Excel 导入与图片](docs/m2-imports.md) 和 [题库基础](docs/m2-questions.md)；跨考试分析、复核改分和补考尚未交付。
 
 M1 第二批已实现账号、班级、课程、授课安排、角色工作台及操作日志，沿用 Ant Design 默认蓝色。开发与验收步骤见 [M1 第二批交付说明](docs/m1-management.md)。首次登录或管理员重置密码后，用户须先修改密码。
@@ -120,7 +122,7 @@ $env:LICENSE_SEQUENCE = '1'
 
 `package:win` 拒绝覆盖已有同版本 EXE 或 SHA256；修改交付内容需递增应用版本，保留旧包用于同 buildId 续升级。构建互斥锁位于 `artifacts/.package-build.lock`，正常退出自动清理；异常退出后须确认记录中的构建进程已结束再人工处理锁，不能在构建期间删除。编译先输出暂存目录，再排他创建最终 EXE；编译失败不覆盖已交付文件。
 
-仅在独立 Windows 11 x64 测试机运行安装器。可选本机 HTTP 或局域网 HTTPS；生产 LAN 必须导入真实可用证书，客户端信任其 CA。HTTPS 证书需覆盖 127.0.0.1 及访问用 LAN IP/域名；程序不跳过 TLS 验证。详细步骤见 [独立环境验收清单](docs/phase1-acceptance.md)。
+仅在[兼容目标](docs/windows-compatibility.md)列出的独立 x64 测试机运行安装器，Server 必须带桌面体验。可选本机 HTTP 或局域网 HTTPS；生产 LAN 必须导入真实可用证书，客户端信任其 CA。HTTPS 证书需覆盖 127.0.0.1 及访问用 LAN IP/域名；程序不跳过 TLS 验证。详细步骤见 [独立环境验收清单](docs/phase1-acceptance.md)。
 
 安装版维护命令：管理员终端设置 `METAEXAM_CONFIG=C:\ProgramData\MetaExam\config.json`，然后使用 `C:\Program Files\MetaExam\runtime\node.exe --use-system-ca C:\Program Files\MetaExam\server\cli.cjs license-request <输出路径>` 等同名命令。含空格路径需 PowerShell 的 `&` 与引号。
 
