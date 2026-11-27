@@ -307,12 +307,6 @@ body {
 .business-sidebar .ant-menu {
   border-inline-end: 0;
 }
-.business-sidebar-footer {
-  margin-top: auto;
-  padding: 24px;
-  color: var(--mx-secondary);
-  font-size: 12px;
-}
 .business-body {
   min-width: 0;
 }

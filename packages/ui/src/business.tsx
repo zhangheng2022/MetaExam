@@ -87,7 +87,6 @@ export function LoginSurface({ children }: PropsWithChildren) {
         <div className="login-stack">
           <header className="login-brand">
             <ProductBrand />
-            <Typography.Text type="secondary">本地考试管理系统</Typography.Text>
           </header>
           {children}
         </div>
@@ -211,7 +210,6 @@ export function BusinessShell({
           <ProductBrand />
         </div>
         {navigation}
-        <div className="business-sidebar-footer">本地考试管理系统</div>
       </Layout.Sider>
       <Layout className="business-body">
         <Layout.Header className="business-header">
