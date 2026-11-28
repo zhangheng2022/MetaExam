@@ -57,7 +57,7 @@ jobs:
         run: ./tools/run.ps1 test:ci
       - name: 构建应用并记录产物摘要
         shell: powershell
-        run: ./.tools/node/node.exe tools/ci/build.mjs
+        run: ./tools/run.ps1 exec node tools/ci/build.mjs
       - name: TypeScript 类型检查
         shell: powershell
         run: ./tools/run.ps1 typecheck
