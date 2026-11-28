@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AccountImport } from './account-import';
 import { Alert, Button, Card, Form, Input, Select, Space, Switch, Tag } from '@metaexam/ui';
 import type { CurrentUser, ManagedUser } from '@metaexam/contracts';
 import { api } from '../api';
@@ -18,9 +19,12 @@ export function UsersPage({
     <Card>
       <div className="management-toolbar">
         <span>维护账号资料、角色与启停状态</span>
-        <Button type="primary" onClick={() => setEditing('new')}>
-          创建账号
-        </Button>
+        <Space>
+          <AccountImport done={list.reload} />
+          <Button type="primary" onClick={() => setEditing('new')}>
+            创建账号
+          </Button>
+        </Space>
       </div>
       {notice && (
         <Alert type="success" title={notice} showIcon closable className="identity-alert" />

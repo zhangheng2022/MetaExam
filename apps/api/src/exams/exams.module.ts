@@ -61,6 +61,9 @@ class ExamsController {
   ) {
     return this.service.roster(u.id, id, q);
   }
+  @Get(':id/progress') progress(@SignedInUser() u: CurrentUser, @Param('id') id: string) {
+    return this.service.progress(u.id, id);
+  }
   @Patch(':id') save(
     @SignedInUser() u: CurrentUser,
     @Param('id') id: string,

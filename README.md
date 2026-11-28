@@ -1,6 +1,8 @@
 # 元考 / MetaExam
 
-客户 0.1.21／供应方 0.1.8 的安装运行目标为 Windows 10 22H2、Windows 11、Windows Server 2022／2025（桌面体验），均为原生 x64。目标与实测状态分开记录，见 [Windows 兼容目标](docs/windows-compatibility.md) 和 [本批验证记录](docs/windows-compatibility-validation.md)。
+客户 0.1.22／供应方 0.1.8 的安装运行目标为 Windows 10 22H2、Windows 11、Windows Server 2022／2025（桌面体验），均为原生 x64。目标与实测状态分开记录，见 [Windows 兼容目标](docs/windows-compatibility.md) 和 [本批验证记录](docs/windows-compatibility-validation.md)。
+
+客户 0.1.22 增加账号／班级成员批量导入和考中状态查看，数据库保持 V10。操作、试点计划、负载测试与独立验收边界见 [试点开发与验收](docs/pilot-plan.md)。下文旧版本的“后续”“未交付”与包信息保留历史批次范围，当前能力以本文开头和对应最新交付记录为准。
 
 客户 0.1.21 支持直接导入固定 15 列文字题库，自动识别表头位置、转换题型和中文难度，保留源行号、预检与确认入库流程；兼容 WPS 空白样式列。格式及验证见 [Excel 导入说明](docs/m2-imports.md)。供应方 0.1.8 随同构建，签发规则不变。
 

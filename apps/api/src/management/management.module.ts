@@ -10,10 +10,12 @@ import {
   Post,
   Query,
   Req,
+  Res,
 } from '@nestjs/common';
 import { CurrentUser as SignedInUser } from '@nestjs/authentication';
 import { Can, Policy } from '@nestjs/authorization';
-import type { FastifyRequest } from 'fastify';
+import type { FastifyRequest, FastifyReply } from 'fastify';
+import { AccountImportService } from './account-import.service';
 import type { CurrentUser } from '@metaexam/contracts';
 import { PasswordModule } from '../auth/password.service';
 import { ManagementService } from './management.service';
@@ -42,6 +44,32 @@ class ManagementPolicy {
   }
 }
 const context = (r: FastifyRequest) => ({ requestId: r.id, ip: r.ip });
+@Controller('/api/v1/admin/account-imports')
+@Can(ManagementPolicy, 'users')
+class AccountImportsController {
+  constructor(private readonly service: AccountImportService) {}
+  @Get('template') async template(@SignedInUser() user: CurrentUser, @Res() reply: FastifyReply) {
+    const bytes = await this.service.template(user.id);
+    return reply
+      .header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      .header('Content-Disposition', 'attachment; filename="accounts.xlsx"')
+      .header('Cache-Control', 'no-store')
+      .send(bytes);
+  }
+  @Post() @HttpCode(200) preview(@SignedInUser() user: CurrentUser, @Req() req: FastifyRequest) {
+    return this.service.preview(user.id, req);
+  }
+  @Post(':id/confirm') @HttpCode(200) confirm(
+    @SignedInUser() user: CurrentUser,
+    @Param('id') id: string,
+    @Req() req: FastifyRequest,
+  ) {
+    return this.service.confirm(user.id, id, req);
+  }
+  @Delete(':id') @HttpCode(204) cancel(@SignedInUser() user: CurrentUser, @Param('id') id: string) {
+    return this.service.cancel(user.id, id);
+  }
+}
 @Controller('/api/v1/admin/users')
 @Can(ManagementPolicy, 'users')
 class UsersController {
@@ -160,12 +188,13 @@ class TeachingController {
 @Module({
   imports: [PasswordModule],
   controllers: [
+    AccountImportsController,
     UsersController,
     OrganizationsController,
     MembersController,
     AssignmentsController,
     TeachingController,
   ],
-  providers: [ManagementService, ManagementPolicy],
+  providers: [ManagementService, ManagementPolicy, AccountImportService],
 })
 export class ManagementModule {}

@@ -224,6 +224,32 @@ try {
   assert.equal(template.status, 200, await template.clone().text());
   const runtimeRequire = createRequire(path.join(isolated, 'server/api.cjs'));
   const Excel = runtimeRequire('exceljs');
+  const accountTemplate = await fetch(url + '/api/v1/admin/account-imports/template', {
+    headers: { cookie },
+  });
+  assert.equal(accountTemplate.status, 200);
+  const accountsBook = new Excel.Workbook();
+  await accountsBook.xlsx.load(Buffer.from(await accountTemplate.arrayBuffer()));
+  accountsBook
+    .getWorksheet('账号')
+    .addRow(['payload_bulk', '包内批量账号', '学生', '', 'payload temporary password']);
+  const accountsForm = new FormData();
+  accountsForm.append('file', new Blob([await accountsBook.xlsx.writeBuffer()]), 'accounts.xlsx');
+  const accountPreviewResponse = await fetch(url + '/api/v1/admin/account-imports', {
+    method: 'POST',
+    headers: { cookie },
+    body: accountsForm,
+  });
+  assert.equal(accountPreviewResponse.status, 200, await accountPreviewResponse.clone().text());
+  const accountPreview = await accountPreviewResponse.json();
+  assert.equal(accountPreview.rows[0].errors.length, 0);
+  const accountConfirmation = await post(
+    '/api/v1/admin/account-imports/' + accountPreview.id + '/confirm',
+    {},
+    cookie,
+  );
+  assert.equal(accountConfirmation.status, 200, await accountConfirmation.clone().text());
+  assert.equal((await accountConfirmation.json()).created, 1);
   const book = new Excel.Workbook();
   await book.xlsx.load(Buffer.from(await template.arrayBuffer()));
   book
@@ -473,6 +499,19 @@ try {
   const attemptDetail = await fetch(url + attemptPath, { headers: { cookie: freshStudentCookie } });
   assert.equal(attemptDetail.status, 200);
   assert.equal((await attemptDetail.json()).instructions, '普通进程回归');
+  const progressResponse = await fetch(url + '/api/v1/exams/' + activeExam + '/progress', {
+    headers: { cookie },
+  });
+  assert.equal(progressResponse.status, 200);
+  assert.equal((await progressResponse.json()).counts.active, 1);
+  assert.equal(
+    (
+      await fetch(url + '/api/v1/exams/' + activeExam + '/progress', {
+        headers: { cookie: freshStudentCookie },
+      })
+    ).status,
+    403,
+  );
   const attemptQuestion = await (
     await fetch(url + attemptPath + '/questions/1', { headers: { cookie: freshStudentCookie } })
   ).json();

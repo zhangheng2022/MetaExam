@@ -10,6 +10,8 @@ import type {
   ExamPerson,
   StudentExam,
   PageResult,
+  ExamProgress,
+  ExamProgressRow,
 } from '@metaexam/contracts';
 import {
   examPhase,
@@ -36,6 +38,43 @@ const dates = (r: ExamSummary): ExamSummary => ({
 });
 export class ExamRepository {
   constructor(readonly db: Database) {}
+  progress(actor: string, id: string): Promise<ExamProgress> {
+    return this.withAccess(actor, id, true, async (c, exam) => {
+      if (exam.status !== 'published') throw new IdentityError('EXAM_NOT_PUBLISHED', 409);
+      // One statement gives all counts and rows the same answer/attempt snapshot.
+      const result = await c.query<ExamProgressRow & { checkedAt: string }>(
+        `SELECT r.user_id AS id,r.username,r.display_name AS "displayName",coalesce(a.status,'waiting') AS status,
+        a.started_at AS "startedAt",a.deadline_at AS "deadlineAt",s.saved_at AS "savedAt",a.submitted_at AS "submittedAt",a.submit_reason AS "submitReason",statement_timestamp() AS "checkedAt"
+        FROM exam_roster r LEFT JOIN exam_attempts a ON a.exam_id=r.exam_id AND a.user_id=r.user_id
+        LEFT JOIN LATERAL (SELECT max(saved_at) AS saved_at FROM attempt_answers WHERE attempt_id=a.id) s ON true
+        WHERE r.exam_id=$1 ORDER BY r.username,r.user_id`,
+        [id],
+      );
+      const counts = { waiting: 0, active: 0, submitted: 0 };
+      const iso = (v: string | null) => (v === null ? null : new Date(v).toISOString());
+      const rows = result.rows.map((r) => {
+        counts[r.status]++;
+        return {
+          id: r.id,
+          username: r.username,
+          displayName: r.displayName,
+          status: r.status,
+          startedAt: iso(r.startedAt),
+          deadlineAt: iso(r.deadlineAt),
+          savedAt: iso(r.savedAt),
+          submittedAt: iso(r.submittedAt),
+          submitReason: r.submitReason,
+        };
+      });
+      return {
+        checkedAt: result.rows[0]
+          ? new Date(result.rows[0].checkedAt).toISOString()
+          : new Date().toISOString(),
+        rows,
+        counts,
+      };
+    });
+  }
   withAccess<T>(
     actor: string,
     id: string,

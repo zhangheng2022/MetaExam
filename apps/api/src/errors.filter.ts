@@ -2,6 +2,8 @@ import { Catch, HttpException, type ArgumentsHost, type ExceptionFilter } from '
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { IdentityError } from '@metaexam/db';
 const messages: Record<string, string> = {
+  ACCOUNT_IMPORT_CHANGED: '账号或班级已变化，请重新上传并核对预检结果',
+  ACCOUNT_IMPORT_EXPIRED: '预检已取消、过期或服务已重启，请重新上传',
   RESULTS_UNPUBLISHED: '成绩尚未发布，暂不能查看统计或导出',
   RESULTS_INCONSISTENT: '已发布成绩数据不完整，请联系管理员检查，暂不提供统计',
   RESULT_EXPORT_BUSY: '成绩导出正在处理中，请稍后重试',

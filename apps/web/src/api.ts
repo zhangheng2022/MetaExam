@@ -8,7 +8,12 @@ export class RequestError extends Error {
     super(message);
   }
 }
-export async function apiResponse(url: string, method = 'GET', body?: unknown): Promise<Response> {
+export async function apiResponse(
+  url: string,
+  method = 'GET',
+  body?: unknown,
+  timeout = 20000,
+): Promise<Response> {
   let r: Response;
   try {
     r = await fetch('/api/v1' + url, {
@@ -17,7 +22,7 @@ export async function apiResponse(url: string, method = 'GET', body?: unknown): 
       headers:
         body && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : undefined,
       body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(timeout),
     });
   } catch {
     throw new RequestError(503, 'SERVICE_UNAVAILABLE', '服务连接失败，请检查后台服务后重试。');

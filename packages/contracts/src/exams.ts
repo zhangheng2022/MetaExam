@@ -69,3 +69,19 @@ export interface ExamDetail extends ExamSummary {
   publicationCapacity: number | null;
   licenseExpiresAt: string | null;
 }
+export interface ExamProgressRow {
+  id: string;
+  username: string;
+  displayName: string;
+  status: 'waiting' | 'active' | 'submitted';
+  startedAt: string | null;
+  deadlineAt: string | null;
+  savedAt: string | null;
+  submittedAt: string | null;
+  submitReason: 'manual' | 'timeout' | null;
+}
+export interface ExamProgress {
+  checkedAt: string;
+  rows: ExamProgressRow[];
+  counts: { waiting: number; active: number; submitted: number };
+}

@@ -4,6 +4,7 @@ import ExcelJS from 'exceljs';
 import { resultWorkbook } from './result-workbook';
 import sharp from 'sharp';
 import yauzl from 'yauzl';
+import type { AccountImportInput } from '@metaexam/contracts';
 import { questionInputSchema, type ImportRow, type QuestionInput } from '@metaexam/contracts';
 export const IMPORT_HEADERS = [
   '题型',
@@ -347,18 +348,84 @@ export async function normalizeImage(data: Buffer) {
   if (buffer.length > 8 * 1024 * 1024) throw new Error('INVALID_IMAGE');
   return { buffer, width: info.width, height: info.height };
 }
+const accountHeaders = ['用户名', '姓名', '角色', '班级编码', '初始密码'];
+export async function accountTemplate() {
+  const book = new ExcelJS.Workbook();
+  const sheet = book.addWorksheet('账号');
+  sheet.addRow(accountHeaders);
+  for (let i = 1; i <= 5; i++) {
+    sheet.getColumn(i).width = 24;
+    sheet.getColumn(i).numFmt = '@';
+  }
+  const notes = book.addWorksheet('说明');
+  notes.addRow(['角色填写学生或教师；班级须已存在且启用，教师留空班级。']);
+  notes.addRow([
+    '新账号填写各自初始密码（6～128 字符），首次登录强制改密；已有账号密码必须留空，姓名和角色须匹配。',
+  ]);
+  notes.addRow([
+    '已有学生可加入班级，已存在的成员关系跳过；不覆盖账号资料。最多 500 行、2 MiB，所有单元格使用文本，不含公式或链接。',
+  ]);
+  notes.getColumn(1).width = 110;
+  return Buffer.from(await book.xlsx.writeBuffer());
+}
+export async function accountWorkbook(data: Buffer): Promise<AccountImportInput[]> {
+  if (!data.length || data.length > 2 * 1024 * 1024) throw new Error('INVALID_WORKBOOK');
+  await validateArchive(data);
+  const book = new ExcelJS.Workbook();
+  await book.xlsx.load(data as unknown as ExcelJS.Buffer);
+  const sheet = book.getWorksheet('账号');
+  if (!sheet || !accountHeaders.every((h, i) => sheet.getRow(1).getCell(i + 1).value === h))
+    throw new Error('INVALID_WORKBOOK');
+  if (
+    sheet.state !== 'visible' ||
+    sheet.rowCount > 501 ||
+    sheet.columnCount > 5 ||
+    sheet.getRow(1).hidden ||
+    sheet.model.merges?.length
+  )
+    throw new Error('INVALID_WORKBOOK');
+  const result: AccountImportInput[] = [];
+  sheet.eachRow((row, n) => {
+    if (n === 1) return;
+    const values = accountHeaders.map((_, i) => {
+      const value = row.getCell(i + 1).value;
+      if (value !== null && typeof value !== 'string') throw new Error('INVALID_WORKBOOK');
+      if ((value?.length ?? 0) > 128) throw new Error('INVALID_WORKBOOK');
+      return value ?? '';
+    });
+    if (row.hidden) throw new Error('INVALID_WORKBOOK');
+    result.push({
+      row: n,
+      username: values[0]!.trim().toLowerCase(),
+      displayName: values[1]!.trim(),
+      role: (values[2] === '学生'
+        ? 'student'
+        : values[2] === '教师'
+          ? 'teacher'
+          : values[2]) as AccountImportInput['role'],
+      classCode: values[3]!.trim(),
+      password: values[4]!,
+    });
+  });
+  if (!result.length) throw new Error('INVALID_WORKBOOK');
+  return result;
+}
 if (parentPort)
   void (async () => {
     try {
       const d = workerData as { kind: string; data: Uint8Array };
       const result =
-        d.kind === 'results'
-          ? await resultWorkbook(JSON.parse(Buffer.from(d.data).toString('utf8')))
-          : d.kind === 'template'
-            ? await makeTemplate()
-            : d.kind === 'image'
-              ? await normalizeImage(Buffer.from(d.data))
-              : await parseWorkbook(Buffer.from(d.data));
+        d.kind === 'account-template'
+          ? await accountTemplate()
+          : d.kind === 'account-workbook'
+            ? await accountWorkbook(Buffer.from(d.data))
+            : d.kind === 'results'
+              ? await resultWorkbook(JSON.parse(Buffer.from(d.data).toString('utf8')))
+              : d.kind === 'template'
+                ? await makeTemplate()
+                : d.kind === 'image'
+                  ? await normalizeImage(Buffer.from(d.data))
+                  : await parseWorkbook(Buffer.from(d.data));
       parentPort!.postMessage({ ok: true, result });
     } catch (e) {
       const message = (e as Error).message;

@@ -2,6 +2,21 @@ import { randomUUID } from 'node:crypto';
 import type { PoolClient, QueryResultRow } from 'pg';
 import { transaction, type Database } from './index';
 import { audit, IdentityError, type AuditContext } from './identity';
+import {
+  userCreateSchema,
+  type AccountImportInput,
+  type AccountImportRow,
+  type AccountImportResult,
+} from '@metaexam/contracts';
+
+export type PreparedAccount = Omit<AccountImportInput, 'password'> & { passwordHash: string };
+type ResolvedAccount = {
+  userId: string | null;
+  userRevision: number | null;
+  classId: string | null;
+  classRevision: number | null;
+  member: boolean;
+};
 import type {
   Assignment,
   AssignmentInput,
@@ -160,6 +175,164 @@ export class ManagementRepository {
         details: { username: input.username, roles: input.roles },
       });
       return { id };
+    });
+  }
+  private async inspectAccounts(c: PoolClient, inputs: PreparedAccount[]) {
+    const rows: AccountImportRow[] = [],
+      resolved: ResolvedAccount[] = [];
+    const seen = new Set<string>();
+    for (const input of inputs) {
+      const errors: string[] = [];
+      if (
+        !userCreateSchema.safeParse({
+          username: input.username,
+          displayName: input.displayName,
+          roles: [input.role],
+          password: 'validation-only',
+        }).success ||
+        !['student', 'teacher'].includes(input.role)
+      )
+        errors.push('用户名、姓名或角色格式错误');
+      if (seen.has(input.username)) errors.push('文件内用户名重复');
+      seen.add(input.username);
+      const u = (
+        await c.query<{
+          id: string;
+          revision: number;
+          display_name: string;
+          enabled: boolean;
+          roles: string[];
+        }>(
+          'SELECT u.id,u.revision,u.display_name,u.enabled,ARRAY(SELECT role_code FROM user_roles WHERE user_id=u.id) AS roles FROM users u WHERE username=$1',
+          [input.username],
+        )
+      ).rows[0];
+      if (
+        u &&
+        (!u.enabled || u.display_name !== input.displayName || !u.roles.includes(input.role))
+      )
+        errors.push('已有账号停用，或姓名／角色不匹配');
+      if (u && input.passwordHash) errors.push('已有账号的初始密码必须留空');
+      if (!u && !input.passwordHash) errors.push('新账号必须填写 6～128 字符的初始密码');
+      const cl = input.classCode
+        ? (
+            await c.query<{ id: string; revision: number; enabled: boolean }>(
+              'SELECT id,revision,enabled FROM classes WHERE code=$1',
+              [input.classCode],
+            )
+          ).rows[0]
+        : undefined;
+      if (input.classCode && (!cl?.enabled || input.role !== 'student'))
+        errors.push('班级须存在且启用，并且只接受学生');
+      const member = !!(
+        u &&
+        cl &&
+        (
+          await c.query('SELECT 1 FROM class_members WHERE class_id=$1 AND student_id=$2', [
+            cl.id,
+            u.id,
+          ])
+        ).rowCount
+      );
+      rows.push({
+        row: input.row,
+        username: input.username,
+        displayName: input.displayName,
+        role: input.role,
+        classCode: input.classCode,
+        action: !u ? 'create' : cl && !member ? 'member' : 'skip',
+        errors,
+      });
+      resolved.push({
+        userId: u?.id ?? null,
+        userRevision: u?.revision ?? null,
+        classId: cl?.id ?? null,
+        classRevision: cl?.revision ?? null,
+        member,
+      });
+    }
+    return { rows, resolved };
+  }
+  inspectAccountImport(actor: string, inputs: PreparedAccount[]) {
+    return this.mutate(actor, 'users.manage', async (c) => {
+      await this.requireOrganizationPermission(c, actor);
+      return this.inspectAccounts(c, inputs);
+    });
+  }
+  private async requireOrganizationPermission(c: PoolClient, actor: string) {
+    if (
+      !(
+        await c.query(
+          "SELECT 1 FROM user_roles r JOIN role_permissions p USING(role_code) WHERE r.user_id=$1 AND r.role_code='admin' AND p.permission_code='organizations.manage'",
+          [actor],
+        )
+      ).rowCount
+    )
+      throw new IdentityError('FORBIDDEN', 403);
+  }
+  accountImportReceipt(actor: string, id: string) {
+    return this.mutate(actor, 'users.manage', async (c) => {
+      await this.requireOrganizationPermission(c, actor);
+      return (
+        await c.query<{ details: AccountImportResult }>(
+          "SELECT details FROM audit_events WHERE actor_id=$1 AND target_id=$2 AND event='accounts.import' AND outcome='success'",
+          [actor, id],
+        )
+      ).rows[0]?.details;
+    });
+  }
+  confirmAccountImport(
+    actor: string,
+    id: string,
+    inputs: PreparedAccount[],
+    snapshot: string,
+    context: AuditContext,
+    expires: number,
+  ) {
+    return this.mutate(actor, 'users.manage', async (c) => {
+      await this.requireOrganizationPermission(c, actor);
+      const receipt = (
+        await c.query<{ details: AccountImportResult }>(
+          "SELECT details FROM audit_events WHERE actor_id=$1 AND target_id=$2 AND event='accounts.import' AND outcome='success'",
+          [actor, id],
+        )
+      ).rows[0];
+      if (receipt) return receipt.details;
+      if (Date.now() >= expires) throw new IdentityError('ACCOUNT_IMPORT_EXPIRED', 409);
+      const current = await this.inspectAccounts(c, inputs);
+      if (current.rows.some((r) => r.errors.length) || JSON.stringify(current) !== snapshot)
+        throw new IdentityError('ACCOUNT_IMPORT_CHANGED', 409);
+      const result: AccountImportResult = { created: 0, added: 0, skipped: 0 };
+      for (const [i, input] of inputs.entries()) {
+        const state = current.resolved[i]!;
+        const userId = state.userId ?? randomUUID();
+        if (!state.userId) {
+          await c.query('INSERT INTO users(id,username,display_name) VALUES($1,$2,$3)', [
+            userId,
+            input.username,
+            input.displayName,
+          ]);
+          await c.query(
+            'INSERT INTO user_credentials(user_id,password_hash,must_change_password) VALUES($1,$2,true)',
+            [userId, input.passwordHash],
+          );
+          await c.query('INSERT INTO user_roles VALUES($1,$2)', [userId, input.role]);
+          result.created++;
+        }
+        if (state.classId && !state.member) {
+          await c.query('INSERT INTO class_members(class_id,student_id) VALUES($1,$2)', [
+            state.classId,
+            userId,
+          ]);
+          result.added++;
+        } else if (state.userId) result.skipped++;
+      }
+      await audit(c, 'accounts.import', 'success', context, actor, {
+        type: 'account-import',
+        id,
+        details: { ...result },
+      });
+      return result;
     });
   }
   async editUser(id: string, input: UserEdit, actor: string, context: AuditContext) {

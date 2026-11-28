@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { ExamProgressPanel } from './progress';
 import { Link, useNavigate, useParams } from 'react-router';
 import {
   Alert,
@@ -552,6 +553,7 @@ function Detail({ id }: { id: string }) {
                 />
               )}
             </Card>
+            {exam.status === 'published' && <ExamProgressPanel key={exam.id} id={exam.id} />}
             <Card title="考生名单" className="question-history">
               <Form
                 key={roster.params.toString()}

@@ -44,6 +44,9 @@ export class ExamsService {
   detail(actor: string, id: string) {
     return this.repository.detail(actor, parse(idSchema, id));
   }
+  progress(actor: string, id: string) {
+    return this.repository.progress(actor, parse(idSchema, id));
+  }
   roster(actor: string, id: string, q: unknown) {
     return this.repository.roster(actor, parse(idSchema, id), parse(examQuerySchema, q));
   }

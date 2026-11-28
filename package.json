@@ -1,6 +1,6 @@
 {
   "name": "metaexam",
-  "version": "0.1.21",
+  "version": "0.1.22",
   "private": true,
   "packageManager": "pnpm@10.24.0",
   "engines": {
@@ -54,6 +54,8 @@
     "test:installer-result": "node tests/installer-result.mjs",
     "test:grading": "tsx tests/grading.mts && tsx tests/grading-ui.mts",
     "test:reports": "tsx tests/reports.mts && tsx tests/reports-ui.mts",
+    "test:pilot": "tsx tests/pilot.mts",
+    "test:pilot-load": "tsx tests/pilot-load.mts",
     "test:compatibility": "node tests/windows-compatibility.mjs",
     "test:signing": "node tests/signing.mjs",
     "test:ci": "node tests/ci.mjs && node tests/ci-build.mjs && powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tests/ci-signing.ps1 && node tests/ci-runner.mjs",
