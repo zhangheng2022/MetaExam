@@ -17,6 +17,13 @@ export function validateBaseline(artifacts, previous, current, now = Date.now())
   if (!/^\d+\.\d+\.\d+$/.test(previous) || compareVersions(previous, current) >= 0)
     throw new Error('UPGRADE_BASELINE_NOT_OLDER');
 }
+export function createBaselineArchive(root) {
+  const archive = path.join(root, 'artifacts/upgrade-baseline-archive');
+  mkdirSync(path.dirname(archive), { recursive: true });
+  // A fresh runner has no artifacts parent; an existing download must still fail closed.
+  mkdirSync(archive);
+  return archive;
+}
 async function main() {
   const id = process.env.UPGRADE_BASELINE_RUN_ID;
   if (!/^[1-9]\d*$/.test(id ?? '')) throw new Error('UPGRADE_BASELINE_RUN_REQUIRED');
@@ -45,10 +52,9 @@ async function main() {
   validateBaseline(artifacts, previous, current);
   console.log(`UPGRADE_BASELINE_AVAILABLE: run=${id} version=${previous} commit=${run.head_sha}`);
   if (process.argv.includes('--check')) return;
-  const archive = path.resolve('artifacts/upgrade-baseline-archive');
+  const archive = createBaselineArchive(process.cwd());
   const target = path.resolve('artifacts/upgrade-baseline');
   // Never overwrite or synthesize historical payloads from current source.
-  mkdirSync(archive);
   gh(['run', 'download', id, '--repo', repository, '--name', 'customer-payload', '--dir', archive]);
   mkdirSync(target);
   execFileSync('tar.exe', ['-xzf', path.join(archive, 'customer-payload.tgz'), '-C', target], {

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
 import {
   validateVersions,
   validateDraft,
@@ -8,8 +10,20 @@ import {
   validateSourceRun,
   validatePreflight,
 } from '../tools/ci/release.mjs';
-import { validateBaseline } from '../tools/ci/upgrade-baseline.mjs';
+import { validateBaseline, createBaselineArchive } from '../tools/ci/upgrade-baseline.mjs';
 import { loadBuildTrust } from '../installer/trust.mjs';
+const baselineRoot = mkdtempSync(path.join(tmpdir(), 'metaexam-baseline-test-'));
+try {
+  const archive = createBaselineArchive(baselineRoot);
+  const retained = path.join(archive, 'original.txt');
+  writeFileSync(retained, 'original download');
+  assert.throws(() => createBaselineArchive(baselineRoot), /EEXIST/);
+  assert.equal(readFileSync(retained, 'utf8'), 'original download');
+  console.log('PASS fresh baseline parent creation and refusal to overwrite existing download');
+} finally {
+  assert.equal(path.dirname(baselineRoot), path.resolve(tmpdir()));
+  rmSync(baselineRoot, { recursive: true, force: true });
+}
 const sha = 'a'.repeat(40),
   tag = 'v0.1.5';
 const draft = {
