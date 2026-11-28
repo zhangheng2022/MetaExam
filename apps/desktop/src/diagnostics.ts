@@ -90,7 +90,7 @@ export async function collectDiagnostics(input: {
   try {
     const url = new URL(input.endpoint());
     if (
-      !['http:', 'https:'].includes(url.protocol) ||
+      url.protocol !== 'http:' ||
       url.hostname !== '127.0.0.1' ||
       url.username ||
       url.password ||

@@ -114,6 +114,7 @@ test('diagnostics rejects remote destinations, malformed and oversized responses
   try {
     for (const endpoint of [
       'https://example.com',
+      'https://127.0.0.1:3000',
       'http://127.0.0.1:3000@evil.example',
       'http://127.0.0.1:3000/path',
       'file:///etc/hosts',

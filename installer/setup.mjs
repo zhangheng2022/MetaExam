@@ -11,19 +11,18 @@ import {
 } from 'node:fs';
 import { createRequire } from 'node:module';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { randomBytes, X509Certificate, createPrivateKey, createPublicKey } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import net from 'node:net';
 import { completeInstallation } from './install-health.mjs';
 import { lockInstallation } from './operation-lock.mjs';
 import { prepareUninstall } from './uninstall-state.mjs';
 import { ordinary } from './release.mjs';
+import { windowsHttpNetwork, validateSubnet } from './http-network.mjs';
 const [
   action,
   appDir,
   dataDir,
-  certFile = '',
-  keyFile = '',
   portArg = '3000',
   subnet = 'LocalSubnet',
   databasePortArg = '55432',
@@ -51,6 +50,14 @@ const sc = (...args) => run('sc.exe', args);
 function query(name) {
   return spawnSync('sc.exe', ['query', name], { windowsHide: true, stdio: 'ignore' }).status === 0;
 }
+const network = windowsHttpNetwork(app, (script, input) =>
+  execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+    input,
+    encoding: 'utf8',
+    windowsHide: true,
+    timeout: 90000,
+  }),
+);
 const marker = path.join(data, 'installation.json');
 if (action === 'uninstall') {
   const { repairWindows } = await import('./repair-windows.mjs');
@@ -81,10 +88,8 @@ if (action === 'uninstall') {
           );
         sc('delete', id);
       }
-    spawnSync('netsh.exe', ['advfirewall', 'firewall', 'delete', 'rule', 'name=MetaExam HTTPS'], {
-      windowsHide: true,
-      stdio: 'ignore',
-    });
+    const config = JSON.parse(readFileSync(path.join(data, 'config.json'), 'utf8'));
+    await network.removeFirewall(config.api.port);
     await commitUninstall();
   } finally {
     await unlock();
@@ -116,7 +121,8 @@ if (repairing) {
   savedConfig = JSON.parse(readFileSync(path.join(data, 'config.json'), 'utf8'));
 }
 const port = repairing ? savedConfig.api.port : Number(portArg);
-if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid HTTPS port');
+if (!Number.isInteger(port) || port < 1 || port > 65535)
+  throw new Error('Invalid application port');
 const databasePort = repairing ? savedConfig.database.port : Number(databasePortArg);
 if (
   !Number.isInteger(databasePort) ||
@@ -133,24 +139,13 @@ if (existsSync(marker) && !owned)
 if (!owned && existsSync(path.join(data, 'postgres')))
   throw new Error('Existing database without installation record');
 if (owned && !repairing) throw new Error('EXISTING_INSTALLATION_USE_UPGRADE');
-if (!!certFile != !!keyFile)
-  throw new Error('Certificate and private key must be supplied together');
+validateSubnet(repairing ? savedConfig.firewallSubnet : subnet);
 for (const p of [port, databasePort])
   await new Promise((resolve, reject) => {
     const s = net.createServer();
     s.once('error', () => reject(new Error('PORT_IN_USE: ' + p)));
     s.listen(p, '0.0.0.0', () => s.close(resolve));
   });
-if (certFile) {
-  const cert = new X509Certificate(readFileSync(certFile)),
-    key = createPrivateKey(readFileSync(keyFile));
-  if (!cert.checkPrivateKey(key)) throw new Error('Certificate/key mismatch');
-  if (Date.parse(cert.validTo) <= Date.now() || Date.parse(cert.validFrom) > Date.now())
-    throw new Error('Certificate outside validity');
-  if (!cert.checkIP('127.0.0.1'))
-    throw new Error('Certificate must include 127.0.0.1 SAN for local management');
-  createPublicKey(key);
-}
 if (!repairing)
   run('powershell.exe', [
     '-NoProfile',
@@ -163,15 +158,7 @@ if (!repairing)
     data,
   ]);
 dataSecured = true;
-for (const sub of [
-  'runtime',
-  'postgres',
-  'secrets',
-  'certs',
-  'logs/api',
-  'logs/worker',
-  'logs/postgres',
-])
+for (const sub of ['runtime', 'postgres', 'secrets', 'logs/api', 'logs/worker', 'logs/postgres'])
   mkdirSync(path.join(data, sub), { recursive: true });
 if (!repairing)
   writeFileSync(
@@ -242,69 +229,23 @@ if (!repairing) {
     },
     passwordDpapi: appPassword,
     api: {
-      host: certFile ? '0.0.0.0' : '127.0.0.1',
+      host: '0.0.0.0',
       port,
       webDir: path.join(app, 'web'),
       managementToken: randomBytes(32).toString('hex'),
     },
     trustFile: path.join(app, 'public-keys.json'),
-    production: !!certFile,
+    production: true,
     leaseSeconds: 30,
-    firewallSubnet: certFile ? subnet : undefined,
+    firewallSubnet: subnet,
   };
-  if (certFile) {
-    config.api.tlsCert = path.join(data, 'certs/server.crt');
-    config.api.tlsKey = path.join(data, 'certs/server.key');
-    copyFileSync(certFile, config.api.tlsCert);
-    copyFileSync(keyFile, config.api.tlsKey);
-    run('icacls.exe', [path.join(data, 'certs'), '/grant', 'NT SERVICE\\MetaExam.Api:(OI)(CI)R']);
-  }
   writeFileSync(configPath, JSON.stringify(config, null, 2));
   run('icacls.exe', [configPath, '/grant', ...services.map((id) => 'NT SERVICE\\' + id + ':R')]);
-  writeFileSync(
-    path.join(data, 'public-config.json'),
-    JSON.stringify({ api: { port, tlsCert: config.api.tlsCert } }),
-  );
+  writeFileSync(path.join(data, 'public-config.json'), JSON.stringify({ api: { port } }));
   run('icacls.exe', [path.join(data, 'public-config.json'), '/grant', '*S-1-5-32-545:R']);
   run('icacls.exe', [data, '/grant', '*S-1-5-32-545:RX']);
-  if (certFile)
-    run('netsh.exe', [
-      'advfirewall',
-      'firewall',
-      'add',
-      'rule',
-      'name=MetaExam HTTPS',
-      'dir=in',
-      'action=allow',
-      'protocol=TCP',
-      'localport=' + port,
-      'remoteip=' + subnet,
-      'profile=private,domain',
-      'program=' + node,
-    ]);
 }
-if (repairing && savedConfig.api.tlsCert) {
-  const record = JSON.parse(readFileSync(marker, 'utf8'));
-  const remote = savedConfig.firewallSubnet ?? record.reinstall?.subnet;
-  const { repairWindows } = await import('./repair-windows.mjs');
-  const firewallPlatform = repairWindows({ app, data, source: app });
-  await firewallPlatform.validate();
-  if (typeof remote === 'string' && remote.length > 0 && !(await firewallPlatform.firewallSubnet()))
-    run('netsh.exe', [
-      'advfirewall',
-      'firewall',
-      'add',
-      'rule',
-      'name=MetaExam HTTPS',
-      'dir=in',
-      'action=allow',
-      'protocol=TCP',
-      'localport=' + port,
-      'remoteip=' + remote,
-      'profile=private,domain',
-      'program=' + node,
-    ]);
-}
+await network.configureFirewall(port, repairing ? savedConfig.firewallSubnet : subnet);
 const readyFile = path.join(data, 'runtime/database-ready.json');
 if (existsSync(readyFile)) unlinkSync(readyFile);
 sc('start', 'MetaExam.Postgres');

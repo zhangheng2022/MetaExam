@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs';
 import { ordinary, hashFile } from './release.mjs';
 import { run } from './upgrade-windows.mjs';
 import { waitForHealthy } from './install-health.mjs';
+import { migrateHttpNetwork, windowsHttpNetwork } from './http-network.mjs';
 
 const ids = ['MetaExam.Api', 'MetaExam.Worker', 'MetaExam.Postgres'];
 export function repairWindows({ app, data, source }) {
@@ -28,6 +29,7 @@ export function repairWindows({ app, data, source }) {
     const result = await serviceList();
     return Array.isArray(result) ? result : [result];
   };
+  const network = windowsHttpNetwork(app, ps);
   let config;
   return {
     authorize: async () => db.requireAdministrator(),
@@ -49,7 +51,7 @@ export function repairWindows({ app, data, source }) {
         data,
       );
       process.env.METAEXAM_CONFIG = path.join(data, 'config.json');
-      config = db.loadConfig();
+      config = db.loadInstallationConfig();
       const raw = JSON.parse(await readFile(process.env.METAEXAM_CONFIG, 'utf8'));
       const same = (a, b) =>
         typeof a === 'string' && path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
@@ -105,14 +107,8 @@ export function repairWindows({ app, data, source }) {
     pendingAccess: async (file) => run('icacls.exe', [file, '/grant', '*S-1-5-32-545:R']),
     recordAccess: async (file) =>
       run('icacls.exe', [file, '/grant', 'NT SERVICE\\MetaExam.Postgres:R']),
-    firewallSubnet: async () => {
-      if (!config.api.tlsCert) return undefined;
-      const result = await ps(
-        "$ErrorActionPreference='Stop'; $p=[Console]::In.ReadToEnd(); $rules=@(Get-NetFirewallRule -DisplayName 'MetaExam HTTPS' -ErrorAction SilentlyContinue | Where-Object { ($_ | Get-NetFirewallApplicationFilter).Program -eq $p }); $addresses=@($rules | Get-NetFirewallAddressFilter | ForEach-Object { $_.RemoteAddress } | Select-Object -Unique); [Console]::Write(($addresses -join ','))",
-        path.join(app, 'runtime/node.exe'),
-      );
-      return result.trim() || undefined;
-    },
+    firewallSubnet: async () => network.firewallSubnet(config.api.port),
+    configureNetwork: async (work) => migrateHttpNetwork({ data, work }, network),
     stop: async () => {
       const pending = JSON.parse(await readFile(path.join(data, 'upgrade-pending.json'), 'utf8'));
       if (
@@ -177,7 +173,7 @@ export function repairWindows({ app, data, source }) {
         connectionTimeoutMillis: 2000,
         query_timeout: 2000,
       });
-      const url = (config.api.tlsCert ? 'https' : 'http') + '://127.0.0.1:' + config.api.port;
+      const url = 'http://127.0.0.1:' + config.api.port;
       try {
         await waitForHealthy({
           url,

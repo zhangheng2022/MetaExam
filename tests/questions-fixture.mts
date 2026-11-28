@@ -7,8 +7,13 @@ export async function questionFixture() {
   const t = await isolatedDatabase();
   let app: Awaited<ReturnType<typeof createApp>> | undefined;
   const start = async () => {
-    app = await createApp({ ...t.config, auth: { accountLimit: 100, ipLimit: 1000 } });
-    await app.listen(0, '127.0.0.1');
+    app = await createApp({
+      ...t.config,
+      production: true,
+      api: { ...t.config.api, host: '0.0.0.0' },
+      auth: { accountLimit: 100, ipLimit: 1000 },
+    });
+    await app.listen(0, '0.0.0.0');
     return app;
   };
   const request = async (url: string, method = 'GET', payload?: object, cookie?: string) =>

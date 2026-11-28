@@ -23,9 +23,9 @@ function endpoint() {
     path.join(process.env.ProgramData ?? 'C:\\ProgramData', 'MetaExam', 'public-config.json');
   if (existsSync(configPath)) {
     const c = JSON.parse(readFileSync(configPath, 'utf8')) as {
-      api: { port: number; tlsCert?: string };
+      api: { port: number };
     };
-    return (c.api.tlsCert ? 'https' : 'http') + '://127.0.0.1:' + c.api.port;
+    return 'http://127.0.0.1:' + c.api.port;
   }
   return 'http://127.0.0.1:3000';
 }

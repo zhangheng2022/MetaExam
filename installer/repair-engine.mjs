@@ -13,6 +13,7 @@ import {
 } from 'node:fs/promises';
 import path from 'node:path';
 import { lockInstallation } from './operation-lock.mjs';
+import { originalConfigurationHash } from './http-network.mjs';
 import { readUninstallSnapshot } from './uninstall-state.mjs';
 import {
   ordinary,
@@ -183,7 +184,10 @@ export async function repair({ app, data, source }, platform) {
     await readRelease(path.join(work, 'candidate'));
     for (const [name, hash] of Object.entries(state.preserved)) {
       if (
-        (await hashFile(path.join(name === 'public-keys.json' ? trustRoot : data, name))) !== hash
+        (name === 'config.json'
+          ? await originalConfigurationHash(data, work)
+          : await hashFile(path.join(name === 'public-keys.json' ? trustRoot : data, name))) !==
+        hash
       )
         throw new Error('REPAIR_CONFIGURATION_CHANGED');
     }
@@ -264,12 +268,18 @@ export async function repair({ app, data, source }, platform) {
     }
     await atomic(path.join(app, 'release.json'), release);
     await checkpoint('configuring');
+    await platform.configureNetwork?.(work);
     const since = new Date().toISOString();
     await platform.configure();
     await platform.healthy(release, since);
     for (const [name, hash] of Object.entries(state.preserved)) {
       const file = path.join(name === 'public-keys.json' ? app : data, name);
-      if ((await hashFile(file)) !== hash) throw new Error('REPAIR_CONFIGURATION_CHANGED');
+      if (
+        (name === 'config.json'
+          ? await originalConfigurationHash(data, work)
+          : await hashFile(file)) !== hash
+      )
+        throw new Error('REPAIR_CONFIGURATION_CHANGED');
     }
     await atomic(
       recordFile,

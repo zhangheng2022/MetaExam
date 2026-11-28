@@ -7,8 +7,11 @@ import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
+import { get as httpsGet } from 'node:https';
+import { temporaryTls } from './tls-fixture.mjs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { licenseManagerFixture } from './license-manager-fixture.mts';
+import { migrateHttpNetwork, backupConfiguration } from '../installer/http-network.mjs';
 import { upgrade } from '../installer/upgrade-engine.mjs';
 import { readRelease, compareVersions } from '../installer/release.mjs';
 
@@ -80,11 +83,18 @@ try {
       server.close(() => resolve(p));
     });
   });
+  const tls = process.env.METAEXAM_UPGRADE_HTTPS === '1' ? await temporaryTls(data) : undefined;
   const config = {
     ...t.config,
     home,
     trustFile: path.join(app, 'public-keys.json'),
-    api: { ...t.config.api, port, webDir: path.join(app, 'web') },
+    production: !!tls,
+    api: {
+      ...t.config.api,
+      port,
+      webDir: path.join(app, 'web'),
+      ...(tls ? { host: '0.0.0.0', tlsCert: tls.tlsCert, tlsKey: tls.tlsKey } : {}),
+    },
   };
   const conf = path.join(data, 'config.json');
   await writeFile(conf, JSON.stringify(config));
@@ -121,9 +131,32 @@ try {
     }
   }
   start();
-  await wait(
-    async () => (await (await fetch(url + '/health/live')).json()).version === old.APP_VERSION,
-  );
+  await wait(async () => {
+    if (!tls) return (await (await fetch(url + '/health/live')).json()).version === old.APP_VERSION;
+    const version = await new Promise((resolve, reject) => {
+      const request = httpsGet(
+        'https://127.0.0.1:' + port + '/health/live',
+        { ca: tls.ca, timeout: 3000 },
+        (response) => {
+          let body = '';
+          response.setEncoding('utf8');
+          response.on('data', (part) => {
+            body += part;
+          });
+          response.on('end', () => {
+            try {
+              resolve(JSON.parse(body).version);
+            } catch (error) {
+              reject(error);
+            }
+          });
+        },
+      );
+      request.on('error', reject);
+      request.on('timeout', () => request.destroy(new Error('TLS_TIMEOUT')));
+    });
+    return version === old.APP_VERSION;
+  });
   await stop();
   const queued = next.createDatabase(config);
   const { id: job } = await next.enqueue(
@@ -161,8 +194,20 @@ try {
         return backup.create(folder);
       },
       validateBackup: async (_app, work, id) => {
+        const original = await backupConfiguration(data, work);
+        assert.equal(await readFile(original, 'utf8'), savedConfig);
+        const previous = process.env.METAEXAM_CONFIG;
+        try {
+          process.env.METAEXAM_CONFIG = original;
+          old.loadConfig();
+        } finally {
+          if (previous === undefined) delete process.env.METAEXAM_CONFIG;
+          else process.env.METAEXAM_CONFIG = previous;
+        }
         await backup.preview(path.join(work, 'backups', 'MetaExam-' + id + '.mbackup'));
       },
+      configureNetwork: async (work) =>
+        migrateHttpNetwork({ data, work }, { configureFirewall: async () => {} }),
       start: async () => start(),
       healthy: async (_release, since) => {
         await wait(
@@ -214,13 +259,22 @@ try {
   } finally {
     await verified.pool.end();
   }
-  assert.equal(await readFile(conf, 'utf8'), savedConfig);
+  const converted = JSON.parse(await readFile(conf, 'utf8'));
+  const expectedApi = { ...config.api, host: '0.0.0.0' };
+  delete expectedApi.tlsCert;
+  delete expectedApi.tlsKey;
+  assert.deepEqual(converted, {
+    ...JSON.parse(savedConfig),
+    api: expectedApi,
+    production: true,
+    firewallSubnet: 'LocalSubnet',
+  });
   assert.equal(await readFile(config.trustFile, 'utf8'), savedKeys);
   await assert.rejects(upgrade({ app, data, source }, platform()), /UPGRADE_NOT_NEWER/);
   if (existsSync(path.join(baseline, 'release.json')))
     await assert.rejects(upgrade({ app, data, source: baseline }, platform()), /UPGRADE_NOT_NEWER/);
   console.log(
-    `PASS real ${old.APP_VERSION} → ${release.version} payload upgrade, pg_dump backup, startup failure/resume, API/Worker maintenance gating, preserved course/license/config/keys`,
+    `PASS real ${old.APP_VERSION} ${tls ? 'HTTPS' : 'local HTTP'} → ${release.version} LAN HTTP payload upgrade, pg_dump backup, startup failure/resume, API/Worker maintenance gating, preserved course/license/config/keys`,
   );
 } finally {
   await stop();

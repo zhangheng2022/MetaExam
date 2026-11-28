@@ -130,11 +130,11 @@ $env:LICENSE_SEQUENCE = '1'
 
 环境准备统一校验 toolchain.lock.json 中的下载哈希，失败时中止，不自动改写锁文件。`-SkipDependencies` 可用于只检查和准备工具链。打包实现位于 installer/build.mjs，日常仍通过 package:win 调用；electron-builder 复用 bootstrap 准备的本地 Electron，并核对其版本，不在打包时重复下载运行时。
 
-产物为 `artifacts/MetaExam-Setup-0.1.4-win-x64-internal.exe` 及 SHA256。打包前核验工具链锁文件；Electron 由 electron-builder 输出目录，后端生产代码与生产依赖由 esbuild 封装，Inno Setup 统一生成 EXE。包内含独立 Node、React、Electron、PostgreSQL、WinSW、VC++ 运行库；安装后不运行 npm、不下载依赖。安装器、卸载程序和桌面主程序使用自签名 Authenticode，详见 [证书管理与测试机信任](docs/code-signing.md)。
+产物为 `artifacts/MetaExam-Setup-0.1.23-win-x64-internal.exe` 及 SHA256。打包前核验工具链锁文件；Electron 由 electron-builder 输出目录，后端生产代码与生产依赖由 esbuild 封装，Inno Setup 统一生成 EXE。包内含独立 Node、React、Electron、PostgreSQL、WinSW、VC++ 运行库；安装后不运行 npm、不下载依赖。安装器、卸载程序和桌面主程序使用自签名 Authenticode，详见 [证书管理与测试机信任](docs/code-signing.md)。
 
 `package:win` 拒绝覆盖已有同版本 EXE 或 SHA256；修改交付内容需递增应用版本，保留旧包用于同 buildId 续升级。构建互斥锁位于 `artifacts/.package-build.lock`，正常退出自动清理；异常退出后须确认记录中的构建进程已结束再人工处理锁，不能在构建期间删除。编译先输出暂存目录，再排他创建最终 EXE；编译失败不覆盖已交付文件。
 
-仅在[兼容目标](docs/windows-compatibility.md)列出的独立 x64 测试机运行安装器，Server 必须带桌面体验。可选本机 HTTP 或局域网 HTTPS；生产 LAN 必须导入真实可用证书，客户端信任其 CA。HTTPS 证书需覆盖 127.0.0.1 及访问用 LAN IP/域名；程序不跳过 TLS 验证。详细步骤见 [独立环境验收清单](docs/phase1-acceptance.md)。
+仅在[兼容目标](docs/windows-compatibility.md)列出的独立 x64 测试机运行安装器，Server 必须带桌面体验。0.1.23 起统一局域网 HTTP，访问 `http://服务器IP:端口`；安装器仅配置应用端口、允许网段及数据库端口，不配置访问模式、域名或 HTTPS 证书。默认应用端口 3000、网段 LocalSubnet，数据库仍仅监听回环地址。HTTP 不加密登录及答题流量。旧安装自动转换及验收见 [HTTP 部署说明](docs/http-network.md)。详细步骤见 [独立环境验收清单](docs/phase1-acceptance.md)。
 
 安装版维护命令：管理员终端设置 `METAEXAM_CONFIG=C:\ProgramData\MetaExam\config.json`，然后使用 `C:\Program Files\MetaExam\runtime\node.exe --use-system-ca C:\Program Files\MetaExam\server\cli.cjs license-request <输出路径>` 等同名命令。含空格路径需 PowerShell 的 `&` 与引号。
 

@@ -61,12 +61,11 @@ async function main() {
     return;
   }
   if (command === 'stop-api') {
-    const c = loadConfig(),
-      protocol = c.api.tlsCert ? 'https' : 'http';
-    const response = await fetch(
-      protocol + '://127.0.0.1:' + c.api.port + '/api/v1/maintenance/stop',
-      { method: 'POST', headers: { authorization: 'Bearer ' + c.api.managementToken } },
-    );
+    const c = loadConfig();
+    const response = await fetch('http://127.0.0.1:' + c.api.port + '/api/v1/maintenance/stop', {
+      method: 'POST',
+      headers: { authorization: 'Bearer ' + c.api.managementToken },
+    });
     if (!response.ok) throw new Error('STOP_FAILED');
     return;
   }

@@ -4,7 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyMultipart from '@fastify/multipart';
-import { readFileSync, existsSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { loadConfig, upgradePending, type RuntimeConfig } from '@metaexam/db';
 import { DatabaseModule } from './database/database.module';
 import { SystemModule } from './system/system.module';
@@ -26,11 +26,10 @@ export async function createApp(
   config: RuntimeConfig = loadConfig(),
   clock: () => number = Date.now,
 ): Promise<NestFastifyApplication> {
-  if (
-    !config.api.tlsCert &&
-    (config.production || !['127.0.0.1', 'localhost', '::1'].includes(config.api.host))
-  )
-    throw new Error('HTTPS_REQUIRED');
+  if ('tlsCert' in config.api || 'tlsKey' in config.api)
+    throw new Error('HTTP_CONFIGURATION_UPGRADE_REQUIRED');
+  if (!config.production && !['127.0.0.1', 'localhost', '::1'].includes(config.api.host))
+    throw new Error('LAN binding requires production mode');
   for (const [key, value] of Object.entries(config.auth ?? {}))
     if (!Number.isInteger(value) || value < 1 || value > 10000)
       throw new Error('INVALID_AUTH_CONFIG: ' + key);
@@ -40,10 +39,6 @@ export async function createApp(
         'http://127.0.0.1:' + (process.env.METAEXAM_WEB_PORT ?? config.api.webPort ?? 5173),
         'http://localhost:' + (process.env.METAEXAM_WEB_PORT ?? config.api.webPort ?? 5173),
       ];
-  const https =
-    config.api.tlsCert && config.api.tlsKey
-      ? { cert: readFileSync(config.api.tlsCert), key: readFileSync(config.api.tlsKey) }
-      : undefined;
   const app = await NestFactory.create<NestFastifyApplication>(
     {
       module: AppModule,
@@ -53,7 +48,8 @@ export async function createApp(
             absoluteTtl: '8h',
             idleTtl: '30m',
             touchInterval: 0,
-            cookie: { secure: !!config.api.tlsCert, sameSite: 'lax', path: '/' },
+            cookieName: 'metaexam_http_session',
+            cookie: { secure: false, sameSite: 'lax', path: '/' },
             trustedOrigins,
             now: clock,
           },
@@ -73,7 +69,6 @@ export async function createApp(
       ],
     },
     new FastifyAdapter({
-      https,
       bodyLimit: 65536,
       trustProxy: false,
       logger: false,

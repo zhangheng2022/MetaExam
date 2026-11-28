@@ -2,6 +2,14 @@
 
 当前客户 0.1.6／供应方 0.1.5 的系统范围与新增系统验收要求见 [Windows 兼容目标](windows-compatibility.md)。下文历史批次的版本与验收记录保持原意，不代表新增系统已验收。
 
+## 0.1.23 网络转换
+
+新包统一局域网 HTTP，无仅本机选项或证书页。原本机安装也转换为 `0.0.0.0`，原端口保留，网段默认 LocalSubnet；原 HTTPS 安装保留端口与配置网段。仅管理员维护读取器可以读取旧 TLS 配置，新业务进程遇到 TLS 字段报 `HTTP_CONFIGURATION_UPGRADE_REQUIRED`，须通过安装器转换。
+
+转换在停服、备份、程序切换及迁移后，新服务启动前完成。受保护的 upgrades/repairs 工作目录保存 `http-network.json` 与 `http-config-before.json`，只允许原始或预期转换后的配置摘要，分别原子更新 config/public-config 并重建本安装防火墙规则；配置写入保留 ACL。旧版备份 CLI 通过原始配置快照校验备份，避免新 HTTP 配置导致续升级失败。失败保留 pending，继续使用同一 buildId；不要手动删除记录。证书文件不再引用，保留在数据目录。完整操作及验收见 [HTTP 部署说明](http-network.md)。
+
+以下 0.1.2 等批次说明为历史协议与验收背景；0.1.23 不再要求保留 HTTPS 服务或重新导入 TLS 证书。安装器和管理器继续使用独立的 Authenticode 签名。
+
 ## 支持范围
 
 当前 0.1.2 内部测试 EXE 支持从 M3 第二批、已具备 `BackupService` 的 0.1.0，以及原 0.1.1 安装版升级。更早的 0.1.0 包不支持直接升级。程序和 ProgramData 数据必须位于同一卷；本批不迁移目录，不升级 Node.js、PostgreSQL 或 WinSW，不提供自动降级。V1～V10 SQL 及校验和保持不变，本次没有新增迁移。原 0.1.1 交付验证记录保留在 m3-upgrade-status.md。

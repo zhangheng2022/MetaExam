@@ -9,6 +9,7 @@ import { ordinary, hashFile } from './release.mjs';
 import { refreshServiceConfiguration } from './service-config.mjs';
 import { restartDatabase } from './restart-database.mjs';
 import { waitForHealthy } from './install-health.mjs';
+import { migrateHttpNetwork, windowsHttpNetwork, backupConfiguration } from './http-network.mjs';
 
 export function run(exe, args, options = {}, input) {
   return new Promise((resolve, reject) => {
@@ -52,7 +53,8 @@ export async function windowsPlatform({ app, data, source }) {
   )
     throw new Error('UPGRADE_RELEASE_MISMATCH');
   process.env.METAEXAM_CONFIG = path.join(data, 'config.json');
-  const runtime = dbModule.loadConfig();
+  const runtime = dbModule.loadInstallationConfig();
+  const network = windowsHttpNetwork(app, ps);
   if (
     path.resolve(runtime.home).toLowerCase() !== path.join(data, 'runtime').toLowerCase() ||
     runtime.database.user !== 'metaexam_app' ||
@@ -67,12 +69,12 @@ export async function windowsPlatform({ app, data, source }) {
     METAEXAM_CONFIG: path.join(data, 'config.json'),
     METAEXAM_INSTALL_ROOT: app,
   };
-  const cli = async (entry, input) =>
+  const cli = async (entry, input, configuration = env.METAEXAM_CONFIG) =>
     JSON.parse(
       await run(
         path.join(app, 'runtime/node.exe'),
         [entry, 'backup-desktop'],
-        { env, timeout: 35 * 60 * 1000 },
+        { env: { ...env, METAEXAM_CONFIG: configuration }, timeout: 35 * 60 * 1000 },
         JSON.stringify(input),
       ),
     );
@@ -259,11 +261,16 @@ export async function windowsPlatform({ app, data, source }) {
     },
     validateBackup: async (_app, work, id) => {
       const old = path.join(work, 'previous/server/cli.cjs');
-      await cli(existsSync(old) ? old : path.join(app, 'server/cli.cjs'), {
-        operation: 'preview',
-        directory: path.join(work, 'backups', 'MetaExam-' + id + '.mbackup'),
-      });
+      await cli(
+        existsSync(old) ? old : path.join(app, 'server/cli.cjs'),
+        {
+          operation: 'preview',
+          directory: path.join(work, 'backups', 'MetaExam-' + id + '.mbackup'),
+        },
+        await backupConfiguration(data, work),
+      );
     },
+    configureNetwork: async (work) => migrateHttpNetwork({ data, work }, network),
     restartDatabase: async () => {
       await restartDatabase({
         disconnect: async () => {
@@ -312,7 +319,7 @@ export async function windowsPlatform({ app, data, source }) {
       );
     },
     healthy: async (release, since) => {
-      const url = (runtime.api.tlsCert ? 'https' : 'http') + '://127.0.0.1:' + runtime.api.port;
+      const url = 'http://127.0.0.1:' + runtime.api.port;
       await waitForHealthy({
         url,
         release,

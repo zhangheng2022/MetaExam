@@ -7,7 +7,10 @@ const t = await isolatedDatabase();
 let app;
 let now = Date.now();
 async function start() {
-  app = await createApp(t.config, () => now);
+  app = await createApp(
+    { ...t.config, production: true, api: { ...t.config.api, host: '0.0.0.0' } },
+    () => now,
+  );
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
 }
@@ -68,8 +71,28 @@ try {
   const signed = await login();
   assert.equal(signed.statusCode, 200, signed.body);
   let cookie = cookieOf(signed);
+  assert.match(String(signed.headers['set-cookie']), /^metaexam_http_session=/);
+  assert.doesNotMatch(String(signed.headers['set-cookie']), /;\s*Secure/i);
   assert.match(String(signed.headers['set-cookie']), /HttpOnly/i);
   assert.match(String(signed.headers['set-cookie']), /SameSite=Lax/i);
+  for (const legacy of ['sid', '__Host-sid'])
+    assert.equal(
+      (await request('/api/v1/auth/me', 'GET', undefined, legacy + '=' + cookie.split('=')[1]))
+        .statusCode,
+      401,
+    );
+  assert.equal(
+    (
+      await request(
+        '/api/v1/auth/login',
+        'POST',
+        { username: 'admin', password: 'a strong test password' },
+        undefined,
+        { origin: 'http://127.0.0.1:5173' },
+      )
+    ).statusCode,
+    403,
+  );
   const user = signed.json();
   assert.deepEqual(user.roles, ['admin']);
   assert.deepEqual(Object.keys(user).sort(), [

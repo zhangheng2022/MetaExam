@@ -1,3 +1,4 @@
+import { randomId } from '../uuid';
 import { useState } from 'react';
 import {
   Alert,
@@ -35,8 +36,8 @@ function initialContent(type: QuestionContent['type']): QuestionContent {
     return {
       type,
       options: [
-        { id: crypto.randomUUID(), text: '' },
-        { id: crypto.randomUUID(), text: '' },
+        { id: randomId(), text: '' },
+        { id: randomId(), text: '' },
       ],
       answer: [],
     };
@@ -44,7 +45,7 @@ function initialContent(type: QuestionContent['type']): QuestionContent {
   if (type === 'blank')
     return {
       type,
-      blanks: [{ id: crypto.randomUUID(), answers: [''] }],
+      blanks: [{ id: randomId(), answers: [''] }],
       caseSensitive: false,
       trimWhitespace: true,
     };
@@ -131,7 +132,7 @@ function ContentEditor({
             onClick={() =>
               change({
                 ...value,
-                options: [...value.options, { id: crypto.randomUUID(), text: '' }],
+                options: [...value.options, { id: randomId(), text: '' }],
               })
             }
           >
@@ -206,7 +207,7 @@ function ContentEditor({
             onClick={() =>
               change({
                 ...value,
-                blanks: [...value.blanks, { id: crypto.randomUUID(), answers: [''] }],
+                blanks: [...value.blanks, { id: randomId(), answers: [''] }],
               })
             }
           >

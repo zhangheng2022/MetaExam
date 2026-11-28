@@ -334,6 +334,7 @@ for (const name of [
   'data-directory.ps1',
   'upgrade.mjs',
   'upgrade-engine.mjs',
+  'http-network.mjs',
   'upgrade-windows.mjs',
   'repair-engine.mjs',
   'repair-windows.mjs',
@@ -368,6 +369,10 @@ copyFileSync(
   path.join(payload, 'licenses/WINDOWS-COMPATIBILITY.md'),
 );
 copyFileSync(path.join(root, 'docs/m3-upgrade.md'), path.join(payload, 'maintenance/UPGRADE.md'));
+copyFileSync(
+  path.join(root, 'docs/http-network.md'),
+  path.join(payload, 'maintenance/http-network.md'),
+);
 copyFileSync(
   path.join(root, 'docs/m3-diagnostics.md'),
   path.join(payload, 'maintenance/DIAGNOSTICS.md'),

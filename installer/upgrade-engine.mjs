@@ -215,6 +215,7 @@ async function performUpgrade({ app, data, source }, platform) {
     }
     await checkpoint('migrating');
     await platform.database.migrate();
+    await platform.configureNetwork?.(work);
     await checkpoint('starting');
     await platform.database.allowRuntime();
     // Keep the durable maintenance marker while DB session locks are released.

@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-#define MyAppVersion "0.1.22"
+#define MyAppVersion "0.1.23"
 #endif
 [Setup]
 SetupIconFile=..\packages\ui\public\brand\icon.ico
@@ -33,6 +33,8 @@ Type: files; Name: "{app}\release.json"
 Type: files; Name: "{app}\maintenance\release.mjs"
 Type: files; Name: "{app}\maintenance\upgrade.mjs"
 Type: files; Name: "{app}\maintenance\upgrade-engine.mjs"
+Type: files; Name: "{app}\maintenance\http-network.mjs"
+Type: files; Name: "{app}\maintenance\http-network.md"
 Type: files; Name: "{app}\maintenance\upgrade-windows.mjs"
 Type: files; Name: "{app}\maintenance\repair-engine.mjs"
 Type: files; Name: "{app}\maintenance\repair-windows.mjs"
@@ -56,8 +58,6 @@ end;
 
 var
   NetworkPage: TInputQueryWizardPage;
-  CertPage: TInputFileWizardPage;
-  LocalOnlyPage: TInputOptionWizardPage;
   Upgrading: Boolean;
 function PayloadDirectory(Param: String): String;
 begin
@@ -80,21 +80,14 @@ end;
 procedure InitializeWizard;
 begin
   Upgrading := FileExists(ExpandConstant('{commonappdata}\MetaExam\installation.json'));
-  LocalOnlyPage := CreateInputOptionPage(wpSelectDir, 'Internal test deployment', 'Choose the access mode', 'This package is internally self-signed and is for technical validation.', True, False);
-  LocalOnlyPage.Add('Local computer only (HTTP loopback)');
-  LocalOnlyPage.Add('LAN access with HTTPS certificate');
-  LocalOnlyPage.SelectedValueIndex := 0;
-  NetworkPage := CreateInputQueryPage(LocalOnlyPage.ID, 'Network settings', 'Set the application ports', 'Database stays on loopback. Firewall changes apply only to HTTPS LAN mode.');
+  NetworkPage := CreateInputQueryPage(wpSelectDir, 'Network settings', 'LAN access over HTTP', 'Access using the server IP and application port. HTTP traffic is not encrypted. Database stays on loopback.');
   NetworkPage.Add('Application port:', False); NetworkPage.Values[0] := '3000';
   NetworkPage.Add('Allowed LAN subnet (CIDR or LocalSubnet):', False); NetworkPage.Values[1] := 'LocalSubnet';
   NetworkPage.Add('Database port:', False); NetworkPage.Values[2] := '55432';
-  CertPage := CreateInputFilePage(NetworkPage.ID, 'HTTPS certificate', 'Select PEM files', 'The certificate SAN must include the LAN IP/domain and 127.0.0.1. Distribute the issuing CA to clients separately.');
-  CertPage.Add('Certificate (PEM):', '*.crt;*.pem', '.crt');
-  CertPage.Add('Private key (PEM):', '*.key;*.pem', '.key');
 end;
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
- Result := ((PageID = CertPage.ID) and (LocalOnlyPage.SelectedValueIndex = 0)) or (Upgrading and ((PageID = LocalOnlyPage.ID) or (PageID = NetworkPage.ID) or (PageID = CertPage.ID)));
+ Result := Upgrading and (PageID = NetworkPage.ID);
 end;
 function NextButtonClick(CurPageID: Integer): Boolean;
 var Port, DatabasePort: Integer;
@@ -105,11 +98,9 @@ begin
    if (Port < 1) or (Port > 65535) then begin MsgBox('Enter a valid port.', mbError, MB_OK); Result := False; end;
    DatabasePort := StrToIntDef(NetworkPage.Values[2], 0);
    if (DatabasePort < 1) or (DatabasePort > 65535) or (DatabasePort = Port) then begin MsgBox('Database port must be valid and different from the application port.', mbError, MB_OK); Result := False; end;
+   if Trim(NetworkPage.Values[1]) = '' then begin MsgBox('Enter an allowed subnet or LocalSubnet.', mbError, MB_OK); Result := False; end;
  end;
- if (CurPageID = CertPage.ID) and (LocalOnlyPage.SelectedValueIndex = 1) then
-   if not FileExists(CertPage.Values[0]) or not FileExists(CertPage.Values[1]) then begin
-     MsgBox('Both certificate and private key files are required.', mbError, MB_OK); Result := False;
-   end;
+
 end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
@@ -118,7 +109,7 @@ begin
    Result := 'Select the existing MetaExam installation directory. Existing data will not be initialized again.';
 end;
 procedure CurStepChanged(CurStep: TSetupStep);
-var Code: Integer; Cert, Key, Args: String;
+var Code: Integer; Args: String;
 begin
  if CurStep = ssPostInstall then begin
    BeginPostInstall;
@@ -133,9 +124,7 @@ begin
    if NeedsVCRuntime then
      if not Exec(ExpandConstant('{app}\vendor\vc_redist.x64.exe'), '/install /quiet /norestart', ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Code) or ((Code <> 0) and (Code <> 3010) and (Code <> 1638)) then
        RaiseException('Visual C++ runtime installation failed.');
-   Cert := ''; Key := '';
-   if LocalOnlyPage.SelectedValueIndex = 1 then begin Cert := CertPage.Values[0]; Key := CertPage.Values[1]; end;
-    Args := '--use-system-ca "' + ExpandConstant('{app}\maintenance\setup.mjs') + '" install "' + ExpandConstant('{app}') + '" "' + ExpandConstant('{commonappdata}\MetaExam') + '" "' + Cert + '" "' + Key + '" "' + NetworkPage.Values[0] + '" "' + NetworkPage.Values[1] + '" "' + NetworkPage.Values[2] + '"';
+    Args := '--use-system-ca "' + ExpandConstant('{app}\maintenance\setup.mjs') + '" install "' + ExpandConstant('{app}') + '" "' + ExpandConstant('{commonappdata}\MetaExam') + '" "' + NetworkPage.Values[0] + '" "' + NetworkPage.Values[1] + '" "' + NetworkPage.Values[2] + '"';
    if not Exec(ExpandConstant('{app}\runtime\node.exe'), Args, ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
      RaiseException('Service configuration failed. Inspect installer and service logs. Existing data has been retained.');
    CompletePostInstall;

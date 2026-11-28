@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { migrateHttpNetwork } from '../installer/http-network.mjs';
 import { upgrade } from '../installer/upgrade-engine.mjs';
 import { inventory, buildId, readRelease, programParts } from '../installer/release.mjs';
 import { isolatedDatabase } from './database-fixture.mts';
@@ -298,4 +299,52 @@ for (const kind of ['checksum', 'future', 'concurrent', 'migration-failure']) {
 }
 console.log(
   'PASS checksum/future schema and concurrent upgrade refused before stop; migration failure remains offline and resumes',
+);
+
+for (const phase of ['http-prepared', 'http-config', 'http-public-config', 'http-firewall']) {
+  const t = await fixture();
+  try {
+    const original = {
+      api: { host: '0.0.0.0', port: 3000, tlsCert: 'old.crt', tlsKey: 'old.key' },
+      production: true,
+      database: { passwordDpapi: 'preserved' },
+      firewallSubnet: '10.0.0.0/24',
+    };
+    await writeFile(path.join(t.data, 'config.json'), JSON.stringify(original));
+    let interrupted = false;
+    const platform = () => ({
+      ...t.platform(),
+      configureNetwork: async (work: string) => {
+        assert.ok(t.stopped());
+        assert.ok(existsSync(path.join(t.home, 'maintenance.json')));
+        assert.ok(t.events.includes('backup-verified'));
+        await migrateHttpNetwork(
+          { data: t.data, work },
+          {
+            configureFirewall: async () => {},
+            checkpoint: async (at: string) => {
+              if (!interrupted && at === phase) {
+                interrupted = true;
+                throw new Error('NETWORK_INTERRUPTED');
+              }
+            },
+          },
+        );
+      },
+    });
+    await assert.rejects(upgrade(t, platform()), /NETWORK_INTERRUPTED/);
+    assert.ok(existsSync(path.join(t.data, 'upgrade-pending.json')));
+    assert.ok(t.stopped());
+    const result = await upgrade(t, platform());
+    assert.equal(result.resumed, true);
+    const current = JSON.parse(await readFile(path.join(t.data, 'config.json'), 'utf8'));
+    assert.equal(current.api.tlsCert, undefined);
+    assert.deepEqual(current.database, original.database);
+    assert.equal(current.firewallSubnet, '10.0.0.0/24');
+  } finally {
+    await t.close();
+  }
+}
+console.log(
+  'PASS HTTP conversion interruptions retain maintenance gate and resume after verified backup',
 );

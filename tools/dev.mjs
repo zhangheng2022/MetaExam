@@ -12,7 +12,7 @@ if (!existsSync(configPath)) throw new Error('Run db:start and db:migrate first;
 const config = JSON.parse(readFileSync(configPath, 'utf8'));
 const pnpm = path.join(root, '.tools/pnpm/node_modules/pnpm/bin/pnpm.cjs');
 if (process.argv.includes('--desktop')) {
-  const endpoint = `${config.api.tlsCert ? 'https' : 'http'}://127.0.0.1:${config.api.port}`;
+  const endpoint = `http://127.0.0.1:${config.api.port}`;
   console.log('Waiting for API startup before opening Electron...');
   while (true) {
     try {

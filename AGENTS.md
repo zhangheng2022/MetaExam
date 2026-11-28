@@ -120,6 +120,10 @@
 
 首次安装未完成（`phase=configuring`）使用独立修复流程，见 `docs/install-repair.md`；`test:install-repair` 覆盖中断续跑与隔离 PostgreSQL 的幂等续初始化。修复先停服务并保存数据冷副本和旧程序，保持配置、DPAPI 凭据和公钥；已有 PG_VERSION 不再 initdb，已完成业务初始化不重开令牌。修复 pending 同样阻断业务，健康检查通过才移除；不得把失败安装伪装成正常升级或删除数据重装。
 
+## 局域网 HTTP
+
+客户 0.1.23 起统一监听 `0.0.0.0`，仅保留应用端口、允许网段及数据库端口；无仅本机模式、HTTPS 或域名配置。数据库和管理器探针继续走回环地址。见 `docs/http-network.md`，运行 `test:http-network`。安装升级／修复在停服和备份后转换旧配置，保护原端口、网段、DPAPI、授权和历史数据；原始配置快照仅用于旧版备份校验，不能用于新业务启动。正式安装保持 `production=true` 与 CSRF 校验，Cookie 使用 `metaexam_http_session`、HttpOnly、SameSite=Lax、非 Secure。浏览器 UUID 使用 `getRandomValues`，不能依赖安全上下文专有 API；题库与答题浏览器测试必须覆盖非安全 HTTP 来源。
+
 ## 本地诊断
 
 本地诊断见 `docs/m3-diagnostics.md`，使用 `test:diagnostics` 和 `test:desktop` 验证。报告只能逐项挑选固定状态字段，不能复制原始 API 响应、异常、日志、凭据或用户内容。只调用固定回环探针，禁用 Cookie 与重定向；保持超时／体积限制。IPC 不接受路径或 URL，原生文件选择留在主进程；导出禁止覆盖现有文件或写入程序／数据目录。未知不能改写为未激活／未初始化。

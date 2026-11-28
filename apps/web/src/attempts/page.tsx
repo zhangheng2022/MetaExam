@@ -1,3 +1,4 @@
+import { randomId } from '../uuid';
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { Link, useParams } from 'react-router';
 import {
@@ -292,7 +293,7 @@ function QuestionEditor({
           const body = pending.current ?? {
             answer: current.current,
             revision: revision.current,
-            mutationId: crypto.randomUUID(),
+            mutationId: randomId(),
           };
           pending.current = body;
           const result = await api<{ revision: number; savedAt: string }>(

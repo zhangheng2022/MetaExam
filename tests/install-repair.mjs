@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { repair } from '../installer/repair-engine.mjs';
 import { inventory, buildId, programParts } from '../installer/release.mjs';
+import { migrateHttpNetwork } from '../installer/http-network.mjs';
 import { prepareUninstall } from '../installer/uninstall-state.mjs';
 
 const json = async (file) => JSON.parse(await readFile(file, 'utf8'));
@@ -353,3 +354,43 @@ test('health failure keeps the gate and stops services; only successful retry re
   await repair(f, f.platform);
   assert.equal(existsSync(f.pending), false);
 });
+
+for (const phase of ['http-prepared', 'http-config', 'http-public-config', 'http-firewall']) {
+  test(`repair resumes HTTP conversion interrupted at ${phase} and preserves the cold backup`, async (t) => {
+    const f = await fixture(t);
+    const original = {
+      api: { host: '0.0.0.0', port: 3000, tlsCert: 'old.crt', tlsKey: 'old.key' },
+      production: true,
+      database: { passwordDpapi: 'unchanged' },
+      firewallSubnet: 'LocalSubnet',
+    };
+    await writeFile(path.join(f.data, 'config.json'), JSON.stringify(original));
+    let interrupted = false;
+    f.platform.configureNetwork = async (work) =>
+      migrateHttpNetwork(
+        { data: f.data, work },
+        {
+          configureFirewall: async () => {},
+          checkpoint: async (at) => {
+            if (!interrupted && at === phase) {
+              interrupted = true;
+              throw new Error('NETWORK_INTERRUPTED');
+            }
+          },
+        },
+      );
+    await assert.rejects(repair(f, f.platform), /NETWORK_INTERRUPTED/);
+    assert.ok(existsSync(f.pending));
+    const result = await repair(f, f.platform);
+    assert.equal(result.resumed, true);
+    assert.deepEqual(await json(path.join(result.backup, 'data-backup/config.json')), original);
+    const current = await json(path.join(f.data, 'config.json'));
+    assert.equal(current.api.host, '0.0.0.0');
+    assert.equal(current.api.tlsCert, undefined);
+    assert.deepEqual(current.database, original.database);
+    assert.equal(
+      await readFile(path.join(f.data, 'secrets/database.dpapi'), 'utf8'),
+      'preserved:secrets/database.dpapi',
+    );
+  });
+}

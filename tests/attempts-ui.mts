@@ -8,8 +8,12 @@ let browser;
 mkdirSync('artifacts/m2-attempts', { recursive: true });
 try {
   await t.open();
-  const base = 'http://127.0.0.1:' + t.app.getHttpServer().address().port;
-  browser = await chromium.launch({ channel: 'msedge', headless: true });
+  const base = 'http://metaexam-http.test:' + t.app.getHttpServer().address().port;
+  browser = await chromium.launch({
+    channel: 'msedge',
+    headless: true,
+    args: ['--host-resolver-rules=MAP metaexam-http.test 127.0.0.1', '--no-proxy-server'],
+  });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const errors: string[] = [],
     external: string[] = [];
@@ -19,6 +23,8 @@ try {
   });
   try {
     await page.goto(base + '/login');
+    assert.equal(await page.evaluate(() => window.isSecureContext), false);
+    assert.equal(await page.evaluate(() => typeof crypto.randomUUID), 'undefined');
     await page.getByLabel('用户名', { exact: true }).fill('student');
     await page.getByLabel('密码', { exact: true }).fill(t.password);
     await page.getByRole('button', { name: /登\s*录/ }).click();

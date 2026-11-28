@@ -11,8 +11,8 @@ import type { LicenseSummary, LicenseDetails, LicensePayload } from '@metaexam/c
 import { instanceInfo } from './schema';
 import { loadConfig, type RuntimeConfig } from './config';
 export { loadConfig, type RuntimeConfig };
-export { loadMaintenanceConfig } from './config';
-export const APP_VERSION = '0.1.22';
+export { loadMaintenanceConfig, loadInstallationConfig } from './config';
+export const APP_VERSION = '0.1.23';
 import { MIGRATIONS, validateMigrations, migrationRows } from './migrations';
 export { MIGRATION, MIGRATIONS, SCHEMA_VERSION, grantRuntimeAccess } from './migrations';
 export * from './management';
