@@ -27,9 +27,10 @@ const statuses = {
 const failure = (code: string | null) =>
   (
     ({
-      INVALID_TEMPLATE: '模板格式不匹配，请重新下载模板。',
+      INVALID_TEMPLATE: '未识别到唯一的题目表，请核对标准模板或 15 列文字题库的表头、顺序和位置。',
       EMPTY_WORKBOOK: '没有可导入的题目。',
-      INVALID_WORKBOOK: '工作簿格式或内容超出限制，请使用模板。',
+      INVALID_WORKBOOK:
+        '工作簿格式或内容超出限制，请检查行数、列数及是否含公式、链接、隐藏行或合并单元格。',
       FORBIDDEN: '当前账号已无权写入题库。',
       NOT_FOUND: '当前题库已不可访问。',
       BANK_READ_ONLY: '题库归档或课程停用。',
@@ -149,7 +150,7 @@ export function ImportManager({
         type="info"
         showIcon
         title="先预检，后确认入库"
-        description="每次最多 500 行、2 MiB，仅支持文字题目。图片可在导入后添加；关闭窗口不影响处理，可从导入记录查看进度。"
+        description="支持标准模板和固定 15 列文字题库（单选文本题、多选文本题、判断题），每次最多 500 数据行、2 MiB。15 列格式的表头在首行或空白首行后的第 2 行；容易对应难度 2，各 ID 列必须为空，导入当前题库。完整列顺序和难度映射见下载模板的填写说明。图片可在导入后添加；关闭窗口不影响处理。"
         className="identity-alert"
       />
       {(error || readError) && (

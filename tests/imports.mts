@@ -6,6 +6,7 @@ import { questionFixture } from './questions-fixture.mts';
 import { processOne, storedFile, AttachmentRepository } from '../packages/db/dist/index.js';
 import { IMPORT_HEADERS, makeTemplate, parseWorkbook } from '../packages/db/dist/file-processor.js';
 import { writeFile, readFile } from 'node:fs/promises';
+import { textWorkbook, verifyImportFormats } from './import-formats.mts';
 const require = createRequire(path.resolve('packages/db/package.json')),
   Excel = require('exceljs'),
   sharp = require('sharp');
@@ -75,6 +76,7 @@ export const exampleRows = [
     '',
   ],
 ];
+await verifyImportFormats();
 const t = await questionFixture();
 try {
   const { admin, teacher, other, student } = t.people;
@@ -335,6 +337,29 @@ try {
       ).rows,
     ).includes('一加一'),
   );
+  const textBytes = Buffer.from(await textWorkbook().xlsx.writeBuffer());
+  assert.equal((await upload(textBytes, false, student!.cookie)).status, 403);
+  assert.equal((await upload(textBytes, false, teacher!.cookie)).status, 403);
+  for (const duplicate of [false, true]) {
+    const response = await upload(textBytes);
+    assert.equal(response.status, 202);
+    const textId = (await response.json()).id;
+    await processOne(t.db);
+    const textReport = await report(textId);
+    assert.equal(textReport.summary.status, 'ready');
+    assert.equal(textReport.summary.errors, 0);
+    assert.equal(textReport.summary.duplicates, duplicate ? 3 : 0);
+    assert.deepEqual(
+      textReport.rows.items.map((row: { rowNumber: number }) => row.rowNumber),
+      [3, 4, 5],
+    );
+    assert.equal((await confirm(textId)).statusCode, 202);
+    await processOne(t.db);
+    const applied = (await report(textId)).summary;
+    assert.equal(applied.status, 'completed');
+    assert.equal(applied.imported, duplicate ? 0 : 3);
+    assert.equal(applied.skipped, duplicate ? 3 : 0);
+  }
   await t.restart();
   assert.equal((await report(atomicId)).summary.status, 'completed');
   const privateBank = await t.request(
@@ -347,7 +372,7 @@ try {
   // Upload using the restarted API address, then remove teaching scope before execution.
   const privateId = privateBank.json().id;
   const form = new FormData();
-  form.append('file', new Blob([new Uint8Array(bytes)]), 'revoked.xlsx');
+  form.append('file', new Blob([new Uint8Array(textBytes)]), 'revoked.xlsx');
   const pending = await fetch(
     'http://127.0.0.1:' +
       t.app.getHttpServer().address().port +

@@ -24,6 +24,62 @@ export const IMPORT_HEADERS = [
   '填空区分大小写',
   '填空忽略首尾空白',
 ];
+export const TEXT_IMPORT_HEADERS = [
+  '题目ID',
+  '题目类型',
+  '题目难度',
+  '题目描述',
+  '选项A',
+  '选项B',
+  '选项C',
+  '选项D',
+  '选项E',
+  '选项F',
+  '正确答案',
+  '题目解析',
+  '关联知识点ID',
+  '课程ID',
+  '题库ID',
+];
+const textTypes = new Map([
+  ['单选文本题', '单选'],
+  ['多选文本题', '多选'],
+  ['判断题', '判断'],
+]);
+const textDifficulties = new Map([
+  ['很容易', '1'],
+  ['容易', '2'],
+  ['中等', '3'],
+  ['困难', '4'],
+  ['很困难', '5'],
+]);
+
+function normalizeTextRow(values: string[], errors: string[]): string[] {
+  for (const i of [0, 12, 13, 14]) {
+    if (values[i]!.trim())
+      errors.push(`${TEXT_IMPORT_HEADERS[i]}：必须为空，题目将导入当前选择的题库`);
+  }
+  const type = textTypes.get(values[1]!.trim());
+  if (!type) errors.push('题目类型：必须是单选文本题、多选文本题或判断题');
+  const sourceDifficulty = values[2]!.trim();
+  const difficulty = textDifficulties.get(sourceDifficulty) ?? sourceDifficulty;
+  if (!/^[1-5]$/.test(difficulty))
+    errors.push('题目难度：填写 1～5 或很容易、容易、中等、困难、很困难');
+  return [
+    type ?? '',
+    values[3]!,
+    ...values.slice(4, 10),
+    '',
+    '',
+    values[10]!,
+    values[11]!,
+    difficulty,
+    '',
+    '',
+    '',
+    '',
+  ];
+}
 // No extraction to disk. Validate actual expanded bytes, not just ZIP directory claims.
 async function validateArchive(data: Buffer) {
   await new Promise<void>((resolve, reject) =>
@@ -122,6 +178,10 @@ export async function makeTemplate() {
     '填空题干使用 [[blank]]；答案填写 JSON 二维数组，例如 [["2","二"],["4"]]，每个数组对应一空。',
     '填空区分大小写和填空忽略首尾空白填写 是 或 否，仅填空题填写。',
     '本模板不导入图片，题目入库后可在编辑页面上传。若有错误，修正后重新上传；重复题可跳过或保留。',
+    '也可直接上传固定 15 列文字题库，列名和顺序如下；工作表名称不限，表头在第 1 行或空白首行后的第 2 行。工作簿只能有一张匹配的题目表。',
+    TEXT_IMPORT_HEADERS.join('、'),
+    '15 列格式只支持单选文本题、多选文本题、判断题；答案格式与本模板相同。题目ID、关联知识点ID、课程ID、题库ID 必须为空，导入当前选择的题库。',
+    '15 列格式难度：很容易=1、容易=2、中等=3、困难=4、很困难=5，也可填写数字 1～5。知识点和标签留空。',
   ])
     notes.addRow([line]);
   notes.getColumn(1).width = 115;
@@ -136,33 +196,55 @@ export async function parseWorkbook(data: Buffer): Promise<ImportRow[]> {
   await validateArchive(data);
   const book = new ExcelJS.Workbook();
   await book.xlsx.load(data as unknown as ExcelJS.Buffer);
-  const sheet = book.getWorksheet('题目');
+  const candidates: { sheet: ExcelJS.Worksheet; headerRow: number; textFormat: boolean }[] = [];
+  for (const sheet of book.worksheets) {
+    const matches = (headers: string[], row: number) =>
+      headers.every((h, i) => sheet.getRow(row).getCell(i + 1).value === h);
+    if (sheet.name === '题目' && matches(IMPORT_HEADERS, 1))
+      candidates.push({ sheet, headerRow: 1, textFormat: false });
+    const headerRow = sheet.getRow(1).hasValues ? 1 : 2;
+    if (matches(TEXT_IMPORT_HEADERS, headerRow))
+      candidates.push({ sheet, headerRow, textFormat: true });
+  }
+  if (candidates.length !== 1) throw new Error('INVALID_TEMPLATE');
+  const { sheet, headerRow, textFormat } = candidates[0]!;
+  const headers = textFormat ? TEXT_IMPORT_HEADERS : IMPORT_HEADERS;
+  // WPS may retain formatting in empty columns beyond the fixed text template.
+  // Check cell values, not actualColumnCount (which cannot detect sparse extra columns).
+  let extraColumns = sheet.columnCount > headers.length;
+  if (textFormat && extraColumns) {
+    extraColumns = false;
+    sheet.eachRow((row) =>
+      row.eachCell((_, column) => {
+        if (column > headers.length) extraColumns = true;
+      }),
+    );
+  }
   if (
-    !sheet ||
     sheet.state !== 'visible' ||
-    sheet.rowCount > 501 ||
-    sheet.columnCount > IMPORT_HEADERS.length ||
+    sheet.getRow(headerRow).hidden ||
+    sheet.rowCount > headerRow + 500 ||
+    extraColumns ||
     Object.keys(sheet.model.merges ?? []).length
   )
     throw new Error('INVALID_WORKBOOK');
-  if (IMPORT_HEADERS.some((h, i) => sheet.getRow(1).getCell(i + 1).value !== h))
-    throw new Error('INVALID_TEMPLATE');
   const result: ImportRow[] = [];
-  for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber++) {
+  for (let rowNumber = headerRow + 1; rowNumber <= sheet.rowCount; rowNumber++) {
     const row = sheet.getRow(rowNumber);
     if (!row.hasValues) continue;
     const errors: string[] = [];
-    const values = IMPORT_HEADERS.map((_, i) => {
+    const sourceValues = headers.map((header, i) => {
       const value = row.getCell(i + 1).value;
       if (value === null || value === undefined) return '';
       if (typeof value !== 'string' && typeof value !== 'number') {
-        errors.push(`${IMPORT_HEADERS[i]}：只支持文字或数字，不能使用公式或链接`);
+        errors.push(`${header}：只支持文字或数字，不能使用公式或链接`);
         return '';
       }
       const str = String(value);
-      if (str.length > 16000) errors.push(`${IMPORT_HEADERS[i]}：内容过长`);
+      if (str.length > 16000) errors.push(`${header}：内容过长`);
       return str;
     });
+    const values = textFormat ? normalizeTextRow(sourceValues, errors) : sourceValues;
     if (row.hidden) errors.push('不支持隐藏的数据行');
     let question: QuestionInput | null = null;
     try {

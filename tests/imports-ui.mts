@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import { chromium } from 'playwright';
 import { questionFixture } from './questions-fixture.mts';
 import { IMPORT_HEADERS } from '../packages/db/dist/file-processor.js';
+import { textWorkbook } from './import-formats.mts';
 const require = createRequire(path.resolve('packages/db/package.json'));
 const Excel = require('exceljs'),
   sharp = require('sharp');
@@ -126,6 +127,32 @@ try {
     await drawer().getByRole('cell', { name: '重复题', exact: true }).waitFor();
     await drawer().getByRole('button', { name: '确认导入', exact: true }).click();
     await drawer().getByText('导入完成：新增 0 题，跳过 1 题', { exact: true }).waitFor();
+    const textBook = textWorkbook();
+    const textBytes = Buffer.from(await textBook.xlsx.writeBuffer());
+    await upload(textBytes, '文字题库.xlsx');
+    await drawer().getByText('预检完成，请核对题目再确认', { exact: true }).waitFor();
+    await drawer().getByText('共 3 行 · 错误 0 行 · 重复 0 行', { exact: true }).waitFor();
+    const sourceRow = drawer().getByRole('row').filter({ hasText: '文字格式：选择数字二' });
+    await sourceRow.getByRole('cell', { name: '3', exact: true }).waitFor();
+    await sourceRow.getByRole('button', { name: '预览题目' }).click();
+    await preview.getByText('难度 2', { exact: true }).waitFor();
+    await preview.getByRole('button', { name: /^(Close|关闭)$/ }).click();
+    await drawer().getByRole('button', { name: '确认导入', exact: true }).click();
+    await drawer().getByText('导入完成：新增 3 题，跳过 0 题', { exact: true }).waitFor();
+    await upload(textBytes, '文字题库重复.xlsx');
+    await drawer().getByText('预检完成，请核对题目再确认', { exact: true }).waitFor();
+    await drawer().getByRole('button', { name: '确认导入', exact: true }).click();
+    await drawer().getByText('导入完成：新增 0 题，跳过 3 题', { exact: true }).waitFor();
+    textBook.worksheets[0].getCell('A3').value = '旧系统ID';
+    await upload(Buffer.from(await textBook.xlsx.writeBuffer()), '文字题库错误.xlsx');
+    await drawer().getByText('存在错误，请修正 Excel 后重新上传', { exact: true }).waitFor();
+    await drawer()
+      .getByText('题目ID：必须为空，题目将导入当前选择的题库', { exact: true })
+      .waitFor();
+    assert.equal(
+      await drawer().getByRole('button', { name: '确认导入', exact: true }).isDisabled(),
+      true,
+    );
     sheet.getCell('K2').value = '不正确的答案';
     await upload(Buffer.from(await book.xlsx.writeBuffer()), '错误题.xlsx');
     await drawer().getByText('存在错误，请修正 Excel 后重新上传', { exact: true }).waitFor();
